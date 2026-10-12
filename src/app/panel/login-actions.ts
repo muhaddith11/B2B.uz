@@ -3,10 +3,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { issueOtp, verifyOtp } from "@/lib/otp";
+import { deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { HttpError, PANEL_COOKIE } from "@/lib/session";
-import { exposeCode, sendSms } from "@/lib/sms";
+import { exposeCode } from "@/lib/sms";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Panelga SMS kod bilan kirish: admin, operator va hisobchilar uchun
@@ -23,11 +23,10 @@ export async function requestPanelCode(form: FormData) {
   if (!(await panelStaff(phone))) return back({ error: "Bu raqam bilan admin, operator yoki hisobchi topilmadi" });
   let code: string;
   try {
-    code = await issueOtp(phone);
+    code = await deliverOtp(phone, (c) => `Savdo paneliga kirish kodi: ${c}. Kodni hech kimga bermang.`);
   } catch (e) {
-    return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi", phone });
+    return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }
-  await sendSms(phone, `Savdo paneliga kirish kodi: ${code}. Kodni hech kimga bermang.`);
   back({ phone, ...(exposeCode() ? { dev: code } : {}) });
 }
 

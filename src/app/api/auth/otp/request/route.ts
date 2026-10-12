@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { issueOtp } from "@/lib/otp";
+import { deliverOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { errorResponse, HttpError } from "@/lib/session";
-import { exposeCode, sendSms } from "@/lib/sms";
+import { exposeCode } from "@/lib/sms";
 
 // Mobil ilova: telefon raqamiga kirish kodini yuborish
 export async function POST(req: Request) {
@@ -11,8 +11,7 @@ export async function POST(req: Request) {
     const phone = parsed.success ? normalizePhone(parsed.data.phone) : null;
     if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
 
-    const code = await issueOtp(phone);
-    await sendSms(phone, `Savdo ilovasiga kirish kodi: ${code}. Kodni hech kimga bermang.`);
+    const code = await deliverOtp(phone, (c) => `Savdo ilovasiga kirish kodi: ${c}. Kodni hech kimga bermang.`);
     // Sinov yoki demo rejimida SMS xizmati sozlanmagan bo'lsa, kod javobda qaytadi
     return Response.json({ ok: true, phone, devCode: exposeCode() ? code : undefined });
   } catch (e) {

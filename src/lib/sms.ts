@@ -30,8 +30,15 @@ async function textupLogin(): Promise<{ token: string; userId: string }> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email: process.env.TEXTUP_EMAIL, password: process.env.TEXTUP_PASSWORD }),
   });
-  const data = (await res.json().catch(() => ({}))) as { accessToken?: string; user?: { id?: string } };
-  if (!res.ok || !data.accessToken || !data.user?.id) throw new Error(`TextUP login: ${res.status}`);
+  const raw = await res.text().catch(() => "");
+  let data: { accessToken?: string; user?: { id?: string } } = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    /* JSON emas */
+  }
+  // 404 {"error":"Not Found"}: TextUP bunday email/parol bilan hisob topmadi
+  if (!res.ok || !data.accessToken || !data.user?.id) throw new Error(`TextUP login: ${res.status} ${raw.slice(0, 200)}`);
   textupSession = { token: data.accessToken, userId: data.user.id, until: tokenExpiry(data.accessToken) };
   return textupSession;
 }

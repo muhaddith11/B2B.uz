@@ -3,10 +3,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { issueOtp, verifyOtp } from "@/lib/otp";
+import { deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { ADMIN_COOKIE, devAuthEnabled, getAdmin, HttpError, platformAdminPhones } from "@/lib/session";
-import { exposeCode, sendSms } from "@/lib/sms";
+import { exposeCode } from "@/lib/sms";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 const back = (params: Record<string, string>) => redirect(`/admin?${new URLSearchParams(params)}`);
@@ -27,11 +27,10 @@ export async function requestAdminCode(form: FormData) {
   if (!phone || !platformAdminPhones().includes(phone)) back({ error: "Bu raqam platforma adminlari ro'yxatida yo'q" });
   let code: string;
   try {
-    code = await issueOtp(phone!);
+    code = await deliverOtp(phone!, (c) => `Savdo platformasi admin kodi: ${c}`);
   } catch (e) {
-    return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi", phone: phone! });
+    return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }
-  await sendSms(phone!, `Savdo platformasi admin kodi: ${code}`);
   back({ phone: phone!, ...(exposeCode() ? { dev: code } : {}) });
 }
 

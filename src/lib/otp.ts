@@ -1,6 +1,7 @@
 import { randomInt, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
 import { HttpError } from "./session";
+import { sendSms } from "./sms";
 import { keyedHash } from "./token";
 
 export const OTP_TTL_MS = 5 * 60 * 1000;
@@ -37,6 +38,19 @@ export async function issueOtp(phone: string, now = new Date()): Promise<string>
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   await db.otpCode.create({ data: { phone, codeHash: hashOf(phone, code), expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
+  return code;
+}
+
+// Kod yaratib, SMS bilan yuboradi. SMS ketmasa kod o'chiriladi: foydalanuvchi bir daqiqa kutmasdan qayta urina oladi.
+export async function deliverOtp(phone: string, text: (code: string) => string): Promise<string> {
+  const code = await issueOtp(phone);
+  try {
+    await sendSms(phone, text(code));
+  } catch (e) {
+    console.error("SMS yuborilmadi:", e);
+    await db.otpCode.deleteMany({ where: { phone, codeHash: hashOf(phone, code) } });
+    throw new HttpError(502, "SMS yuborilmadi. Birozdan keyin qayta urinib ko'ring");
+  }
   return code;
 }
 
