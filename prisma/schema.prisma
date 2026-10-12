@@ -8,8 +8,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // Migratsiya uchun to'g'ridan-to'g'ri ulanish (Supabase/Neon pooler orqali migratsiya ishlamaydi). Lokal: DATABASE_URL bilan bir xil
-  directUrl = env("DIRECT_URL")
+  // Migratsiya uchun to'g'ridan-to'g'ri ulanish (pooler orqali migratsiya ishlamaydi). Vercel Neon o'zi qo'shadi; lokal: DATABASE_URL bilan bir xil
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum DistributorStatus {
@@ -555,6 +555,15 @@ model PushToken {
   updatedAt DateTime  @updatedAt
 
   @@index([ownerKind, ownerId])
+}
+
+// Yuklangan fayl (to'lov cheki): Vercel'da Blob ombori bo'lmasa bazada saqlanadi
+model StoredFile {
+  id        String   @id @default(cuid())
+  path      String   @unique // "receipts/<nom>"
+  type      String
+  data      Bytes
+  createdAt DateTime @default(now())
 }
 
 // SMS orqali kirish kodi: kodning o'zi emas, HMAC xeshi saqlanadi
