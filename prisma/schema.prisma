@@ -1,0 +1,584 @@
+// Ma'lumotlar modeli: spetsifikatsiyadagi "Ma'lumotlar modeli" bo'limi asosida.
+// Pul summalari butun so'mda (Int) saqlanadi.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migratsiya uchun to'g'ridan-to'g'ri ulanish (Supabase/Neon pooler orqali migratsiya ishlamaydi). Lokal: DATABASE_URL bilan bir xil
+  directUrl = env("DIRECT_URL")
+}
+
+enum DistributorStatus {
+  PENDING // tekshiruvda
+  ACTIVE
+}
+
+enum StaffRole {
+  ADMIN
+  OPERATOR
+  ACCOUNTANT
+  AGENT
+  COURIER
+}
+
+enum ShopUserRole {
+  OWNER
+  SELLER
+}
+
+enum LinkStatus {
+  REQUESTED // do'kon ulanish so'rovini yuborgan
+  ACTIVE
+  BLOCKED
+}
+
+enum LinkSource {
+  AGENT
+  SEARCH
+  PLATFORM
+}
+
+enum OrderStatus {
+  SENT // yuborildi
+  ACCEPTED // qabul qilindi
+  REJECTED // rad etildi
+  IN_DELIVERY // yo'lda
+  DELIVERED // topshirildi
+  CANCELLED // bekor qilindi
+}
+
+enum PaymentType {
+  CASH
+  TRANSFER
+  CREDIT // nasiya
+}
+
+enum OrderSource {
+  APP
+  AGENT
+}
+
+enum LedgerType {
+  DEBT // qarz: summa musbat
+  PAYMENT // to'lov: summa manfiy
+  ADJUSTMENT // tuzatish: teskari yozuv
+}
+
+enum LedgerStatus {
+  CONFIRMED
+  PENDING // chek yuklangan, distribyutor tasdig'i kutilmoqda
+  REJECTED
+}
+
+enum PaymentChannel {
+  CASH
+  CARD_RECEIPT // karta + chek rasmi
+  BANK_TRANSFER
+  PAYME
+  CLICK
+}
+
+enum PaymentMethodType {
+  PAYME
+  CLICK
+  CARD
+  BANK_ACCOUNT
+}
+
+enum SenderType {
+  SHOP
+  STAFF
+  SYSTEM
+}
+
+enum BrandStatus {
+  PENDING // platforma tekshiruvida
+  ACTIVE
+}
+
+enum AgreementStatus {
+  PROPOSED // taklif yuborilgan
+  ACTIVE
+  REJECTED
+  ENDED
+}
+
+enum AgreementSide {
+  BRAND
+  DISTRIBUTOR
+}
+
+enum BrandOrderStatus {
+  SENT
+  ACCEPTED
+  REJECTED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OnlinePaymentStatus {
+  CREATED
+  PAID
+  CANCELLED
+}
+
+enum PushOwner {
+  SHOP_USER
+  STAFF
+  BRAND_USER
+}
+
+enum PromotionType {
+  PERCENT
+  N_PLUS_ONE
+}
+
+model Distributor {
+  id           String            @id @default(cuid())
+  name         String
+  inn          String? // STIR
+  districts    String[] // tumanlar
+  categories   String[]
+  minOrder     Int               @default(0) // minimal buyurtma, so'm
+  deliveryDays String[] // masalan: ["Du", "Chor", "Ju"]
+  status       DistributorStatus @default(PENDING)
+  createdAt    DateTime          @default(now())
+
+  staff          Staff[]
+  products       Product[]
+  priceGroups    PriceGroup[]
+  links          ShopLink[]
+  paymentMethods PaymentMethod[]
+  promotions     Promotion[]
+  agreements     Agreement[]
+  brandOrders    BrandOrder[]
+}
+
+model Staff {
+  id            String      @id @default(cuid())
+  distributorId String
+  distributor   Distributor @relation(fields: [distributorId], references: [id])
+  name          String
+  phone         String
+  telegramId    BigInt?     @unique
+  role          StaffRole
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  agentLinks    ShopLink[] @relation("LinkAgent")
+  createdOrders Order[]    @relation("OrderCreatedByStaff")
+  courierOrders Order[]    @relation("OrderCourier")
+  sentMessages  Message[]
+
+  @@index([distributorId])
+}
+
+model Shop {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  district  String
+  lat       Float?
+  lng       Float?
+  inn       String?
+  createdAt DateTime @default(now())
+
+  users ShopUser[]
+  links ShopLink[]
+}
+
+model ShopUser {
+  id         String       @id @default(cuid())
+  shopId     String
+  shop       Shop         @relation(fields: [shopId], references: [id])
+  name       String
+  phone      String
+  telegramId BigInt?      @unique
+  role       ShopUserRole @default(OWNER)
+  createdAt  DateTime     @default(now())
+
+  orders       Order[]
+  sentMessages Message[]
+
+  @@index([shopId])
+}
+
+model PriceGroup {
+  id            String      @id @default(cuid())
+  distributorId String
+  distributor   Distributor @relation(fields: [distributorId], references: [id])
+  name          String
+  isDefault     Boolean     @default(false)
+
+  prices Price[]
+  links  ShopLink[]
+
+  @@unique([distributorId, name])
+}
+
+// Do'kon va distribyutor ulanishi: modelning markazi.
+model ShopLink {
+  id             String      @id @default(cuid())
+  shopId         String
+  shop           Shop        @relation(fields: [shopId], references: [id])
+  distributorId  String
+  distributor    Distributor @relation(fields: [distributorId], references: [id])
+  status         LinkStatus  @default(REQUESTED)
+  priceGroupId   String?
+  priceGroup     PriceGroup? @relation(fields: [priceGroupId], references: [id])
+  creditLimit    Int         @default(0) // 0 = nasiya o'chiq
+  creditDays     Int         @default(14)
+  blockAfterDays Int?        @default(7) // muddat o'tgandan necha kun keyin yangi nasiya bloklanadi; null = faqat ogohlantirish
+  agentId        String?
+  agent          Staff?      @relation("LinkAgent", fields: [agentId], references: [id])
+  source         LinkSource  @default(AGENT)
+  createdAt      DateTime    @default(now())
+
+  orders         Order[]
+  ledger         LedgerEntry[]
+  messages       Message[]
+  onlinePayments OnlinePayment[]
+
+  @@unique([shopId, distributorId])
+  @@index([distributorId])
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  distributorId  String
+  distributor    Distributor   @relation(fields: [distributorId], references: [id])
+  sku            String // artikul
+  name           String
+  brand          String
+  category       String
+  unit           String        @default("dona")
+  packSize       Int           @default(1) // yashikda nechta
+  barcode        String?
+  imageUrl       String?
+  inStock        Boolean       @default(true)
+  minOrderPacks  Int           @default(1)
+  marked         Boolean       @default(false) // raqamli markirovkali
+  active         Boolean       @default(true) // yangi prays-listda bo'lmasa false bo'ladi
+  updatedAt      DateTime      @updatedAt
+  // Tovar egasi bilan kelishuv orqali katalogga qo'shilgan bo'lsa
+  brandProductId String?
+  brandProduct   BrandProduct? @relation(fields: [brandProductId], references: [id])
+
+  prices     Price[]
+  orderItems OrderItem[]
+
+  @@unique([distributorId, sku])
+  @@index([distributorId, category])
+}
+
+model Price {
+  id           String     @id @default(cuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  priceGroupId String
+  priceGroup   PriceGroup @relation(fields: [priceGroupId], references: [id])
+  price        Int // bir dona uchun, so'm
+  validFrom    DateTime   @default(now())
+
+  @@unique([productId, priceGroupId])
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  number              Int         @unique @default(autoincrement())
+  shopLinkId          String
+  shopLink            ShopLink    @relation(fields: [shopLinkId], references: [id])
+  status              OrderStatus @default(SENT)
+  paymentType         PaymentType
+  total               Int
+  deliveredTotal      Int?
+  deliveryDate        DateTime?
+  source              OrderSource @default(APP)
+  createdByShopUserId String?
+  createdByShopUser   ShopUser?   @relation(fields: [createdByShopUserId], references: [id])
+  createdByStaffId    String?
+  createdByStaff      Staff?      @relation("OrderCreatedByStaff", fields: [createdByStaffId], references: [id])
+  courierId           String?
+  courier             Staff?      @relation("OrderCourier", fields: [courierId], references: [id])
+  rejectReason        String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  items    OrderItem[]
+  ledger   LedgerEntry[]
+  messages Message[]
+
+  @@index([shopLinkId, createdAt])
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product @relation(fields: [productId], references: [id])
+  qty          Int // dona
+  deliveredQty Int?
+  price        Int // buyurtma paytidagi narx, qotib qoladi
+}
+
+// Qarz daftari: faqat yangi yozuv qo'shiladi, eski yozuv o'zgartirilmaydi.
+model LedgerEntry {
+  id              String          @id @default(cuid())
+  shopLinkId      String
+  shopLink        ShopLink        @relation(fields: [shopLinkId], references: [id])
+  type            LedgerType
+  amount          Int // qarz musbat, to'lov manfiy
+  date            DateTime        @default(now())
+  dueDate         DateTime?
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id])
+  status          LedgerStatus    @default(CONFIRMED)
+  channel         PaymentChannel?
+  paymentMethodId String?
+  paymentMethod   PaymentMethod?  @relation(fields: [paymentMethodId], references: [id])
+  receiptUrl      String?
+  receiptHash     String?
+  providerTxnId   String?         @unique // Payme yoki Click tranzaksiya raqami
+  createdBy       String // "shop:<id>", "staff:<id>" yoki "system"
+  note            String?
+  reversesId      String?         @unique // tuzatish yozuvi qaysi yozuvni bekor qiladi
+  reverses        LedgerEntry?    @relation("Reversal", fields: [reversesId], references: [id])
+  reversedBy      LedgerEntry?    @relation("Reversal")
+  createdAt       DateTime        @default(now())
+
+  messages Message[]
+
+  @@index([shopLinkId, date])
+  @@index([receiptHash])
+}
+
+model PaymentMethod {
+  id            String            @id @default(cuid())
+  distributorId String
+  distributor   Distributor       @relation(fields: [distributorId], references: [id])
+  type          PaymentMethodType
+  merchantId    String? // Payme kassa ID yoki Click merchant_id
+  serviceId     String? // Click service_id
+  secretKeyEnc  String? // shifrlangan kalit
+  number        String? // karta yoki hisob raqam
+  holder        String?
+  bankMfo       String?
+  inn           String?
+  isPrimary     Boolean           @default(false)
+  active        Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+
+  ledger         LedgerEntry[]
+  onlinePayments OnlinePayment[]
+
+  @@index([distributorId])
+}
+
+model Message {
+  id               String       @id @default(cuid())
+  shopLinkId       String
+  shopLink         ShopLink     @relation(fields: [shopLinkId], references: [id])
+  senderType       SenderType
+  senderShopUserId String?
+  senderShopUser   ShopUser?    @relation(fields: [senderShopUserId], references: [id])
+  senderStaffId    String?
+  senderStaff      Staff?       @relation(fields: [senderStaffId], references: [id])
+  text             String?
+  fileUrl          String?
+  orderId          String?
+  order            Order?       @relation(fields: [orderId], references: [id])
+  ledgerEntryId    String?
+  ledgerEntry      LedgerEntry? @relation(fields: [ledgerEntryId], references: [id])
+  readAt           DateTime?
+  createdAt        DateTime     @default(now())
+
+  @@index([shopLinkId, createdAt])
+}
+
+model Promotion {
+  id            String        @id @default(cuid())
+  distributorId String
+  distributor   Distributor   @relation(fields: [distributorId], references: [id])
+  type          PromotionType
+  title         String
+  percent       Int? // PERCENT uchun
+  buyQty        Int? // N_PLUS_ONE: N ta olsang
+  freeQty       Int? // N_PLUS_ONE: shuncha bepul
+  productIds    String[]
+  startsAt      DateTime
+  endsAt        DateTime
+}
+
+// Tovar egasi: ishlab chiqaruvchi yoki brend egasi. Distribyutorlar bilan kelishuv tuzib savdo qiladi.
+model Brand {
+  id          String      @id @default(cuid())
+  name        String
+  inn         String?
+  description String?
+  categories  String[]
+  status      BrandStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+
+  users      BrandUser[]
+  products   BrandProduct[]
+  agreements Agreement[]
+  orders     BrandOrder[]
+}
+
+model BrandUser {
+  id        String   @id @default(cuid())
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id])
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+
+  @@index([brandId])
+}
+
+// Tovar egasining distribyutorlarga taklifi
+model BrandProduct {
+  id          String   @id @default(cuid())
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id])
+  name        String
+  category    String
+  unit        String   @default("dona")
+  packSize    Int      @default(1)
+  barcode     String?
+  imageUrl    String?
+  description String?
+  price       Int // distribyutorga bir dona narxi, so'm
+  retailPrice Int? // tavsiya etilgan chakana narx
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products   Product[]
+  orderItems BrandOrderItem[]
+
+  @@index([brandId])
+}
+
+// Kelishuv: tovar egasi va distribyutor. Faol bo'lsa distribyutor tovarni katalogiga qo'shadi va xarid buyurtmasi beradi.
+model Agreement {
+  id              String          @id @default(cuid())
+  brandId         String
+  brand           Brand           @relation(fields: [brandId], references: [id])
+  distributorId   String
+  distributor     Distributor     @relation(fields: [distributorId], references: [id])
+  status          AgreementStatus @default(PROPOSED)
+  initiatedBy     AgreementSide
+  districts       String[] // savdo hududi
+  discountPercent Int             @default(0) // tovar egasi narxidan distribyutorga chegirma
+  terms           String? // qo'shimcha shartlar
+  createdAt       DateTime        @default(now())
+  respondedAt     DateTime?
+  endedAt         DateTime?
+
+  orders BrandOrder[]
+
+  @@index([brandId])
+  @@index([distributorId])
+}
+
+// Distribyutorning tovar egasidan xarid buyurtmasi
+model BrandOrder {
+  id            String           @id @default(cuid())
+  number        Int              @unique @default(autoincrement())
+  agreementId   String
+  agreement     Agreement        @relation(fields: [agreementId], references: [id])
+  brandId       String
+  brand         Brand            @relation(fields: [brandId], references: [id])
+  distributorId String
+  distributor   Distributor      @relation(fields: [distributorId], references: [id])
+  status        BrandOrderStatus @default(SENT)
+  total         Int
+  note          String?
+  rejectReason  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  items BrandOrderItem[]
+
+  @@index([brandId, createdAt])
+  @@index([distributorId, createdAt])
+}
+
+model BrandOrderItem {
+  id             String       @id @default(cuid())
+  orderId        String
+  order          BrandOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  brandProductId String
+  brandProduct   BrandProduct @relation(fields: [brandProductId], references: [id])
+  qty            Int // dona
+  price          Int // chegirma bilan, buyurtma paytida qotadi
+}
+
+// Payme yoki Click orqali onlayn to'lov: to'lov tizimi tasdiqlagach qarz daftariga yoziladi
+model OnlinePayment {
+  id                 String              @id @default(cuid())
+  number             Int                 @unique @default(autoincrement()) // Click merchant_prepare_id uchun
+  shopLinkId         String
+  shopLink           ShopLink            @relation(fields: [shopLinkId], references: [id])
+  paymentMethodId    String
+  paymentMethod      PaymentMethod       @relation(fields: [paymentMethodId], references: [id])
+  provider           PaymentMethodType
+  amount             Int // so'm
+  status             OnlinePaymentStatus @default(CREATED)
+  providerTxnId      String?
+  providerState      Int? // Payme: 1 yaratilgan, 2 bajarilgan, -1/-2 bekor qilingan
+  providerCreateTime BigInt? // Payme create_time, ms
+  performedAt        DateTime?
+  cancelledAt        DateTime?
+  cancelReason       Int?
+  ledgerEntryId      String?             @unique
+  createdAt          DateTime            @default(now())
+
+  @@unique([provider, providerTxnId])
+  @@index([shopLinkId])
+}
+
+// Mobil ilovaga push bildirishnoma (Expo push token)
+model PushToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  ownerKind PushOwner
+  ownerId   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([ownerKind, ownerId])
+}
+
+// SMS orqali kirish kodi: kodning o'zi emas, HMAC xeshi saqlanadi
+model OtpCode {
+  id        String    @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}

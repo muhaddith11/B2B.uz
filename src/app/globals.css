@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* Mini App Telegram mavzusiga moslashadi; Telegram tashqarisida oddiy ranglar ishlatiladi */
+:root {
+  --app-bg: var(--tg-theme-bg-color, #ffffff);
+  --app-text: var(--tg-theme-text-color, #111827);
+  --app-hint: var(--tg-theme-hint-color, #6b7280);
+  --app-accent: var(--tg-theme-button-color, #2563eb);
+  --app-accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --app-card: var(--tg-theme-secondary-bg-color, #f3f4f6);
+  --app-danger: #dc2626;
+  --app-ok: #16a34a;
+}
+
+@theme inline {
+  --color-app-bg: var(--app-bg);
+  --color-app-text: var(--app-text);
+  --color-app-hint: var(--app-hint);
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-text: var(--app-accent-text);
+  --color-app-card: var(--app-card);
+  --color-app-danger: var(--app-danger);
+  --color-app-ok: var(--app-ok);
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
