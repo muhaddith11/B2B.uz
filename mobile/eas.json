@@ -12,11 +12,11 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://savdo.example.uz" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://b2b-uz.vercel.app" }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://savdo.example.uz" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://b2b-uz.vercel.app" }
     }
   },
   "submit": {

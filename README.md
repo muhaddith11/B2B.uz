@@ -77,12 +77,27 @@ Barchasi SMS kod bilan kiradi (sinov rejimida kod ekranda ko'rinadi).
 
 Sinov uchun Payme kassasi: Vodiy Ichimliklari (`demo-payme-key`), Click: Qo'qon Sut Savdo (`demo-click-key`).
 
+## Vercel
+
+Server Vercel'da: `muhaddith11-7435s-projects/b2b-uz` loyihasi, GitHub `main` branchiga har push avtomatik deploy qilinadi. Baza: Vercel Neon (Frankfurt), migratsiyalar har deployda qo'llanadi (`vercel-build`). Cheklar bazada saqlanadi (Blob ombori ulansa, avtomatik Blob'ga o'tadi).
+
+Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiritadigan o'zgaruvchilar (keyin Redeploy):
+
+| O'zgaruvchi | Nima |
+| --- | --- |
+| `TEXTUP_EMAIL`, `TEXTUP_PASSWORD` | TextUP kabinetiga kirish login va paroli (SMS kod shu orqali boradi). Kiritilmaguncha hech kim kira olmaydi |
+| `TEXTUP_NICKNAME_ID` | Ixtiyoriy: TextUP'dagi alfa-nom (jo'natuvchi nomi) ID'si. Bo'lmasa qisqa raqamdan yuboriladi |
+| `TEXTUP_TEMPLATE_ID` | Ixtiyoriy: TextUP talab qilsa, tasdiqlangan shablon ID'si |
+| `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
+
+`SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
+
 ## Ishga chiqarish uchun kerak
 
 Kod tayyor; quyidagilar sizning hisoblaringiz va qarorlaringiz:
 
-1. **Server va domen.** Next.js server (masalan, VPS yoki Vercel) va PostgreSQL. `.env` da `DEV_AUTH` ni o'chiring, `PUBLIC_URL` ga domenni, `PLATFORM_ADMIN_PHONES` ga o'z raqamingizni yozing. Cheklar `UPLOAD_DIR` papkasida saqlanadi: zaxira nusxasini oling.
-2. **SMS: Eskiz.uz hisobi.** `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`. Eskiz yuboriladigan matnni (`Savdo ilovasiga kirish kodi: …`) oldindan tasdiqlashi kerak.
+1. **Server va domen.** Server Vercel'da (yuqoriga qarang). O'z domeningizni ulasangiz (Vercel → Domains), `PUBLIC_URL` ni ham o'zgartiring. Boshqa serverda: `.env` da `DEV_AUTH` ni o'chiring, `PUBLIC_URL` va `PLATFORM_ADMIN_PHONES` ni yozing, cheklar `UPLOAD_DIR` papkasida saqlanadi.
+2. **SMS: TextUP hisobi.** `TEXTUP_EMAIL`, `TEXTUP_PASSWORD` (yuqoridagi jadval). Matn: `Savdo ilovasiga kirish kodi: …`; TextUP shablon talab qilsa, uni kabinetda tasdiqlatib `TEXTUP_TEMPLATE_ID` ga yozing. Zaxira sifatida Eskiz.uz ham ishlaydi (`ESKIZ_EMAIL`, `ESKIZ_PASSWORD`).
 3. **Payme va Click.** Har bir distribyutor o'z kassasini ochadi va ilovada (Ko'proq → To'lov usullari) kassa ID va kalitni kiritadi. Ilova ko'rsatgan manzilni Payme/Click kabinetiga yozadi. Payme hisob maydoni: `order_id`. Ishga tushirishdan oldin Payme sinov kassasi (`PAYME_TEST=1`) va Click sinov muhitida tekshiring.
 4. **Mobil ilova do'konlarga.** Expo hisobi, `npx eas-cli@latest init` (push bildirishnomalar ham shundan keyin ishlaydi), Google Play va App Store dasturchi hisoblari. Batafsil: [mobile/README.md](mobile/README.md).
 
@@ -97,7 +112,7 @@ Kod tayyor; quyidagilar sizning hisoblaringiz va qarorlaringiz:
 | `src/lib/links.ts` | Distribyutor topish, ulanish so'rovi |
 | `src/lib/payments.ts`, `payme.ts`, `click.ts` | To'lovlar: naqd, chek, Payme Merchant API, Click SHOP API |
 | `src/lib/brands.ts` | Tovar egalari: kelishuv, katalogga qo'shish, xarid buyurtmasi, savdo statistikasi |
-| `src/lib/otp.ts`, `sms.ts` | SMS kod bilan kirish (Eskiz.uz) |
+| `src/lib/otp.ts`, `sms.ts` | SMS kod bilan kirish (TextUP, zaxira Eskiz.uz) |
 | `src/lib/push.ts` | Push bildirishnomalar (Expo) |
 | `src/lib/price-list*.ts` | Excel prays-list o'qish va qo'llash |
 | `src/app/api/shop/*`, `staff/*`, `brand/*` | Mobil ilova API'si (har bir hisob turi uchun) |

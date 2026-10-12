@@ -36,7 +36,7 @@ Expo Go'da push bildirishnomalar ishlamaydi (Android, SDK 53 dan beri): ular dev
 npx eas-cli@latest init
 ```
 
-2. `eas.json` dagi `EXPO_PUBLIC_API_URL` larni o'z serveringiz manziliga almashtiring.
+2. `eas.json` da server manzili: `https://b2b-uz.vercel.app` (preview va production). O'z domeningizni ulasangiz, shu yerda ham almashtiring.
 3. Sinov uchun Android APK (telefonga to'g'ridan-to'g'ri o'rnatiladi):
 
 ```bash
