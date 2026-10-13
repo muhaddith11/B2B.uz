@@ -80,7 +80,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
           <View style={{ gap: 6, marginBottom: 8 }}>
-            <T size="title">Savdo</T>
+            <T size="title">Captar</T>
             <T tone="hint">Distribyutorlardan buyurtma, to'lov va qarz daftari bitta ilovada</T>
           </View>
 

@@ -1,4 +1,4 @@
-# Savdo: mobil ilova
+# Captar: mobil ilova
 
 Android va iOS uchun bitta ilova (Expo SDK 57, React Native, TypeScript). Kirgan odamning hisobiga qarab uch xil ilova ochiladi:
 
@@ -53,7 +53,7 @@ npx eas-cli@latest build --profile production --platform all
 npx eas-cli@latest submit --platform all
 ```
 
-Ilova identifikatori: `uz.savdo.app` (`app.json`). Ilova nomi, ikonka va splash `app.json` va `assets/` da.
+Ilova identifikatori: `uz.captar.app` (`app.json`). Ilova nomi, ikonka va splash `app.json` va `assets/` da.
 
 ## Buyruqlar
 

@@ -26,7 +26,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     <div className="min-h-dvh bg-gray-50 text-gray-900">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="font-semibold">Savdo platformasi · admin</div>
+          <div className="font-semibold">Captar · admin</div>
           <form action={adminLogout}>
             <button className="text-sm text-gray-500 hover:text-gray-900">Chiqish</button>
           </form>

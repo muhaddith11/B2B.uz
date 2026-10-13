@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Savdo",
-    "slug": "savdo",
+    "name": "Captar",
+    "slug": "captar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "savdo",
+    "scheme": "captar",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "uz.savdo.app",
+      "bundleIdentifier": "uz.captar.app",
       "supportsTablet": false
     },
     "android": {
@@ -20,7 +20,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "uz.savdo.app"
+      "package": "uz.captar.app"
     },
     "web": {
       "output": "static",

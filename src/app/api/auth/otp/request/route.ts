@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const phone = parsed.success ? normalizePhone(parsed.data.phone) : null;
     if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
 
-    const code = await deliverOtp(phone, (c) => `Savdo ilovasiga kirish kodi: ${c}. Kodni hech kimga bermang.`);
+    const code = await deliverOtp(phone);
     // Sinov yoki demo rejimida SMS xizmati sozlanmagan bo'lsa, kod javobda qaytadi
     return Response.json({ ok: true, phone, devCode: exposeCode() ? code : undefined });
   } catch (e) {

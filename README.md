@@ -1,4 +1,4 @@
-# Savdo platformasi
+# Captar
 
 Distribyutor, do'kon va tovar egalari uchun B2B savdo platformasi: buyurtma, nasiya, to'lov, distribyutor topish va hamkorlik kelishuvlari.
 
@@ -88,6 +88,7 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `TEXTUP_EMAIL`, `TEXTUP_PASSWORD` | TextUP kabinetiga kirish login va paroli (SMS kod shu orqali boradi). Kiritilmaguncha hech kim kira olmaydi |
 | `TEXTUP_NICKNAME_ID` | Ixtiyoriy: TextUP'dagi alfa-nom (jo'natuvchi nomi) ID'si. Bo'lmasa qisqa raqamdan yuboriladi |
 | `TEXTUP_TEMPLATE_ID` | Ixtiyoriy: TextUP talab qilsa, tasdiqlangan shablon ID'si |
+| `OTP_SMS_TEXT` | Ixtiyoriy: SMS matni, `{code}` o'rniga kod. TextUP'da tasdiqlangan shablon bilan bir xil bo'lsin |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
 
 `SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
@@ -97,7 +98,7 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 Kod tayyor; quyidagilar sizning hisoblaringiz va qarorlaringiz:
 
 1. **Server va domen.** Server Vercel'da (yuqoriga qarang). O'z domeningizni ulasangiz (Vercel → Domains), `PUBLIC_URL` ni ham o'zgartiring. Boshqa serverda: `.env` da `DEV_AUTH` ni o'chiring, `PUBLIC_URL` va `PLATFORM_ADMIN_PHONES` ni yozing, cheklar `UPLOAD_DIR` papkasida saqlanadi.
-2. **SMS: TextUP hisobi.** `TEXTUP_EMAIL`, `TEXTUP_PASSWORD` (yuqoridagi jadval). Matn: `Savdo ilovasiga kirish kodi: …`; TextUP shablon talab qilsa, uni kabinetda tasdiqlatib `TEXTUP_TEMPLATE_ID` ga yozing. Zaxira sifatida Eskiz.uz ham ishlaydi (`ESKIZ_EMAIL`, `ESKIZ_PASSWORD`).
+2. **SMS: TextUP hisobi.** `TEXTUP_EMAIL`, `TEXTUP_PASSWORD` (yuqoridagi jadval). TextUP faqat kabinetda tasdiqlangan shablonga mos matnni yuboradi (aks holda `template not found for this message`). Shablon matni: `Captar: kirish kodi {code}. Kodni hech kimga bermang.` (ilova, panel va admin uchun bitta). Boshqa matn tasdiqlansa, uni `OTP_SMS_TEXT` ga yozing (`{code}` o'rniga kod qo'yiladi). Zaxira sifatida Eskiz.uz ham ishlaydi (`ESKIZ_EMAIL`, `ESKIZ_PASSWORD`).
 3. **Payme va Click.** Har bir distribyutor o'z kassasini ochadi va ilovada (Ko'proq → To'lov usullari) kassa ID va kalitni kiritadi. Ilova ko'rsatgan manzilni Payme/Click kabinetiga yozadi. Payme hisob maydoni: `order_id`. Ishga tushirishdan oldin Payme sinov kassasi (`PAYME_TEST=1`) va Click sinov muhitida tekshiring.
 4. **Mobil ilova do'konlarga.** Expo hisobi, `npx eas-cli@latest init` (push bildirishnomalar ham shundan keyin ishlaydi), Google Play va App Store dasturchi hisoblari. Batafsil: [mobile/README.md](mobile/README.md).
 

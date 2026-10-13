@@ -23,7 +23,7 @@ export async function requestPanelCode(form: FormData) {
   if (!(await panelStaff(phone))) return back({ error: "Bu raqam bilan admin, operator yoki hisobchi topilmadi" });
   let code: string;
   try {
-    code = await deliverOtp(phone, (c) => `Savdo paneliga kirish kodi: ${c}. Kodni hech kimga bermang.`);
+    code = await deliverOtp(phone);
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }

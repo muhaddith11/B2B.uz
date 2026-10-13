@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Savdo platformasi",
+  title: "Captar",
   description: "Distribyutor va do'konlar uchun buyurtma, nasiya va to'lov",
 };
 

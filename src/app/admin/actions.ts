@@ -27,7 +27,7 @@ export async function requestAdminCode(form: FormData) {
   if (!phone || !platformAdminPhones().includes(phone)) back({ error: "Bu raqam platforma adminlari ro'yxatida yo'q" });
   let code: string;
   try {
-    code = await deliverOtp(phone!, (c) => `Savdo platformasi admin kodi: ${c}`);
+    code = await deliverOtp(phone!);
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }
