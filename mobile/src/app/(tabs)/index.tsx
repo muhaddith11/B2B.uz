@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { AccountLinks } from '@/components/account-links';
 import { Button, Card, ErrorText, Loading, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
@@ -121,6 +122,7 @@ export default function HomeScreen() {
           ))}
         </>
       )}
+      <AccountLinks />
     </ScrollView>
   );
 }

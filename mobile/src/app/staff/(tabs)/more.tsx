@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
+import { AccountLinks } from '@/components/account-links';
 import { Badge, Card, Screen, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
@@ -55,6 +56,7 @@ export default function StaffMore() {
           <T tone="danger">Chiqish</T>
         </Card>
       </Pressable>
+      <AccountLinks />
     </Screen>
   );
 }

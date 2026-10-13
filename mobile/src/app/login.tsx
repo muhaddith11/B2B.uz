@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { openPrivacyPolicy } from '@/components/account-links';
 import { Button, Card, Field, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
@@ -154,6 +155,14 @@ export default function LoginScreen() {
               {err}
             </T>
           )}
+
+          <T size="tiny" tone="hint" style={{ textAlign: 'center', marginTop: 8 }}>
+            Kirish orqali{' '}
+            <T size="tiny" tone="accent" onPress={openPrivacyPolicy}>
+              maxfiylik siyosatiga
+            </T>{' '}
+            rozilik bildirasiz
+          </T>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -90,6 +90,7 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `TEXTUP_TEMPLATE_ID` | Ixtiyoriy: TextUP talab qilsa, tasdiqlangan shablon ID'si |
 | `OTP_SMS_TEXT` | Ixtiyoriy: SMS matni, `{code}` o'rniga kod. TextUP'da tasdiqlangan shablon bilan bir xil bo'lsin |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
+| `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati sahifasidagi murojaat manzili (App Store va Google Play uchun) |
 
 `SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
 

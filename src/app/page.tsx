@@ -13,6 +13,10 @@ export default function Home() {
           Distribyutor paneli
         </Link>
       </div>
+      <div className="mt-8 flex gap-4 text-sm text-gray-500">
+        <Link href="/maxfiylik">Maxfiylik siyosati</Link>
+        <Link href="/hisobni-ochirish">Hisobni o'chirish</Link>
+      </div>
     </main>
   );
 }

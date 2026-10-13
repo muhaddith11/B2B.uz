@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
+import { AccountLinks } from '@/components/account-links';
 import { Badge, Banner, Card, Empty, ErrorText, Loading, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
@@ -100,6 +101,7 @@ export default function BrandHome() {
         );
       })}
       {ag.data && ag.data.agreements.length === 0 && <Empty>Hali kelishuv yo'q. "Distribyutorlar" bo'limidan hamkor toping.</Empty>}
+      <AccountLinks />
     </Screen>
   );
 }

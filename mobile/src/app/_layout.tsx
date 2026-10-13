@@ -53,6 +53,9 @@ function RootStack() {
       <Stack.Protected guard={kind === 'brand'}>
         <Stack.Screen name="brand" options={{ headerShown: false }} />
       </Stack.Protected>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="delete-account" options={{ title: "Hisobni o'chirish" }} />
+      </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ title: "Ro'yxatdan o'tish" }} />
