@@ -104,7 +104,19 @@ async function dispatch(method: Method, name: string, params: Params) {
       const payment = await findByAccount(method, params);
       checkPayable(payment, params.amount);
       if (payment.providerTxnId && payment.providerState === 1) throw new PaymeError(-31052, "order_id");
-      await db.onlinePayment.update({ where: { id: payment.id }, data: { providerTxnId: txnId, providerState: 1, providerCreateTime: BigInt(time) } });
+      // Shart bilan: bir vaqtda kelgan ikki tranzaksiyadan faqat bittasi to'lovga bog'lanadi
+      const claimed = await db.onlinePayment.updateMany({
+        where: { id: payment.id, status: "CREATED", OR: [{ providerTxnId: null }, { providerState: { not: 1 } }] },
+        data: { providerTxnId: txnId, providerState: 1, providerCreateTime: BigInt(time) },
+      });
+      if (claimed.count === 0) {
+        const fresh = await db.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+        // Xuddi shu tranzaksiya parallel so'rovda yaratilgan bo'lsa, o'sha javob qaytadi
+        if (fresh.providerTxnId === txnId && fresh.providerState === 1) {
+          return { create_time: Number(fresh.providerCreateTime), transaction: fresh.id, state: 1 };
+        }
+        throw new PaymeError(fresh.status === "CREATED" ? -31052 : -31051, "order_id");
+      }
       return { create_time: time, transaction: payment.id, state: 1 };
     }
 
@@ -117,11 +129,24 @@ async function dispatch(method: Method, name: string, params: Params) {
         throw new PaymeError(-31008);
       }
       const now = new Date();
-      await db.$transaction(async (tx) => {
+      const performed = await db.$transaction(async (tx) => {
+        // Holat shart bilan o'zgaradi: Payme takroriy so'rovi yoki bir vaqtdagi bekor qilish bilan to'qnashsa,
+        // to'lov qarz daftariga bir marta yoziladi
+        const claimed = await tx.onlinePayment.updateMany({
+          where: { id: payment.id, providerState: 1 },
+          data: { providerState: 2, status: "PAID", performedAt: now },
+        });
+        if (claimed.count === 0) return false;
         const full = await tx.onlinePayment.findUniqueOrThrow({ where: { id: payment.id }, include: { paymentMethod: true } });
         const entry = await applyOnlinePayment(tx, full, payment.providerTxnId!, now);
-        await tx.onlinePayment.update({ where: { id: payment.id }, data: { providerState: 2, status: "PAID", performedAt: now, ledgerEntryId: entry.id } });
+        await tx.onlinePayment.update({ where: { id: payment.id }, data: { ledgerEntryId: entry.id } });
+        return true;
       });
+      if (!performed) {
+        const fresh = await db.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+        if (fresh.providerState === 2) return { transaction: fresh.id, perform_time: ms(fresh.performedAt), state: 2 };
+        throw new PaymeError(-31008);
+      }
       await notifyOnlinePaid(payment.shopLinkId, payment.amount);
       return { transaction: payment.id, perform_time: now.getTime(), state: 2 };
     }
@@ -129,20 +154,28 @@ async function dispatch(method: Method, name: string, params: Params) {
     case "CancelTransaction": {
       const payment = await findByTxn(method, params);
       const reason = typeof params.reason === "number" ? params.reason : null;
-      if (payment.providerState === -1 || payment.providerState === -2) {
-        return { transaction: payment.id, cancel_time: ms(payment.cancelledAt), state: payment.providerState };
-      }
+      const cancelled = (p: OnlinePayment) => ({ transaction: p.id, cancel_time: ms(p.cancelledAt), state: p.providerState });
+      if (payment.providerState === -1 || payment.providerState === -2) return cancelled(payment);
       const now = new Date();
-      if (payment.providerState === 1) {
-        await db.onlinePayment.update({ where: { id: payment.id }, data: { providerState: -1, status: "CANCELLED", cancelledAt: now, cancelReason: reason } });
-        return { transaction: payment.id, cancel_time: now.getTime(), state: -1 };
-      }
-      // Bajarilgan to'lov bekor qilinsa, qarz daftariga teskari yozuv tushadi
-      await db.$transaction(async (tx) => {
-        await reverseOnlinePayment(tx, payment, now);
-        await tx.onlinePayment.update({ where: { id: payment.id }, data: { providerState: -2, status: "CANCELLED", cancelledAt: now, cancelReason: reason } });
+      // Har bir o'tish shart bilan: bajarish va bekor qilish bir vaqtda kelsa ham holat va qarz daftari mos qoladi
+      const done = await db.$transaction(async (tx) => {
+        const pending = await tx.onlinePayment.updateMany({
+          where: { id: payment.id, providerState: 1 },
+          data: { providerState: -1, status: "CANCELLED", cancelledAt: now, cancelReason: reason },
+        });
+        if (pending.count > 0) return true;
+        const paid = await tx.onlinePayment.updateMany({
+          where: { id: payment.id, providerState: 2 },
+          data: { providerState: -2, status: "CANCELLED", cancelledAt: now, cancelReason: reason },
+        });
+        if (paid.count === 0) return false;
+        // Bajarilgan to'lov bekor qilinsa, qarz daftariga teskari yozuv tushadi
+        await reverseOnlinePayment(tx, await tx.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } }), now);
+        return true;
       });
-      return { transaction: payment.id, cancel_time: now.getTime(), state: -2 };
+      const fresh = await db.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+      if (!done && fresh.providerState !== -1 && fresh.providerState !== -2) throw new PaymeError(-31007);
+      return cancelled(fresh);
     }
 
     case "CheckTransaction": {

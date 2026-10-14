@@ -8,14 +8,22 @@ export const OTP_TTL_MS = 5 * 60 * 1000;
 export const RESEND_AFTER_MS = 60 * 1000;
 export const MAX_PER_HOUR = 5;
 export const MAX_ATTEMPTS = 5;
+// Bitta IP manzildan bir soatda nechta kod (mobil operatorlarda ko'p abonent bitta IP'dan chiqadi, shuning uchun juda kichik emas)
+export const MAX_PER_IP_HOUR = 20;
+// Butun platforma bo'yicha bir soatda nechta SMS: ko'p raqam va IP'dan hujum SMS hisobini bo'shatib yubormasligi uchun
+const globalHourlyLimit = () => Number(process.env.OTP_HOURLY_LIMIT) || 500;
+// Kod berishni navbatga qo'yuvchi qulf: bir vaqtdagi parallel so'rovlar cheklovni chetlab o'tmasin
+const OTP_LOCK_KEY = 7_204_311;
 
 // Yangi kod yuborish mumkinmi: oxirgi kod bir daqiqadan eski va bir soatda 5 tadan kam
 export function sendAllowed(recent: Date[], now: Date): { ok: true } | { ok: false; retryInSec: number } {
   const hourAgo = now.getTime() - 60 * 60 * 1000;
   const lastHour = recent.map((d) => d.getTime()).filter((t) => t > hourAgo);
   const last = Math.max(0, ...lastHour);
-  if (last && now.getTime() - last < RESEND_AFTER_MS) {
-    return { ok: false, retryInSec: Math.ceil((RESEND_AFTER_MS - (now.getTime() - last)) / 1000) };
+  // Parallel so'rovda oldingi kod "now"dan sal keyin yozilgan bo'lishi mumkin: o'tgan vaqt manfiy bo'lmasin
+  const elapsed = Math.max(0, now.getTime() - last);
+  if (last && elapsed < RESEND_AFTER_MS) {
+    return { ok: false, retryInSec: Math.ceil((RESEND_AFTER_MS - elapsed) / 1000) };
   }
   if (lastHour.length >= MAX_PER_HOUR) {
     return { ok: false, retryInSec: Math.ceil((Math.min(...lastHour) + 60 * 60 * 1000 - now.getTime()) / 1000) };
@@ -25,20 +33,37 @@ export function sendAllowed(recent: Date[], now: Date): { ok: true } | { ok: fal
 
 const hashOf = (phone: string, code: string) => keyedHash(`otp:${phone}:${code}`);
 
-export async function issueOtp(phone: string, now = new Date()): Promise<string> {
-  const recent = await db.otpCode.findMany({
-    where: { phone, createdAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) } },
-    select: { createdAt: true },
-  });
-  const allowed = sendAllowed(
-    recent.map((r) => r.createdAt),
-    now,
-  );
-  if (!allowed.ok) throw new HttpError(429, `Yangi kodni ${allowed.retryInSec} soniyadan keyin so'rang`);
-
+// Cheklovlar: raqam bo'yicha (sendAllowed), IP bo'yicha va butun platforma bo'yicha.
+// Tekshiruv va yozuv bitta qulf ostida: parallel so'rovlar bir-birini ko'rmay o'tib ketmaydi.
+export async function issueOtp(phone: string, ip: string | null, now = new Date()): Promise<string> {
+  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  await db.otpCode.create({ data: { phone, codeHash: hashOf(phone, code), expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
+  await db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${OTP_LOCK_KEY})`;
+    const recent = await tx.otpCode.findMany({ where: { phone, createdAt: { gt: hourAgo } }, select: { createdAt: true } });
+    const allowed = sendAllowed(
+      recent.map((r) => r.createdAt),
+      now,
+    );
+    if (!allowed.ok) throw new HttpError(429, `Yangi kodni ${allowed.retryInSec} soniyadan keyin so'rang`);
+
+    const fromIp = ip ? await tx.otpCode.count({ where: { ip, createdAt: { gt: hourAgo } } }) : 0;
+    const total = await tx.otpCode.count({ where: { createdAt: { gt: hourAgo } } });
+    if (fromIp >= MAX_PER_IP_HOUR) throw new HttpError(429, "Bu tarmoqdan juda ko'p kod so'raldi. Birozdan keyin urinib ko'ring");
+    if (total >= globalHourlyLimit()) {
+      console.error(`OTP: soatlik umumiy chegara (${globalHourlyLimit()}) to'ldi`);
+      throw new HttpError(429, "Kod yuborish vaqtincha cheklangan. Birozdan keyin urinib ko'ring");
+    }
+
+    await tx.otpCode.create({ data: { phone, ip, codeHash: hashOf(phone, code), expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
+  });
   return code;
+}
+
+// So'rov kelgan IP: Vercel x-real-ip va x-forwarded-for sarlavhalarini o'zi qo'yadi (mijoz yuborganini almashtiradi)
+export function clientIp(headers: Headers): string | null {
+  const ip = headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0];
+  return ip?.trim().slice(0, 64) || null;
 }
 
 // Ilova, panel va admin uchun bitta matn: SMS xizmatida (TextUP) bitta shablon tasdiqlatiladi.
@@ -49,8 +74,8 @@ export function otpSmsText(code: string): string {
 }
 
 // Kod yaratib, SMS bilan yuboradi. SMS ketmasa kod o'chiriladi: foydalanuvchi bir daqiqa kutmasdan qayta urina oladi.
-export async function deliverOtp(phone: string): Promise<string> {
-  const code = await issueOtp(phone);
+export async function deliverOtp(phone: string, ip: string | null): Promise<string> {
+  const code = await issueOtp(phone, ip);
   try {
     await sendSms(phone, otpSmsText(code));
   } catch (e) {

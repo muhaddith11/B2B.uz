@@ -126,21 +126,27 @@ export function CallLink({ phone, name }: { phone: string; name?: string | null 
   );
 }
 
+// Bitta to'lov uchun kalit: shu to'lov qayta yuborilsa (ikki marta bosish, tarmoq uzilishi) server uni ikkinchi marta yozmaydi
+const newPaymentKey = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
 // Naqd yoki o'tkazma to'lovni yozish (har qanday xodim)
 export function CashForm({ linkId, onDone }: { linkId: string; onDone: () => void }) {
   const { api } = useSession();
   const [amount, setAmount] = useState('');
   const [channel, setChannel] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
+  const [clientKey, setClientKey] = useState(newPaymentKey);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const sum = Number(amount.replace(/\D/g, '')) || 0;
 
   async function save() {
+    if (busy) return;
     setBusy(true);
     setMsg(null);
     try {
-      await api('/api/staff/payments', { method: 'POST', body: JSON.stringify({ linkId, amount: sum, channel }) });
+      await api('/api/staff/payments', { method: 'POST', body: JSON.stringify({ linkId, amount: sum, channel, clientKey }) });
       setAmount('');
+      setClientKey(newPaymentKey());
       setMsg({ ok: true, text: `${formatSom(sum)} qabul qilindi` });
       onDone();
     } catch (e) {
@@ -154,10 +160,28 @@ export function CashForm({ linkId, onDone }: { linkId: string; onDone: () => voi
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {(['CASH', 'BANK_TRANSFER'] as const).map((c) => (
-          <Button key={c} title={c === 'CASH' ? 'Naqd' : "O'tkazma"} kind={channel === c ? 'primary' : 'secondary'} compact style={{ flex: 1 }} onPress={() => setChannel(c)} />
+          <Button
+            key={c}
+            title={c === 'CASH' ? 'Naqd' : "O'tkazma"}
+            kind={channel === c ? 'primary' : 'secondary'}
+            compact
+            style={{ flex: 1 }}
+            onPress={() => {
+              setChannel(c);
+              setClientKey(newPaymentKey());
+            }}
+          />
         ))}
       </View>
-      <Field label="Summa, so'm" value={amount} onChangeText={(v) => setAmount(v.replace(/\D/g, ''))} keyboardType="number-pad" />
+      <Field
+        label="Summa, so'm"
+        value={amount}
+        onChangeText={(v) => {
+          setAmount(v.replace(/\D/g, ''));
+          setClientKey(newPaymentKey());
+        }}
+        keyboardType="number-pad"
+      />
       <Button title={sum > 0 ? `To'lovni yozish · ${formatSom(sum)}` : "To'lovni yozish"} onPress={save} loading={busy} disabled={sum <= 0} />
       {msg && (
         <T size="small" tone={msg.ok ? 'ok' : 'danger'}>

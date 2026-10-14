@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { deliverOtp, verifyOtp } from "@/lib/otp";
+import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { HttpError, PANEL_COOKIE } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
@@ -23,7 +23,7 @@ export async function requestPanelCode(form: FormData) {
   if (!(await panelStaff(phone))) return back({ error: "Bu raqam bilan admin, operator yoki hisobchi topilmadi" });
   let code: string;
   try {
-    code = await deliverOtp(phone);
+    code = await deliverOtp(phone, clientIp(await headers()));
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }

@@ -25,7 +25,7 @@ export const GET = handle(async (req: Request) => {
 export const POST = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR", "AGENT"]);
   const input = await readJson(req, agentOrderInput, "Buyurtma ma'lumotlari noto'g'ri");
-  const link = await staffLink(staff.distributorId, input.linkId);
+  const link = await staffLink(staff, input.linkId);
   const order = await createOrderForLink(link, { staffId: staff.id }, input);
   return Response.json({ id: order.id, number: order.number, total: order.total });
 });

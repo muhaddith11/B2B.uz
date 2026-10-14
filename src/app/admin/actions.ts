@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { deliverOtp, verifyOtp } from "@/lib/otp";
+import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { ADMIN_COOKIE, devAuthEnabled, getAdmin, HttpError, platformAdminPhones } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
@@ -27,7 +27,7 @@ export async function requestAdminCode(form: FormData) {
   if (!phone || !platformAdminPhones().includes(phone)) back({ error: "Bu raqam platforma adminlari ro'yxatida yo'q" });
   let code: string;
   try {
-    code = await deliverOtp(phone!);
+    code = await deliverOtp(phone!, clientIp(await headers()));
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }

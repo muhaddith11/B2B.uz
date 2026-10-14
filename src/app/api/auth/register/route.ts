@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
+import { lockRegistration } from "@/lib/registration";
 import { devAuthEnabled } from "@/lib/session";
 import { verifyInitData } from "@/lib/telegram-auth";
 import { DAY_SECONDS, signToken, verifyToken } from "@/lib/token";
@@ -45,19 +46,28 @@ export async function POST(req: Request) {
   const phone = verifiedPhone ?? normalizePhone(parsed.data.phone ?? "");
   if (!phone) return Response.json({ error: "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin" }, { status: 400 });
 
-  // Ikki marta bosilsa ham bitta do'kon yaratiladi
-  const existing = telegramId ? await db.shopUser.findUnique({ where: { telegramId } }) : null;
-  const user =
-    existing ??
-    (await db.shopUser.create({
-      data: {
-        name: ownerName,
-        phone,
-        telegramId,
-        role: "OWNER",
-        shop: { create: { name: shopName, address, district } },
-      },
-    }));
+  // Ikki marta bosilsa ham bitta do'kon yaratiladi: Telegram hisobi yoki tasdiqlangan raqamda shu nomli do'kon bo'lsa, o'shanga kiriladi.
+  // Bir raqamda nomi boshqa ikkinchi do'kon ochish mumkin.
+  const user = await db.$transaction(async (tx) => {
+    await lockRegistration(tx, phone);
+    const existing = telegramId
+      ? await tx.shopUser.findUnique({ where: { telegramId } })
+      : verifiedPhone
+        ? await tx.shopUser.findFirst({ where: { phone: verifiedPhone, role: "OWNER", shop: { name: { equals: shopName, mode: "insensitive" } } } })
+        : null;
+    return (
+      existing ??
+      tx.shopUser.create({
+        data: {
+          name: ownerName,
+          phone,
+          telegramId,
+          role: "OWNER",
+          shop: { create: { name: shopName, address, district } },
+        },
+      })
+    );
+  });
 
   const ttl = telegramId || verifiedPhone ? 30 * DAY_SECONDS : DAY_SECONDS;
   const token = signToken({ kind: "shop", shopUserId: user.id, exp: Math.floor(Date.now() / 1000) + ttl });

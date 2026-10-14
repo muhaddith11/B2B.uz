@@ -350,6 +350,7 @@ model LedgerEntry {
   reversesId      String?         @unique // tuzatish yozuvi qaysi yozuvni bekor qiladi
   reverses        LedgerEntry?    @relation("Reversal", fields: [reversesId], references: [id])
   reversedBy      LedgerEntry?    @relation("Reversal")
+  clientKey       String?         @unique // "<xodim id>:<ilova kaliti>": takroriy so'rov to'lovni ikki marta yozmasligi uchun
   createdAt       DateTime        @default(now())
 
   messages Message[]
@@ -574,9 +575,12 @@ model OtpCode {
   expiresAt DateTime
   attempts  Int       @default(0)
   usedAt    DateTime?
+  ip        String? // so'rov kelgan IP: bitta manzildan ko'p raqamga kod so'rashni cheklash uchun
   createdAt DateTime  @default(now())
 
   @@index([phone, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
 }
 
 model AuditLog {

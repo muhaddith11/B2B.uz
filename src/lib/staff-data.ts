@@ -59,6 +59,15 @@ export function orderScope(staff: { id: string; distributorId: string; role: Sta
   return base;
 }
 
+// Qaysi do'konlarni (qarz daftari bilan) ko'radi: agent o'ziga biriktirilganlarini,
+// yetkazuvchi o'zi yetkazgan yoki hozir yetkazishi mumkin bo'lgan do'konlarni, qolganlar hammasini
+export function linkScope(staff: { id: string; distributorId: string; role: StaffRole }): Prisma.ShopLinkWhereInput {
+  const base: Prisma.ShopLinkWhereInput = { distributorId: staff.distributorId };
+  if (staff.role === "AGENT") return { ...base, agentId: staff.id };
+  if (staff.role === "COURIER") return { ...base, orders: { some: { OR: [{ courierId: staff.id }, { courierId: null, status: "IN_DELIVERY" }] } } };
+  return base;
+}
+
 export async function staffOrder(staff: { id: string; distributorId: string; role: StaffRole }, orderId: string) {
   const o = await db.order.findFirst({ where: { id: orderId, ...orderScope(staff) }, include: orderInclude });
   if (!o) throw new HttpError(404, "Buyurtma topilmadi");
@@ -69,9 +78,8 @@ export async function staffOrder(staff: { id: string; distributorId: string; rol
 export async function shopList(staff: { id: string; distributorId: string; role: StaffRole }, q = "") {
   const links = await db.shopLink.findMany({
     where: {
-      distributorId: staff.distributorId,
+      ...linkScope(staff),
       status: { in: ["ACTIVE", "BLOCKED"] },
-      ...(staff.role === "AGENT" ? { agentId: staff.id } : {}),
       ...(q ? { shop: { OR: [{ name: { contains: q, mode: "insensitive" } }, { address: { contains: q, mode: "insensitive" } }] } } : {}),
     },
     include: {
@@ -92,8 +100,8 @@ export async function shopList(staff: { id: string; distributorId: string; role:
   }));
 }
 
-export async function staffLink(distributorId: string, linkId: string) {
-  const link = await db.shopLink.findUnique({ where: { id: linkId }, include: { distributor: true, shop: true } });
-  if (!link || link.distributorId !== distributorId) throw new HttpError(404, "Do'kon topilmadi");
+export async function staffLink(staff: { id: string; distributorId: string; role: StaffRole }, linkId: string) {
+  const link = await db.shopLink.findFirst({ where: { id: linkId, ...linkScope(staff) }, include: { distributor: true, shop: true } });
+  if (!link) throw new HttpError(404, "Do'kon topilmadi");
   return link;
 }

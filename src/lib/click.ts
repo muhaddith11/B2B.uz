@@ -55,15 +55,26 @@ export async function handleClick(methodId: string, stage: "prepare" | "complete
 
   // Click to'lov amalga oshmaganini bildirsa (error < 0), to'lov bekor qilinadi
   if (Number(p.error) < 0) {
-    await db.onlinePayment.update({ where: { id: payment.id }, data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: Number(p.error) } });
+    await db.onlinePayment.updateMany({ where: { id: payment.id, status: "CREATED" }, data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: Number(p.error) } });
     return fail(-9);
   }
 
   const now = new Date();
-  await db.$transaction(async (tx) => {
+  const paid = await db.$transaction(async (tx) => {
+    // Shart bilan: Click takroriy so'rovi bir vaqtda kelsa, to'lov qarz daftariga bir marta yoziladi
+    const claimed = await tx.onlinePayment.updateMany({
+      where: { id: payment.id, status: "CREATED" },
+      data: { status: "PAID", performedAt: now, providerTxnId: p.click_trans_id },
+    });
+    if (claimed.count === 0) return false;
     const entry = await applyOnlinePayment(tx, payment, p.click_trans_id, now);
-    await tx.onlinePayment.update({ where: { id: payment.id }, data: { status: "PAID", performedAt: now, ledgerEntryId: entry.id, providerTxnId: p.click_trans_id } });
+    await tx.onlinePayment.update({ where: { id: payment.id }, data: { ledgerEntryId: entry.id } });
+    return true;
   });
+  if (!paid) {
+    const fresh = await db.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+    return fail(fresh.status === "PAID" ? -4 : -9);
+  }
   await notifyOnlinePaid(payment.shopLinkId, payment.amount);
   return { ...base, merchant_confirm_id: payment.number, error: 0, error_note: NOTES[0] };
 }

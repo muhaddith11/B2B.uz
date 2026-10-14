@@ -1,6 +1,8 @@
 // Qarz daftari hisob-kitobi. Bu fayldagi funksiyalar bazaga murojaat qilmaydi, shuning uchun test qilinadi.
 // Belgilar: qarz musbat, to'lov manfiy. Faqat CONFIRMED yozuvlar qoldiqqa kiradi.
 
+import { DAY_MS, tashkentDayNumber } from "./time";
+
 export type LedgerLike = {
   amount: number;
   date: Date;
@@ -10,8 +12,6 @@ export type LedgerLike = {
 };
 
 export type OpenDebt = { date: Date; dueDate: Date | null; remaining: number };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function balance(entries: LedgerLike[]): number {
   return entries.filter((e) => e.status === "CONFIRMED").reduce((s, e) => s + e.amount, 0);
@@ -45,8 +45,9 @@ export function openDebts(entries: LedgerLike[]): OpenDebt[] {
   return debts.filter((d) => d.remaining > 0).map(({ date, dueDate, remaining }) => ({ date, dueDate, remaining }));
 }
 
+// Toshkent bo'yicha kalendar kunlari farqi (soatlar emas): muddat kuni tugagan zahoti 1 kun o'tgan bo'ladi
 function daysBetween(from: Date, to: Date): number {
-  return Math.floor((to.getTime() - from.getTime()) / DAY_MS);
+  return tashkentDayNumber(to) - tashkentDayNumber(from);
 }
 
 // Muddat kuni o'tib ketgandan keyingina muddati o'tgan hisoblanadi (muddat kuni hali to'lash mumkin)

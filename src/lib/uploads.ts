@@ -20,23 +20,30 @@ function backend(): "blob" | "db" | "disk" {
   return "disk";
 }
 
-export async function saveUpload(folder: "receipts", file: File): Promise<{ url: string; hash: string }> {
+export type PreparedUpload = { buf: Buffer<ArrayBuffer>; type: string; ext: string; hash: string };
+
+// Faylni tekshirib o'qiydi va xeshini hisoblaydi, lekin hali saqlamaydi (masalan, takroriy chekni saqlashdan oldin rad etish uchun)
+export async function prepareUpload(file: File): Promise<PreparedUpload> {
   if (file.size === 0) throw new HttpError(400, "Fayl bo'sh");
   if (file.size > MAX_BYTES) throw new HttpError(400, "Fayl 4 MB dan katta bo'lmasin");
   const ext = TYPES[file.type];
   if (!ext) throw new HttpError(400, "Faqat rasm (JPG, PNG, WEBP, HEIC) yoki PDF yuklang");
   const buf = Buffer.from(await file.arrayBuffer());
-  const name = `${randomBytes(16).toString("hex")}.${ext}`;
+  return { buf, type: file.type, ext, hash: createHash("sha256").update(buf).digest("hex") };
+}
+
+export async function storeUpload(folder: "receipts", file: PreparedUpload): Promise<{ url: string; hash: string }> {
+  const name = `${randomBytes(16).toString("hex")}.${file.ext}`;
   const where = backend();
   if (where === "blob") {
-    await put(`${folder}/${name}`, buf, { access: "private", contentType: file.type, addRandomSuffix: false });
+    await put(`${folder}/${name}`, file.buf, { access: "private", contentType: file.type, addRandomSuffix: false });
   } else if (where === "db") {
-    await db.storedFile.create({ data: { path: `${folder}/${name}`, type: file.type, data: buf } });
+    await db.storedFile.create({ data: { path: `${folder}/${name}`, type: file.type, data: file.buf } });
   } else {
     await mkdir(path.join(ROOT, folder), { recursive: true });
-    await writeFile(path.join(ROOT, folder, name), buf);
+    await writeFile(path.join(ROOT, folder, name), file.buf);
   }
-  return { url: `/api/files/${folder}/${name}`, hash: createHash("sha256").update(buf).digest("hex") };
+  return { url: `/api/files/${folder}/${name}`, hash: file.hash };
 }
 
 export async function readUpload(folder: string, name: string): Promise<{ data: Buffer; type: string } | null> {

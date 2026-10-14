@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { useSession } from '@/context/session';
 
@@ -9,17 +9,22 @@ export function useLoad<T>(path: string) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Faqat eng oxirgi so'rov javobi olinadi: bo'lim tez almashtirilsa, kech kelgan eski javob yangisining ustiga yozilmaydi
+  const lastRequest = useRef(0);
 
   const load = useCallback(
     async (isRefresh: boolean) => {
+      const id = ++lastRequest.current;
       if (isRefresh) setRefreshing(true);
       try {
-        setData(await api<T>(path));
+        const res = await api<T>(path);
+        if (id !== lastRequest.current) return;
+        setData(res);
         setError(null);
       } catch (e) {
-        setError((e as Error).message);
+        if (id === lastRequest.current) setError((e as Error).message);
       } finally {
-        setRefreshing(false);
+        if (id === lastRequest.current) setRefreshing(false);
       }
     },
     [api, path],

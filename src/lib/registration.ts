@@ -1,6 +1,12 @@
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { HttpError } from "./session";
 import { verifyToken } from "./token";
+
+// Bitta raqamdan ro'yxatdan o'tish navbat bilan: ikki marta bosilganda ikkinchi so'rov birinchisi yaratgan hisobni topadi
+export async function lockRegistration(tx: Prisma.TransactionClient, phone: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`register:${phone}`}))`;
+}
 
 // Mobil ilovada ro'yxatdan o'tish: raqam SMS kod bilan tasdiqlangan bo'lishi kerak (phoneToken)
 export function phoneFromToken(phoneToken: string | undefined): string {

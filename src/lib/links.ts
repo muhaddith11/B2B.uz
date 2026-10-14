@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
 import { HttpError } from "./session";
@@ -107,7 +108,17 @@ export async function requestLink(shopId: string, distributorId: string) {
   if (existing?.status === "BLOCKED") throw new HttpError(403, "Bu distribyutor bilan ulanish yopilgan");
   if (existing) return existing;
 
-  const link = await db.shopLink.create({ data: { shopId, distributorId, status: "REQUESTED", source: "SEARCH" } });
+  let link;
+  try {
+    link = await db.shopLink.create({ data: { shopId, distributorId, status: "REQUESTED", source: "SEARCH" } });
+  } catch (e) {
+    // Ikki marta bosilganda ikkinchi so'rov birinchisi yaratgan ulanishni oladi (500 xato o'rniga)
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const created = await db.shopLink.findUnique({ where: { shopId_distributorId: { shopId, distributorId } } });
+      if (created) return created;
+    }
+    throw e;
+  }
   await db.auditLog.create({
     data: { actor: `shop:${shopId}`, action: "link.requested", entity: "ShopLink", entityId: link.id, after: { distributorId } },
   });

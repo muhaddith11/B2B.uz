@@ -6,7 +6,7 @@ import { staffLink } from "@/lib/staff-data";
 // Agent buyurtma olishi uchun: do'konning narx guruhidagi katalog
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR", "AGENT"]);
-  const link = await staffLink(staff.distributorId, new URL(req.url).searchParams.get("linkId") ?? "");
+  const link = await staffLink(staff, new URL(req.url).searchParams.get("linkId") ?? "");
   const groupId = await priceGroupFor(link);
   const products = await db.product.findMany({
     where: { distributorId: staff.distributorId, active: true },

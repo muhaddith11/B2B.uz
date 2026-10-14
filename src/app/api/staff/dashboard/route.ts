@@ -1,14 +1,14 @@
 import { db } from "@/lib/db";
 import { overdue } from "@/lib/ledger";
 import { handle, requireStaff } from "@/lib/session";
-import { orderScope } from "@/lib/staff-data";
+import { linkScope, orderScope } from "@/lib/staff-data";
+import { startOfTashkentDay } from "@/lib/time";
 
 // Bugun: rolga qarab kerakli raqamlar
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req);
   const distributorId = staff.distributorId;
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = startOfTashkentDay();
   const scope = orderScope(staff);
 
   const [newOrders, accepted, inDelivery, deliveredToday, links, paidToday, pendingPayments, requests, proposals, brandOrders] = await Promise.all([
@@ -17,7 +17,7 @@ export const GET = handle(async (req: Request) => {
     db.order.count({ where: { ...scope, status: "IN_DELIVERY" } }),
     db.order.aggregate({ where: { ...scope, status: "DELIVERED", updatedAt: { gte: startOfDay } }, _count: true, _sum: { deliveredTotal: true } }),
     db.shopLink.findMany({
-      where: { distributorId, status: "ACTIVE", ...(staff.role === "AGENT" ? { agentId: staff.id } : {}) },
+      where: { ...linkScope(staff), status: "ACTIVE" },
       include: { ledger: true },
     }),
     db.ledgerEntry.aggregate({

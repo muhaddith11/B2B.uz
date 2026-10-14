@@ -45,6 +45,13 @@ describe("overdue", () => {
   it("muddat kunining o'zida hali muddati o'tgan emas", () => {
     expect(overdue([debt(300_000, "2026-10-01", "2026-10-15")], new Date("2026-10-15T18:00:00Z"))).toEqual({ amount: 0, maxDays: 0 });
   });
+  it("muddat kuni tugagach (Toshkent yarim tuni) 24 soat kutmasdan muddati o'tgan bo'ladi", () => {
+    // Muddat: 15-oktabr, Toshkent 15:00. Ertasi kuni Toshkent 13:00 da hali 24 soat to'lmagan, lekin muddat kuni o'tgan
+    const entry: LedgerLike = { amount: 300_000, date: d("2026-10-01"), dueDate: new Date("2026-10-15T10:00:00Z"), status: "CONFIRMED" };
+    expect(overdue([entry], new Date("2026-10-16T08:00:00Z"))).toEqual({ amount: 300_000, maxDays: 1 });
+    // Toshkent bo'yicha hali 15-oktabr (23:30)
+    expect(overdue([entry], new Date("2026-10-15T18:30:00Z"))).toEqual({ amount: 0, maxDays: 0 });
+  });
   it("topshirishda olingan naqd o'z buyurtmasini yopadi, eski qarz ochiq qoladi", () => {
     const entries: LedgerLike[] = [
       debt(235_200, "2026-09-23", "2026-10-07"),

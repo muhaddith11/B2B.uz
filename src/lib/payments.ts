@@ -1,11 +1,12 @@
-import type { OnlinePayment, PaymentMethod, PaymentMethodType, Prisma } from "@prisma/client";
+import { Prisma, type OnlinePayment, type PaymentMethod, type PaymentMethodType, type StaffRole } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
 import { formatSom } from "./money";
 import { activeLink } from "./orders";
 import { notifyShop, notifyStaff } from "./push";
 import { HttpError } from "./session";
-import { saveUpload } from "./uploads";
+import { linkScope } from "./staff-data";
+import { prepareUpload, storeUpload } from "./uploads";
 
 // To'lovlar: qarz daftariga faqat yangi yozuv qo'shiladi.
 // Naqd va o'tkazmani xodim yozadi (darhol tasdiqlangan), chekli to'lovni do'kon yuboradi (distribyutor tasdiqlaydi),
@@ -34,22 +35,50 @@ export const recordPaymentInput = z.object({
   amount: amountSchema,
   channel: z.enum(["CASH", "BANK_TRANSFER"]),
   note: z.string().trim().max(200).optional(),
+  // Ilova har bir to'lov uchun bitta kalit yuboradi: so'rov takrorlansa (ikki marta bosish, tarmoq uzilib qayta yuborish) to'lov bir marta yoziladi
+  clientKey: z.string().trim().min(8).max(64).optional(),
 });
 
-export async function recordPayment(staff: { id: string; distributorId: string }, input: z.infer<typeof recordPaymentInput>) {
-  const link = await db.shopLink.findUnique({ where: { id: input.linkId } });
-  if (!link || link.distributorId !== staff.distributorId) throw new HttpError(404, "Do'kon topilmadi");
-  const entry = await db.ledgerEntry.create({
-    data: {
-      shopLinkId: link.id,
-      type: "PAYMENT",
-      amount: -input.amount,
-      channel: input.channel,
-      createdBy: `staff:${staff.id}`,
-      note: input.note || null,
-    },
-  });
-  await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "payment.recorded", entity: "LedgerEntry", entityId: entry.id, after: { amount: input.amount, channel: input.channel } } });
+export async function recordPayment(staff: { id: string; distributorId: string; role: StaffRole }, input: z.infer<typeof recordPaymentInput>) {
+  // Agent faqat o'z do'konlaridan, yetkazuvchi faqat o'zi yetkazadigan do'konlardan to'lov oladi
+  const link = await db.shopLink.findFirst({ where: { id: input.linkId, ...linkScope(staff) } });
+  if (!link) throw new HttpError(404, "Do'kon topilmadi");
+
+  const clientKey = input.clientKey ? `${staff.id}:${input.clientKey}` : null;
+  // Shu kalit bilan to'lov allaqachon yozilgan bo'lsa, o'shani qaytaramiz
+  const already = async () => {
+    const prev = clientKey ? await db.ledgerEntry.findUnique({ where: { clientKey } }) : null;
+    if (prev && (prev.shopLinkId !== link.id || prev.amount !== -input.amount)) throw new HttpError(409, "Bu so'rov boshqa to'lov uchun ishlatilgan");
+    return prev;
+  };
+  const prev = await already();
+  if (prev) return prev;
+
+  let entry;
+  try {
+    entry = await db.$transaction(async (tx) => {
+      const e = await tx.ledgerEntry.create({
+        data: {
+          shopLinkId: link.id,
+          type: "PAYMENT",
+          amount: -input.amount,
+          channel: input.channel,
+          createdBy: `staff:${staff.id}`,
+          note: input.note || null,
+          clientKey,
+        },
+      });
+      await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "payment.recorded", entity: "LedgerEntry", entityId: e.id, after: { amount: input.amount, channel: input.channel } } });
+      return e;
+    });
+  } catch (e) {
+    // Bir vaqtda kelgan ikki bir xil so'rov: ikkinchisi birinchisi yozgan yozuvni oladi
+    if (clientKey && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const first = await already();
+      if (first) return first;
+    }
+    throw e;
+  }
   notifyShop(link.shopId, { title: "To'lov qabul qilindi", body: formatSom(input.amount), data: { url: "/debts" } });
   return entry;
 }
@@ -65,24 +94,32 @@ export async function submitReceipt(shopUser: { id: string; shopId: string }, fo
   const methodId = String(form.get("paymentMethodId") ?? "") || null;
   if (methodId && !(await db.paymentMethod.findFirst({ where: { id: methodId, distributorId } }))) throw new HttpError(400, "To'lov usuli topilmadi");
 
-  const saved = await saveUpload("receipts", file);
-  // Bitta chekni ikki marta (yoki ikki distribyutorga) yuborib bo'lmaydi
-  const dup = await db.ledgerEntry.findFirst({ where: { receiptHash: saved.hash, status: { not: "REJECTED" } } });
-  if (dup) throw new HttpError(400, "Bu chek avval yuborilgan");
+  // Bitta chekni ikki marta (yoki ikki distribyutorga) yuborib bo'lmaydi. Takroriy chek faylini saqlashdan oldin rad etamiz
+  const upload = await prepareUpload(file);
+  const dupMsg = "Bu chek avval yuborilgan";
+  const isDup = (client: Prisma.TransactionClient) =>
+    client.ledgerEntry.findFirst({ where: { receiptHash: upload.hash, status: { not: "REJECTED" } }, select: { id: true } });
+  if (await isDup(db)) throw new HttpError(400, dupMsg);
 
-  const entry = await db.ledgerEntry.create({
-    data: {
-      shopLinkId: link.id,
-      type: "PAYMENT",
-      amount: -amount.data,
-      status: "PENDING",
-      channel: "CARD_RECEIPT",
-      paymentMethodId: methodId,
-      receiptUrl: saved.url,
-      receiptHash: saved.hash,
-      createdBy: `shop:${shopUser.id}`,
-      note: String(form.get("note") ?? "").trim().slice(0, 200) || null,
-    },
+  const saved = await storeUpload("receipts", upload);
+  const entry = await db.$transaction(async (tx) => {
+    // Bir vaqtda yuborilgan ikki bir xil chekdan faqat bittasi yoziladi
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${upload.hash}))`;
+    if (await isDup(tx)) throw new HttpError(400, dupMsg);
+    return tx.ledgerEntry.create({
+      data: {
+        shopLinkId: link.id,
+        type: "PAYMENT",
+        amount: -amount.data,
+        status: "PENDING",
+        channel: "CARD_RECEIPT",
+        paymentMethodId: methodId,
+        receiptUrl: saved.url,
+        receiptHash: saved.hash,
+        createdBy: `shop:${shopUser.id}`,
+        note: String(form.get("note") ?? "").trim().slice(0, 200) || null,
+      },
+    });
   });
   notifyStaff(link.distributorId, ["ADMIN", "ACCOUNTANT"], {
     title: "Chek bilan to'lov",
@@ -97,12 +134,15 @@ export async function reviewPayment(staff: { id: string; distributorId: string }
   if (!entry || entry.shopLink.distributorId !== staff.distributorId) throw new HttpError(404, "To'lov topilmadi");
   if (entry.status !== "PENDING") throw new HttpError(400, "To'lov allaqachon ko'rib chiqilgan");
   const status = action === "confirm" ? "CONFIRMED" : "REJECTED";
-  // Faqat tasdiqlanmagan yozuv holati o'zgaradi; qoldiqqa CONFIRMED bo'lgandan keyingina kiradi
-  const updated = await db.ledgerEntry.update({
-    where: { id: entry.id },
-    data: { status, note: action === "reject" && reason ? `${entry.note ? `${entry.note}. ` : ""}Rad etildi: ${reason}` : entry.note },
+  const note = action === "reject" && reason ? `${entry.note ? `${entry.note}. ` : ""}Rad etildi: ${reason}` : entry.note;
+  const updated = await db.$transaction(async (tx) => {
+    // Faqat tasdiqlanmagan yozuv holati o'zgaradi; qoldiqqa CONFIRMED bo'lgandan keyingina kiradi.
+    // Shart bilan yangilanadi: ikki xodim bir vaqtda biri tasdiqlab, biri rad etsa, faqat birinchisining qarori qoladi
+    const res = await tx.ledgerEntry.updateMany({ where: { id: entry.id, status: "PENDING" }, data: { status, note } });
+    if (res.count === 0) throw new HttpError(409, "To'lov allaqachon ko'rib chiqilgan");
+    await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: `payment.${action}`, entity: "LedgerEntry", entityId: entry.id, before: { status: "PENDING" }, after: { status } } });
+    return tx.ledgerEntry.findUniqueOrThrow({ where: { id: entry.id } });
   });
-  await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: `payment.${action}`, entity: "LedgerEntry", entityId: entry.id, before: { status: "PENDING" }, after: { status } } });
   notifyShop(entry.shopLink.shopId, {
     title: action === "confirm" ? "To'lov tasdiqlandi" : "To'lov rad etildi",
     body: `${formatSom(-entry.amount)}${action === "reject" && reason ? `: ${reason}` : ""}`,

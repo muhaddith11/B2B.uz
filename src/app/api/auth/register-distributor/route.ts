@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { distributorRegistration, phoneFromToken } from "@/lib/registration";
+import { distributorRegistration, lockRegistration, phoneFromToken } from "@/lib/registration";
 import { handle, readJson } from "@/lib/session";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
@@ -9,6 +9,12 @@ export const POST = handle(async (req: Request) => {
   const phone = phoneFromToken(input.phoneToken);
 
   const staff = await db.$transaction(async (tx) => {
+    // Ikki marta bosilsa ham bitta distribyutor: shu raqamli admin va shu nomli kompaniya bo'lsa, o'sha qaytadi
+    await lockRegistration(tx, phone);
+    const existing = await tx.staff.findFirst({
+      where: { phone, role: "ADMIN", active: true, distributor: { name: { equals: input.companyName, mode: "insensitive" } } },
+    });
+    if (existing) return existing;
     const dist = await tx.distributor.create({
       data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING" },
     });

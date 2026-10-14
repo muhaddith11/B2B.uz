@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { overdue } from "@/lib/ledger";
 import { formatSom } from "@/lib/money";
 import { devAuthEnabled, getStaff } from "@/lib/session";
+import { startOfTashkentDay } from "@/lib/time";
 import { requestPanelCode, verifyPanelCode } from "./login-actions";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
   }
 
   const distributorId = staff.distributorId;
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = startOfTashkentDay();
 
   const [newOrders, inDelivery, links, paidToday, requests] = await Promise.all([
     db.order.aggregate({ where: { shopLink: { distributorId }, status: "SENT" }, _count: true, _sum: { total: true } }),

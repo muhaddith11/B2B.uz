@@ -88,39 +88,43 @@ export async function createOrderForLink(
     throw new HttpError(400, `Minimal buyurtma ${formatSom(link.distributor.minOrder)}`);
   }
 
-  if (input.paymentType === "CREDIT") {
-    const entries = await db.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
-    // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
-    const pending = await db.order.aggregate({
-      where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },
-      _sum: { total: true },
-    });
-    const check = checkCredit(link, entries, total + (pending._sum.total ?? 0), new Date());
-    if (!check.ok) {
-      const msg =
-        check.reason === "CREDIT_OFF"
-          ? "Bu distribyutor nasiya bermagan"
-          : check.reason === "OVERDUE_BLOCK"
-            ? `Muddati ${check.overdueDays} kun o'tgan qarz bor, nasiya vaqtincha yopiq`
-            : `Nasiya limiti ${formatSom(check.exceedBy)}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring`;
-      throw new HttpError(400, msg);
-    }
-  }
-
   const fromStaff = "staffId" in creator;
-  const order = await db.order.create({
-    data: {
-      shopLinkId: link.id,
-      paymentType: input.paymentType,
-      total,
-      source: fromStaff ? "AGENT" : "APP",
-      createdByShopUserId: fromStaff ? null : creator.shopUserId,
-      createdByStaffId: fromStaff ? creator.staffId : null,
-      // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
-      status: fromStaff ? "ACCEPTED" : "SENT",
-      items: { create: lines },
-    },
-    include: { items: true, shopLink: { include: { shop: true } } },
+  const order = await db.$transaction(async (tx) => {
+    if (input.paymentType === "CREDIT") {
+      // Bir do'konning nasiyali buyurtmalari navbat bilan tekshiriladi: bir vaqtda kelgan ikki buyurtma birgalikda limitdan oshmaydi
+      await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
+      const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
+      // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
+      const pending = await tx.order.aggregate({
+        where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },
+        _sum: { total: true },
+      });
+      const check = checkCredit(link, entries, total + (pending._sum.total ?? 0), new Date());
+      if (!check.ok) {
+        const msg =
+          check.reason === "CREDIT_OFF"
+            ? "Bu distribyutor nasiya bermagan"
+            : check.reason === "OVERDUE_BLOCK"
+              ? `Muddati ${check.overdueDays} kun o'tgan qarz bor, nasiya vaqtincha yopiq`
+              : `Nasiya limiti ${formatSom(check.exceedBy)}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring`;
+        throw new HttpError(400, msg);
+      }
+    }
+
+    return tx.order.create({
+      data: {
+        shopLinkId: link.id,
+        paymentType: input.paymentType,
+        total,
+        source: fromStaff ? "AGENT" : "APP",
+        createdByShopUserId: fromStaff ? null : creator.shopUserId,
+        createdByStaffId: fromStaff ? creator.staffId : null,
+        // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
+        status: fromStaff ? "ACCEPTED" : "SENT",
+        items: { create: lines },
+      },
+      include: { items: true, shopLink: { include: { shop: true } } },
+    });
   });
 
   if (fromStaff) {
@@ -178,6 +182,11 @@ export async function changeOrderStatus(staff: { id: string; distributorId: stri
     const order = await tx.order.findUnique({ where: { id: orderId }, include: { shopLink: true, items: true } });
     if (!order || order.shopLink.distributorId !== staff.distributorId) throw new HttpError(404, "Buyurtma topilmadi");
     if (!canTransition(order.status, to)) throw new HttpError(400, "Bu holatga o'tkazib bo'lmaydi");
+
+    // Holat shart bilan o'zgartiriladi: bir vaqtdagi ikki so'rovdan (ikki marta bosish, operator va yetkazuvchi,
+    // do'kon bekor qilishi) faqat bittasi o'tadi, shuning uchun qarz daftariga yozuv ikki marta tushmaydi
+    const claimed = await tx.order.updateMany({ where: { id: order.id, status: order.status }, data: { status: to } });
+    if (claimed.count === 0) throw new HttpError(409, "Buyurtma holati hozirgina o'zgardi. Sahifani yangilang");
 
     const data: Prisma.OrderUpdateInput = { status: to };
     if (to === "REJECTED") data.rejectReason = opts.rejectReason ?? null;
@@ -241,10 +250,16 @@ export async function changeOrderStatus(staff: { id: string; distributorId: stri
 export async function cancelOrderByShop(shopId: string, orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { shopLink: { include: { shop: true } } } });
   if (!order || order.shopLink.shopId !== shopId) throw new HttpError(404, "Buyurtma topilmadi");
-  if (order.status !== "SENT") throw new HttpError(400, "Qabul qilingan buyurtmani bekor qilish uchun distribyutor bilan bog'laning");
-  const updated = await db.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
-  await db.auditLog.create({
-    data: { actor: `shop:${shopId}`, action: "order.CANCELLED", entity: "Order", entityId: order.id, before: { status: order.status }, after: { status: "CANCELLED" } },
+  const acceptedMsg = "Qabul qilingan buyurtmani bekor qilish uchun distribyutor bilan bog'laning";
+  if (order.status !== "SENT") throw new HttpError(400, acceptedMsg);
+  const updated = await db.$transaction(async (tx) => {
+    // Faqat hali "yuborildi" holatida bo'lsa: shu orada operator qabul qilgan bo'lsa, bekor qilinmaydi
+    const res = await tx.order.updateMany({ where: { id: order.id, status: "SENT" }, data: { status: "CANCELLED" } });
+    if (res.count === 0) throw new HttpError(400, acceptedMsg);
+    await tx.auditLog.create({
+      data: { actor: `shop:${shopId}`, action: "order.CANCELLED", entity: "Order", entityId: order.id, before: { status: order.status }, after: { status: "CANCELLED" } },
+    });
+    return tx.order.findUniqueOrThrow({ where: { id: order.id } });
   });
   notifyStaff(order.shopLink.distributorId, ["ADMIN", "OPERATOR"], {
     title: `Buyurtma №${order.number} bekor qilindi`,

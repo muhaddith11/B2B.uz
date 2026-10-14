@@ -2,14 +2,15 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
 import { PENDING_STATUSES, summarize } from "@/lib/shop-summary";
-import { orderInclude, serializeOrder } from "@/lib/staff-data";
+import { linkScope, orderInclude, orderScope, serializeOrder } from "@/lib/staff-data";
 
 // Do'kon kartasi: qarz, nasiya shartlari, qarz daftari va oxirgi buyurtmalar
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: string }> }) => {
   const staff = await requireStaff(req);
   const { linkId } = await ctx.params;
-  const link = await db.shopLink.findUnique({
-    where: { id: linkId },
+  // Agent faqat o'ziga biriktirilgan, yetkazuvchi faqat o'zi yetkazadigan do'konni ko'radi
+  const link = await db.shopLink.findFirst({
+    where: { id: linkId, ...linkScope(staff) },
     include: {
       shop: { include: { users: { orderBy: { createdAt: "asc" } } } },
       priceGroup: { select: { id: true, name: true } },
@@ -17,10 +18,15 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       ledger: { include: { order: { select: { number: true } } }, orderBy: { date: "desc" } },
     },
   });
-  if (!link || link.distributorId !== staff.distributorId) throw new HttpError(404, "Do'kon topilmadi");
+  if (!link) throw new HttpError(404, "Do'kon topilmadi");
   const [pending, orders] = await Promise.all([
     db.order.findMany({ where: { shopLinkId: link.id, status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } }),
-    db.order.findMany({ where: { shopLinkId: link.id }, include: orderInclude, orderBy: { createdAt: "desc" }, take: 20 }),
+    db.order.findMany({
+      where: { shopLinkId: link.id, ...(staff.role === "COURIER" ? orderScope(staff) : {}) },
+      include: orderInclude,
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
   ]);
   return Response.json({
     linkId: link.id,

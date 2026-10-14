@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { accountsForPhone, deleteAccountsForPhone } from "@/lib/account";
-import { deliverOtp, verifyOtp } from "@/lib/otp";
+import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { HttpError } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
@@ -15,7 +16,7 @@ export async function requestDeletionCode(form: FormData) {
   if ((await accountsForPhone(phone)).length === 0) return back({ error: "Bu raqam bilan hisob topilmadi" });
   let code: string;
   try {
-    code = await deliverOtp(phone);
+    code = await deliverOtp(phone, clientIp(await headers()));
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }

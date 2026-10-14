@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { deliverOtp } from "@/lib/otp";
+import { clientIp, deliverOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
 import { errorResponse, HttpError } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const phone = parsed.success ? normalizePhone(parsed.data.phone) : null;
     if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
 
-    const code = await deliverOtp(phone);
+    const code = await deliverOtp(phone, clientIp(req.headers));
     // Sinov yoki demo rejimida SMS xizmati sozlanmagan bo'lsa, kod javobda qaytadi
     return Response.json({ ok: true, phone, devCode: exposeCode() ? code : undefined });
   } catch (e) {
