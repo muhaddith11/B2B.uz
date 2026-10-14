@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { openPrivacyPolicy } from '@/components/account-links';
-import { Button, Card, Field, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Field, ListRow, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { request } from '@/lib/api';
@@ -76,13 +77,18 @@ export default function LoginScreen() {
 
   const choose = (a: Account) => signIn({ token: a.token, kind: a.kind, role: a.role });
 
+  const KIND_ICON = { shop: 'storefront-outline', staff: 'business-outline', brand: 'ribbon-outline' } as const;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.card }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
-          <View style={{ gap: 6, marginBottom: 8 }}>
-            <T size="title">Captar</T>
-            <T tone="hint">Distribyutorlardan buyurtma, to'lov va qarz daftari bitta ilovada</T>
+          <View style={{ gap: 12, marginBottom: 12 }}>
+            <Image source={require('../../assets/images/icon.png')} style={{ width: 64, height: 64, borderRadius: 16 }} accessibilityIgnoresInvertColors />
+            <View style={{ gap: 4 }}>
+              <T size="display">Captar</T>
+              <T tone="hint">Distribyutorlardan buyurtma, to'lov va qarz daftari bitta ilovada</T>
+            </View>
           </View>
 
           {step === 'phone' && (
@@ -94,6 +100,7 @@ export default function LoginScreen() {
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 textContentType="telephoneNumber"
+                style={{ fontSize: 20, fontVariant: ['tabular-nums'] }}
               />
               <Button title="Kod olish" onPress={sendCode} loading={busy} />
             </>
@@ -101,12 +108,13 @@ export default function LoginScreen() {
 
           {step === 'code' && (
             <>
-              <T tone="hint">{phone} raqamiga SMS orqali 6 xonali kod yuborildi.</T>
-              {devCode && (
-                <T size="small" tone="accent">
-                  Sinov rejimi: SMS yuborilmadi, kod {devCode}
-                </T>
-              )}
+              <T tone="hint">
+                <T bold num>
+                  {phone}
+                </T>{' '}
+                raqamiga SMS orqali 6 xonali kod yuborildi.
+              </T>
+              {devCode && <Banner tone="accent">Sinov rejimi: SMS yuborilmadi, kod {devCode}</Banner>}
               <Field
                 label="SMS kod"
                 value={code}
@@ -116,16 +124,18 @@ export default function LoginScreen() {
                 textContentType="oneTimeCode"
                 maxLength={6}
                 autoFocus
+                placeholder="••••••"
+                style={{ fontSize: 26, letterSpacing: 10, textAlign: 'center', fontVariant: ['tabular-nums'] }}
               />
               <Button title="Kirish" onPress={verify} loading={busy} disabled={code.length !== 6} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Pressable onPress={() => setStep('phone')}>
-                  <T size="small" tone="accent">
+                <Pressable onPress={() => setStep('phone')} hitSlop={8}>
+                  <T size="small" tone="accent" style={{ fontWeight: '600' }}>
                     Raqamni o'zgartirish
                   </T>
                 </Pressable>
-                <Pressable onPress={sendCode} disabled={resendIn > 0 || busy}>
-                  <T size="small" tone={resendIn > 0 ? 'hint' : 'accent'}>
+                <Pressable onPress={sendCode} disabled={resendIn > 0 || busy} hitSlop={8}>
+                  <T size="small" tone={resendIn > 0 ? 'hint' : 'accent'} num style={{ fontWeight: '600' }}>
                     {resendIn > 0 ? `Qayta yuborish: ${resendIn} s` : 'Kodni qayta yuborish'}
                   </T>
                 </Pressable>
@@ -136,25 +146,19 @@ export default function LoginScreen() {
           {step === 'pick' && (
             <>
               <T tone="hint">Bu raqam bir nechta hisobga bog'langan. Qaysi biri bilan kirasiz?</T>
-              {accounts.map((a) => (
-                <Pressable key={a.token} onPress={() => choose(a)}>
-                  <Card>
-                    <T bold>{a.title}</T>
-                    <T size="small" tone="hint">
-                      {a.subtitle}
-                    </T>
-                  </Card>
-                </Pressable>
-              ))}
-              <Button title="+ Yangi hisob ochish" kind="secondary" onPress={() => router.push('/register')} />
+              <Card style={{ paddingVertical: 8, gap: 8 }}>
+                {accounts.map((a, i) => (
+                  <View key={a.token} style={{ gap: 8 }}>
+                    {i > 0 && <Divider />}
+                    <ListRow icon={KIND_ICON[a.kind]} title={a.title} sub={a.subtitle} onPress={() => choose(a)} />
+                  </View>
+                ))}
+              </Card>
+              <Button title="Yangi hisob ochish" icon="add" kind="secondary" onPress={() => router.push('/register')} />
             </>
           )}
 
-          {err && (
-            <T size="small" tone="danger">
-              {err}
-            </T>
-          )}
+          {err && <Banner tone="danger">{err}</Banner>}
 
           <T size="tiny" tone="hint" style={{ textAlign: 'center', marginTop: 8 }}>
             Kirish orqali{' '}

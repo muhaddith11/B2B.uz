@@ -6,7 +6,7 @@ import { StaffProvider } from '@/context/staff';
 export default function StaffLayout() {
   return (
     <StaffProvider>
-      <Stack screenOptions={{ headerBackTitle: 'Orqaga' }}>
+      <Stack screenOptions={{ headerBackTitle: 'Orqaga', headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Buyurtma' }} />
         <Stack.Screen name="shop/[linkId]" options={{ title: "Do'kon" }} />

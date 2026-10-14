@@ -1,22 +1,14 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
-import { Button, Card, ErrorText, Loading, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorText, Loading, Money, StatusBadge, StatusSteps, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
-import { formatDate, formatSom } from '@/lib/money';
-import { PAYMENT_LABEL, STATUS_LABEL, type OrderStatus, type ShopOrder } from '@/lib/types';
+import { formatDate } from '@/lib/money';
+import { PAYMENT_LABEL, type ShopOrder } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
-
-const STATUS_TONE: Record<OrderStatus, 'hint' | 'accent' | 'ok' | 'danger'> = {
-  SENT: 'hint',
-  ACCEPTED: 'accent',
-  IN_DELIVERY: 'accent',
-  DELIVERED: 'ok',
-  REJECTED: 'danger',
-  CANCELLED: 'hint',
-};
 
 export default function OrdersScreen() {
   const c = usePalette();
@@ -54,65 +46,64 @@ export default function OrdersScreen() {
       style={{ backgroundColor: c.bg }}
       data={data.orders}
       keyExtractor={(o) => o.id}
-      contentContainerStyle={{ padding: 16, gap: 8 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} />}
-      ListEmptyComponent={<T tone="hint">Hali buyurtma yo'q.</T>}
+      contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={c.accent} colors={[c.accent]} />}
+      ListEmptyComponent={
+        <Empty icon="receipt-outline" action={<Button title="Buyurtma berish" kind="secondary" onPress={() => router.push('/')} />}>
+          Hali buyurtma yo'q
+        </Empty>
+      }
       renderItem={({ item: o }) => {
         const changed = o.items.some((i) => i.deliveredQty !== null && i.deliveredQty !== i.qty);
+        const isOpen = open === o.id;
         return (
-          <Card>
-            <Pressable onPress={() => setOpen(open === o.id ? null : o.id)} style={{ gap: 2 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <T bold>№{o.number}</T>
-                <T size="small" tone={STATUS_TONE[o.status]} bold>
-                  {STATUS_LABEL[o.status]}
+          <Card style={{ gap: 12 }}>
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }} onPress={() => setOpen(isOpen ? null : o.id)} style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <T size="h2" num>
+                  №{o.number}
                 </T>
+                <StatusBadge status={o.status} />
               </View>
-              <T size="small" tone="hint">
+              <T tone="hint" numberOfLines={1}>
                 {o.distributor.name}
               </T>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <T size="small">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <T size="small" tone="hint" num>
                   {formatDate(o.createdAt)} · {PAYMENT_LABEL[o.paymentType]}
                 </T>
-                <T size="small" bold>
-                  {formatSom(o.deliveredTotal ?? o.total)}
-                </T>
-              </View>
-              {changed && (
-                <T size="tiny" tone="danger">
-                  Distribyutor miqdorni o'zgartirgan
-                </T>
-              )}
-              {o.rejectReason && (
-                <T size="tiny" tone="danger">
-                  Sabab: {o.rejectReason}
-                </T>
-              )}
-            </Pressable>
-            {open === o.id && (
-              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.border, gap: 4 }}>
-                {o.items.map((it) => (
-                  <View key={it.productId} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-                    <T size="small" numberOfLines={1} style={{ flex: 1 }}>
-                      {it.name}
-                    </T>
-                    <T size="small" tone="hint">
-                      {it.deliveredQty !== null && it.deliveredQty !== it.qty ? `${it.deliveredQty}/${it.qty}` : it.qty} dona
-                    </T>
-                  </View>
-                ))}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  {o.status === 'SENT' && (
-                    <Button title="Bekor qilish" kind="danger" compact loading={cancelling === o.id} onPress={() => cancel(o)} style={{ flex: 1 }} />
-                  )}
-                  <Button title="Takrorlash" kind="secondary" compact onPress={() => repeat(o)} style={{ flex: 1 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Money value={o.deliveredTotal ?? o.total} />
+                  <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={c.hint} />
                 </View>
-                {err && open === o.id && (
-                  <T size="small" tone="danger">
-                    {err}
-                  </T>
-                )}
+              </View>
+            </Pressable>
+            {changed && <Banner tone="warn">Distribyutor miqdorni o'zgartirgan</Banner>}
+            {o.rejectReason && <Banner tone="danger">Sabab: {o.rejectReason}</Banner>}
+            {isOpen && (
+              <View style={{ gap: 12 }}>
+                <StatusSteps status={o.status} />
+                <Divider />
+                <View style={{ gap: 8 }}>
+                  {o.items.map((it) => {
+                    const diff = it.deliveredQty !== null && it.deliveredQty !== it.qty;
+                    return (
+                      <View key={it.productId} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                        <T size="small" numberOfLines={2} style={{ flex: 1 }}>
+                          {it.name}
+                        </T>
+                        <T size="small" tone={diff ? 'warn' : 'hint'} num style={{ fontWeight: '500' }}>
+                          {diff ? `${it.deliveredQty} / ${it.qty}` : it.qty} dona
+                        </T>
+                      </View>
+                    );
+                  })}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {o.status === 'SENT' && <Button title="Bekor qilish" kind="danger" compact loading={cancelling === o.id} onPress={() => cancel(o)} style={{ flex: 1 }} />}
+                  <Button title="Takrorlash" icon="repeat" kind="secondary" compact onPress={() => repeat(o)} style={{ flex: 1 }} />
+                </View>
+                {err && <Banner tone="danger">{err}</Banner>}
               </View>
             )}
           </Card>

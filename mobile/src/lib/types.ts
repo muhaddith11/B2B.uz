@@ -34,7 +34,7 @@ export type CatalogProduct = {
 };
 
 export type CatalogData = {
-  distributor: { id: string; name: string; minOrder: number };
+  distributor: { id: string; name: string; minOrder: number; deliveryDays?: string[] };
   products: CatalogProduct[];
 };
 

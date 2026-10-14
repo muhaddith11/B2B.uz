@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { usePalette } from '@/constants/theme';
 import { SessionProvider, useSession } from '@/context/session';
 import { onNotificationTap, registerForPush } from '@/lib/push';
 
@@ -10,8 +11,12 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const scheme = useColorScheme();
+  const c = usePalette();
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  // Sarlavha, tab bar va fon ranglari Captar palitrasidan
+  const theme = { ...base, colors: { ...base.colors, primary: c.accent, background: c.bg, card: c.card, text: c.text, border: c.border, notification: c.danger } };
   return (
-    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={theme}>
       <SessionProvider>
         <RootStack />
       </SessionProvider>
@@ -40,7 +45,7 @@ function RootStack() {
   const kind = session?.kind;
 
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Orqaga' }}>
+    <Stack screenOptions={{ headerBackTitle: 'Orqaga', headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
       <Stack.Protected guard={kind === 'shop'}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="distributor/[id]" options={{ title: 'Katalog' }} />

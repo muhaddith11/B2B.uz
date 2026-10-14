@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     });
 
     return Response.json({
-      distributor: { id: link.distributor.id, name: link.distributor.name, minOrder: link.distributor.minOrder },
+      distributor: { id: link.distributor.id, name: link.distributor.name, minOrder: link.distributor.minOrder, deliveryDays: link.distributor.deliveryDays },
       products: products
         .filter((p) => p.prices.length > 0)
         .map((p) => ({

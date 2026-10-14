@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AccountLinks } from '@/components/account-links';
-import { Badge, Banner, Card, Empty, ErrorText, Loading, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { Badge, Banner, Card, Empty, ErrorText, IconButton, Loading, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { formatSom } from '@/lib/money';
@@ -23,6 +23,7 @@ export default function BrandHome() {
 
   return (
     <Screen
+      safeTop
       refreshing={me.refreshing}
       onRefresh={() => {
         me.reload();
@@ -35,11 +36,7 @@ export default function BrandHome() {
             {d.user.name}
           </T>
         </View>
-        <Pressable onPress={signOut} hitSlop={8}>
-          <T size="small" tone="hint">
-            Chiqish
-          </T>
-        </Pressable>
+        <IconButton icon="log-out-outline" label="Chiqish" tone="hint" onPress={signOut} />
       </View>
       {d.brand.status === 'PENDING' && <Banner>Hisobingiz platforma tekshiruvida. Tasdiqlangach, distribyutorlarga taklif yubora olasiz. Hozircha tovarlaringizni qo'shib qo'ying.</Banner>}
 

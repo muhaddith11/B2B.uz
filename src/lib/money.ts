@@ -5,7 +5,7 @@ export function formatAmount(n: number): string {
 }
 
 export function formatSom(n: number): string {
-  return `${formatAmount(n)} so'm`;
+  return `${formatAmount(n)} so'm`;
 }
 
 // "07.10.2026": brauzerlarda uz-UZ formati har xil chiqadi, shuning uchun qo'lda

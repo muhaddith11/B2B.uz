@@ -1,10 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AccountLinks } from '@/components/account-links';
-import { Badge, Card, Screen, T } from '@/components/ui';
-import { usePalette } from '@/constants/theme';
+import { Badge, Card, Divider, ListRow, Screen, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { ROLE_LABEL } from '@/lib/staff-types';
@@ -23,39 +22,37 @@ const ITEMS: Item[] = [
 ];
 
 export default function StaffMore() {
-  const c = usePalette();
   const { signOut } = useSession();
   const { me, can } = useStaff();
+  const items = ITEMS.filter((i) => can(...i.roles));
 
   return (
-    <Screen gap={8}>
+    <Screen>
       {me && (
-        <Card style={{ gap: 4, marginBottom: 8 }}>
-          <T bold>{me.staff.name}</T>
-          <T size="small" tone="hint">
+        <Card style={{ gap: 6 }}>
+          <T size="h2">{me.staff.name}</T>
+          <T size="small" tone="hint" num>
             {ROLE_LABEL[me.staff.role]} · {me.staff.phone}
           </T>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <T size="small">{me.distributor.name}</T>
             {me.distributor.status === 'PENDING' && <Badge label="tekshiruvda" tone="warn" />}
           </View>
         </Card>
       )}
-      {ITEMS.filter((i) => can(...i.roles)).map((i) => (
-        <Pressable key={i.label} onPress={() => router.push(i.href)}>
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Ionicons name={i.icon} size={22} color={c.accent} />
-            <T style={{ flex: 1 }}>{i.label}</T>
-            <Ionicons name="chevron-forward" size={18} color={c.hint} />
-          </Card>
-        </Pressable>
-      ))}
-      <Pressable onPress={signOut} style={{ marginTop: 16 }}>
-        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Ionicons name="log-out-outline" size={22} color={c.danger} />
-          <T tone="danger">Chiqish</T>
+      {items.length > 0 && (
+        <Card style={{ paddingVertical: 8, gap: 8 }}>
+          {items.map((i, n) => (
+            <View key={i.label} style={{ gap: 8 }}>
+              {n > 0 && <Divider />}
+              <ListRow icon={i.icon} title={i.label} onPress={() => router.push(i.href)} />
+            </View>
+          ))}
         </Card>
-      </Pressable>
+      )}
+      <Card style={{ paddingVertical: 8 }}>
+        <ListRow icon="log-out-outline" tone="danger" title="Chiqish" onPress={signOut} />
+      </Card>
       <AccountLinks />
     </Screen>
   );

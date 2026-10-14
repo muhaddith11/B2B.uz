@@ -2,87 +2,80 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
-import { Badge, Button, Empty, Field, Loading, PressCard, SearchInput, T } from '@/components/ui';
+import { Badge, Button, Card, Empty, Field, Loading, Money, ORDER_TONE, SearchInput, StatusBadge, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { formatDate, formatSom } from '@/lib/money';
 import type { StaffOrder, StaffShop } from '@/lib/staff-types';
-import { PAYMENT_LABEL, STATUS_LABEL, type OrderStatus } from '@/lib/types';
+import { PAYMENT_LABEL } from '@/lib/types';
 
-export const STATUS_TONE: Record<OrderStatus, 'hint' | 'accent' | 'ok' | 'danger'> = {
-  SENT: 'accent',
-  ACCEPTED: 'accent',
-  IN_DELIVERY: 'accent',
-  DELIVERED: 'ok',
-  REJECTED: 'danger',
-  CANCELLED: 'hint',
-};
+export const STATUS_TONE = ORDER_TONE;
 
-export function OrderCard({ o }: { o: StaffOrder }) {
+// Buyurtma qatori. onAccept berilsa (yangi buyurtma, admin/operator), ro'yxatning o'zidan qabul qilinadi
+export function OrderCard({ o, onAccept, accepting }: { o: StaffOrder; onAccept?: () => void; accepting?: boolean }) {
   return (
-    <PressCard onPress={() => router.push(`/staff/order/${o.id}`)}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-        <T bold>
-          №{o.number} · {o.shop.name}
+    <Card style={{ gap: 10 }}>
+      <Pressable accessibilityRole="button" onPress={() => router.push(`/staff/order/${o.id}`)} style={({ pressed }) => ({ gap: 8, opacity: pressed ? 0.8 : 1 })}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <T size="h2" num>
+          №{o.number}
         </T>
-        <Badge label={STATUS_LABEL[o.status]} tone={STATUS_TONE[o.status]} />
+        <StatusBadge status={o.status} />
       </View>
-      <T size="small" tone="hint" numberOfLines={1}>
-        {o.shop.address}
-      </T>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <T size="small" tone="hint">
-          {formatDate(o.createdAt)} · {PAYMENT_LABEL[o.paymentType]} · {o.source === 'AGENT' ? `agent: ${o.createdBy ?? '—'}` : 'ilova'}
+      <View style={{ gap: 2 }}>
+        <T bold numberOfLines={1}>
+          {o.shop.name}
         </T>
-        <T size="small" bold>
-          {formatSom(o.deliveredTotal ?? o.total)}
+        <T size="small" tone="hint" numberOfLines={1}>
+          {o.shop.address}
         </T>
       </View>
-    </PressCard>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <T size="small" tone="hint" num numberOfLines={1} style={{ flexShrink: 1 }}>
+          {formatDate(o.createdAt)} · {PAYMENT_LABEL[o.paymentType]} · {o.source === 'AGENT' ? `agent ${o.createdBy ?? ''}`.trim() : 'ilova'}
+        </T>
+        <Money value={o.deliveredTotal ?? o.total} />
+      </View>
+      </Pressable>
+      {onAccept && <Button title="Qabul qilish" icon="checkmark" compact loading={accepting} onPress={onAccept} />}
+    </Card>
   );
 }
 
-export function ShopCard({ s }: { s: StaffShop }) {
+// Do'kon qatori. orderAction: agent va operator do'kon sahifasiga kirmasdan buyurtma oladi
+export function ShopCard({ s, orderAction, hideAgent }: { s: StaffShop; orderAction?: boolean; hideAgent?: boolean }) {
+  const showAgent = !!s.agent && !hideAgent;
   return (
-    <PressCard onPress={() => router.push(`/staff/shop/${s.linkId}`)}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-        <T bold style={{ flex: 1 }}>
-          {s.shop.name}
-        </T>
-        <T bold tone={s.overdueAmount > 0 ? 'danger' : 'text'}>
-          {formatSom(s.debt)}
-        </T>
-      </View>
-      <T size="small" tone="hint" numberOfLines={1}>
-        {s.shop.address}
-      </T>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>
-        {s.overdueAmount > 0 && (
-          <T size="tiny" tone="danger">
-            {s.overdueDays} kun kechikkan: {formatSom(s.overdueAmount)}
-          </T>
+    <Card style={{ gap: 10 }}>
+      <Pressable accessibilityRole="button" onPress={() => router.push(`/staff/shop/${s.linkId}`)} style={({ pressed }) => ({ gap: 8, opacity: pressed ? 0.8 : 1 })}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T bold numberOfLines={1}>
+              {s.shop.name}
+            </T>
+            <T size="small" tone="hint" numberOfLines={1}>
+              {s.shop.address}
+            </T>
+          </View>
+          {s.debt > 0 && <Money value={s.debt} tone={s.overdueAmount > 0 ? 'danger' : 'text'} />}
+        </View>
+        {(s.overdueAmount > 0 || s.activeOrders > 0 || s.status === 'BLOCKED' || showAgent) && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {s.overdueAmount > 0 && <Badge label={`${s.overdueDays} kun kechikkan · ${formatSom(s.overdueAmount)}`} tone="danger" />}
+            {s.activeOrders > 0 && <Badge label={`Faol buyurtma: ${s.activeOrders}`} tone="accent" />}
+            {s.status === 'BLOCKED' && <Badge label="Bloklangan" tone="danger" />}
+            {showAgent && <Badge label={`Agent: ${s.agent}`} />}
+          </View>
         )}
-        {s.activeOrders > 0 && (
-          <T size="tiny" tone="hint">
-            Faol buyurtma: {s.activeOrders}
-          </T>
-        )}
-        {s.status === 'BLOCKED' && (
-          <T size="tiny" tone="danger">
-            Bloklangan
-          </T>
-        )}
-        {s.agent && (
-          <T size="tiny" tone="hint">
-            Agent: {s.agent}
-          </T>
-        )}
-      </View>
-    </PressCard>
+      </Pressable>
+      {orderAction && s.status !== 'BLOCKED' && (
+        <Button title="Buyurtma olish" icon="cart-outline" kind="secondary" compact onPress={() => router.push(`/staff/new-order/${s.linkId}`)} />
+      )}
+    </Card>
   );
 }
 
 // Do'konlar ro'yxati qidiruv bilan (agentning bosh sahifasi va do'konlar tabi)
-export function ShopList({ header }: { header?: React.ReactNode }) {
+export function ShopList({ header, orderAction, hideAgent }: { header?: React.ReactNode; orderAction?: boolean; hideAgent?: boolean }) {
   const { api } = useSession();
   const [q, setQ] = useState('');
   const [shops, setShops] = useState<StaffShop[] | null>(null);
@@ -116,8 +109,8 @@ export function ShopList({ header }: { header?: React.ReactNode }) {
         </T>
       )}
       {!shops && !err && <Loading />}
-      {shops?.map((s) => <ShopCard key={s.linkId} s={s} />)}
-      {shops?.length === 0 && <Empty>{q ? 'Hech narsa topilmadi' : "Hali do'kon yo'q"}</Empty>}
+      {shops?.map((s) => <ShopCard key={s.linkId} s={s} orderAction={orderAction} hideAgent={hideAgent} />)}
+      {shops?.length === 0 && <Empty icon="storefront-outline">{q ? 'Hech narsa topilmadi' : "Hali do'kon yo'q"}</Empty>}
     </View>
   );
 }
