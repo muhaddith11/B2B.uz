@@ -6,10 +6,12 @@
 //   tovar egalari: +998 97 000 00 01 … 03
 import { PrismaClient, type StaffRole } from "@prisma/client";
 import { encryptSecret } from "../src/lib/crypto";
+import { trialPeriod } from "../src/lib/subscription";
 
 const db = new PrismaClient();
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
+const hoursAgo = (n: number) => new Date(Date.now() - n * 60 * 60 * 1000);
 
 type ProductSeed = [sku: string, name: string, brand: string, category: string, packSize: number, price: number, inStock?: boolean];
 
@@ -189,6 +191,7 @@ async function main() {
         name: s.name,
         address: s.address,
         district: "Qo'qon shahri",
+        ...trialPeriod(),
         users: { create: { name: s.owner, phone: `+99890000000${i + 1}`, role: "OWNER" } },
       },
       include: { users: true },
@@ -219,6 +222,7 @@ async function main() {
     const dist = await db.distributor.create({
       data: {
         name: d.name,
+        ...trialPeriod(),
         districts: d.districts ?? ["Qo'qon shahri"],
         categories: d.categories,
         minOrder: d.minOrder,
@@ -295,6 +299,7 @@ async function main() {
       if (si < 2) {
         const [sku0, , , , pack0, price0] = d.products[0];
         const qty = pack0 * 4;
+        const deliveredAt = daysAgo(si === 0 ? 19 : 4);
         const order = await db.order.create({
           data: {
             shopLinkId: link.id,
@@ -306,10 +311,13 @@ async function main() {
             source: "AGENT",
             courierId: staff.COURIER,
             createdAt: daysAgo(si === 0 ? 20 : 5),
+            // Holat bosqichlari vaqti (ilovadagi buyurtma yo'li)
+            acceptedAt: daysAgo(si === 0 ? 20 : 5),
+            dispatchedAt: deliveredAt,
+            deliveredAt,
             items: { create: { productId: productIds[sku0], qty, deliveredQty: qty, price: price0 } },
           },
         });
-        const deliveredAt = daysAgo(si === 0 ? 19 : 4);
         await db.order.update({ where: { id: order.id }, data: { updatedAt: deliveredAt } });
         await db.ledgerEntry.create({
           data: { shopLinkId: link.id, type: "DEBT", amount: qty * price0, date: deliveredAt, dueDate: new Date(deliveredAt.getTime() + 14 * DAY), orderId: order.id, createdBy: "system" },
@@ -345,6 +353,8 @@ async function main() {
             createdByStaffId: staff.AGENT,
             courierId: staff.COURIER,
             createdAt: daysAgo(1),
+            acceptedAt: daysAgo(1),
+            dispatchedAt: hoursAgo(2),
             items: {
               create: [
                 { productId: productIds["VI-004"], qty: 24, price: 3_900 },
@@ -367,6 +377,9 @@ async function main() {
             source: "APP",
             courierId: staff.COURIER,
             createdAt: daysAgo(3),
+            acceptedAt: daysAgo(3),
+            dispatchedAt: daysAgo(2),
+            deliveredAt: daysAgo(2),
             items: {
               create: [
                 { productId: productIds["VI-007"], qty: 24, deliveredQty: 24, price: 14_100 },
@@ -393,6 +406,7 @@ async function main() {
             source: "APP",
             createdByShopUserId: shop.users[0].id,
             createdAt: daysAgo(1),
+            acceptedAt: hoursAgo(5),
             items: { create: { productId: productIds["SS-206"], qty: 40, price: 13_800 } },
           },
         });

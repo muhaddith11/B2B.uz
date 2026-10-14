@@ -40,6 +40,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
         description: p.description,
         price: p.price,
         retailPrice: p.retailPrice,
+        imageUrl: p.imageUrl,
         purchasePrice: purchasePrice(p.price, discount),
         inCatalog: mine ? { productId: mine.id, active: mine.active, price: mine.prices.find((x) => x.priceGroupId === def?.id)?.price ?? null } : null,
       };

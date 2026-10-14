@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { t } from '@/lib/i18n';
 
 export default function TabsLayout() {
   const c = usePalette();
@@ -14,7 +15,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Bosh sahifa',
+          title: t('Bosh sahifa'),
           headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons name="home-outline" color={color} size={22} />,
         }}
@@ -22,7 +23,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Savat',
+          title: t('Savat'),
           tabBarBadge: cartCount > 0 ? cartCount : undefined,
           tabBarIcon: ({ color }) => <Ionicons name="cart-outline" color={color} size={22} />,
         }}
@@ -30,14 +31,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Buyurtmalar',
+          title: t('Buyurtmalar'),
           tabBarIcon: ({ color }) => <Ionicons name="receipt-outline" color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="debts"
         options={{
-          title: 'Qarzlarim',
+          title: t('Qarzlarim'),
           tabBarIcon: ({ color }) => <Ionicons name="wallet-outline" color={color} size={22} />,
         }}
       />

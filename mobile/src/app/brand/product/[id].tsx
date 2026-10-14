@@ -1,30 +1,37 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Switch, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform, Switch, View } from 'react-native';
 
-import { Button, Field, Loading, Screen, T } from '@/components/ui';
+import { Banner, Button, Card, ErrorState, Field, Loading, Screen, T, Thumb } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
+import { pickProductImage } from '@/lib/product-image';
 import type { BrandProductRow } from '@/lib/staff-types';
 
 const EMPTY = { name: '', category: '', unit: 'dona', packSize: '1', price: '', retailPrice: '', barcode: '', description: '', active: true };
 
-// Tovar egasining taklifi: yangi ("new") yoki tahrirlash
+// Tovar egasining taklifi: yangi ("new") yoki tahrirlash (rasm bilan)
 export default function BrandProductForm() {
   const c = usePalette();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
   const { api } = useSession();
   const [f, setF] = useState<typeof EMPTY | null>(isNew ? EMPTY : null);
-  const [busy, setBusy] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Effektdan chaqiriladi: holat faqat javob kelgach o'zgaradi
+  const load = useCallback(() => {
     if (isNew) return;
     api<{ products: BrandProductRow[] }>('/api/brand/products')
       .then((d) => {
         const p = d.products.find((x) => x.id === id);
-        if (!p) return setErr('Tovar topilmadi');
+        if (!p) return setLoadErr(t('Tovar topilmadi'));
+        setImageUrl(p.imageUrl);
         setF({
           name: p.name,
           category: p.category,
@@ -37,16 +44,24 @@ export default function BrandProductForm() {
           active: p.active,
         });
       })
-      .catch((e) => setErr(e.message));
+      .catch((e) => setLoadErr(e.message));
   }, [api, id, isNew]);
 
-  if (!f) return err ? <T tone="danger">{err}</T> : <Loading />;
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const retryLoad = () => {
+    setLoadErr(null);
+    load();
+  };
+  if (!f) return loadErr ? <ErrorState message={loadErr} onRetry={retryLoad} /> : <Loading rows={2} />;
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((x) => x && { ...x, [k]: v });
   const digits = (k: keyof typeof EMPTY) => (v: string) => set(k)(v.replace(/\D/g, ''));
 
   async function save() {
     if (!f) return;
-    setBusy(true);
+    setBusy('save');
     setErr(null);
     const body = {
       name: f.name,
@@ -61,10 +76,42 @@ export default function BrandProductForm() {
     };
     try {
       await api(isNew ? '/api/brand/products' : `/api/brand/products/${id}`, { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) });
+      haptic.success();
       router.back();
     } catch (e) {
       setErr((e as Error).message);
-      setBusy(false);
+      haptic.error();
+      setBusy(null);
+    }
+  }
+
+  async function setImage(fromCamera: boolean) {
+    setErr(null);
+    try {
+      const form = await pickProductImage(fromCamera);
+      if (!form) return;
+      setBusy('image');
+      const res = await api<{ imageUrl: string }>(`/api/brand/products/${id}/image`, { method: 'POST', body: form });
+      setImageUrl(res.imageUrl);
+      haptic.success();
+    } catch (e) {
+      setErr((e as Error).message);
+      haptic.error();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeImage() {
+    setBusy('image');
+    setErr(null);
+    try {
+      await api(`/api/brand/products/${id}/image`, { method: 'DELETE' });
+      setImageUrl(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -72,33 +119,47 @@ export default function BrandProductForm() {
 
   return (
     <Screen gap={12}>
-      <Stack.Screen options={{ title: isNew ? 'Yangi tovar' : f.name }} />
-      <Field label="Nomi" value={f.name} onChangeText={set('name')} placeholder="Masalan: Sharbat, olma, 1 l" />
-      <Field label="Toifa" value={f.category} onChangeText={set('category')} />
+      <Stack.Screen options={{ title: isNew ? t('Yangi tovar') : f.name }} />
+      {!isNew && (
+        <Card style={{ gap: 10 }}>
+          {imageUrl ? <Thumb uri={imageUrl} name={f.name} size="100%" /> : null}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {Platform.OS !== 'web' && <Button title={t('Rasmga olish')} icon="camera-outline" kind="secondary" compact loading={busy === 'image'} onPress={() => setImage(true)} style={{ flex: 1 }} />}
+            <Button
+              title={imageUrl ? t('Rasmni almashtirish') : t("Rasm qo'shish")}
+              icon="image-outline"
+              kind="secondary"
+              compact
+              disabled={busy === 'image'}
+              onPress={() => setImage(false)}
+              style={{ flex: 1 }}
+            />
+          </View>
+          {imageUrl && <Button title={t('Rasmni olib tashlash')} kind="ghost" compact disabled={busy === 'image'} onPress={removeImage} />}
+        </Card>
+      )}
+      <Field label={t('Nomi')} value={f.name} onChangeText={set('name')} placeholder={t('Masalan: Sharbat, olma, 1 l')} />
+      <Field label={t('Toifa')} value={f.category} onChangeText={set('category')} />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}>
-          <Field label="O'lchov" value={f.unit} onChangeText={set('unit')} />
+          <Field label={t("O'lchov")} value={f.unit} onChangeText={set('unit')} />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Yashikda nechta" value={f.packSize} onChangeText={digits('packSize')} keyboardType="number-pad" />
+          <Field label={t('Yashikda nechta')} value={f.packSize} onChangeText={digits('packSize')} keyboardType="number-pad" />
         </View>
       </View>
-      <Field label="Distribyutorga narx, bir dona, so'm" value={f.price} onChangeText={digits('price')} keyboardType="number-pad" />
-      <Field label="Tavsiya etilgan chakana narx (ixtiyoriy)" value={f.retailPrice} onChangeText={digits('retailPrice')} keyboardType="number-pad" />
-      <Field label="Shtrix-kod (ixtiyoriy)" value={f.barcode} onChangeText={digits('barcode')} keyboardType="number-pad" />
-      <Field label="Tavsif (ixtiyoriy)" value={f.description} onChangeText={set('description')} multiline style={{ minHeight: 70, textAlignVertical: 'top' }} />
+      <Field label={t("Distribyutorga narx, bir dona, so'm")} value={f.price} onChangeText={digits('price')} keyboardType="number-pad" />
+      <Field label={t('Tavsiya etilgan chakana narx (ixtiyoriy)')} value={f.retailPrice} onChangeText={digits('retailPrice')} keyboardType="number-pad" />
+      <Field label={t('Shtrix-kod (ixtiyoriy)')} value={f.barcode} onChangeText={digits('barcode')} keyboardType="number-pad" />
+      <Field label={t('Tavsif (ixtiyoriy)')} value={f.description} onChangeText={set('description')} multiline style={{ minHeight: 70, textAlignVertical: 'top' }} />
       {!isNew && (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <T>Taklif faol</T>
-          <Switch value={f.active} onValueChange={(v) => setF({ ...f, active: v })} trackColor={{ true: c.ok, false: c.border }} />
+          <T>{t('Taklif faol')}</T>
+          <Switch accessibilityLabel={t('Taklif faol')} value={f.active} onValueChange={(v) => setF({ ...f, active: v })} trackColor={{ true: c.ok, false: c.border }} />
         </View>
       )}
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
-      <Button title="Saqlash" onPress={save} loading={busy} disabled={!filled} />
+      {err && <Banner tone="danger">{err}</Banner>}
+      <Button title={t('Saqlash')} onPress={save} loading={busy === 'save'} disabled={!filled} />
     </Screen>
   );
 }

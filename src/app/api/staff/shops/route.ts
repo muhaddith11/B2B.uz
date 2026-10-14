@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { lockRegistration } from "@/lib/registration";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
+import { trialPeriod } from "@/lib/subscription";
 import { shopList } from "@/lib/staff-data";
 
 export const GET = handle(async (req: Request) => {
@@ -35,7 +36,7 @@ export const POST = handle(async (req: Request) => {
     let shopId = owner?.shopId;
     if (!shopId) {
       const shop = await tx.shop.create({
-        data: { name: input.shopName, address: input.address, district: input.district, users: { create: { name: input.ownerName, phone, role: "OWNER" } } },
+        data: { name: input.shopName, address: input.address, district: input.district, ...trialPeriod(), users: { create: { name: input.ownerName, phone, role: "OWNER" } } },
       });
       shopId = shop.id;
     }

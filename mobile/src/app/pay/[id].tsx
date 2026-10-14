@@ -4,8 +4,10 @@ import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, View } from 'react-native';
 
-import { Banner, Button, Card, ErrorText, Field, Loading, Screen, SectionTitle, T } from '@/components/ui';
+import { Banner, Button, Card, ErrorState, Field, Loading, Money, Screen, SectionTitle, T } from '@/components/ui';
 import { useSession } from '@/context/session';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
 import { formatAmount, formatSom } from '@/lib/money';
 import type { HomeData, PaymentOptions } from '@/lib/types';
 
@@ -28,6 +30,7 @@ export default function PayScreen() {
       Promise.all([api<PaymentOptions>(`/api/shop/payments?distributorId=${encodeURIComponent(id)}`), api<HomeData>('/api/shop/home')])
         .then(([o, home]) => {
           setOpts(o);
+          setErr(null);
           const d = home.links.find((l) => l.distributor.id === id)?.debt ?? 0;
           setDebt(d);
           setAmount((a) => a || (d > 0 ? formatAmount(d) : ''));
@@ -40,8 +43,18 @@ export default function PayScreen() {
     load();
   }, [load]);
 
-  if (err && !opts) return <ErrorText>{err}</ErrorText>;
-  if (!opts) return <Loading />;
+  if (err && !opts) {
+    return (
+      <ErrorState
+        message={err}
+        onRetry={() => {
+          setErr(null);
+          load();
+        }}
+      />
+    );
+  }
+  if (!opts) return <Loading rows={2} />;
 
   const sum = Number(amount.replace(/\D/g, '')) || 0;
 
@@ -51,10 +64,11 @@ export default function PayScreen() {
     try {
       const res = await api<{ url: string }>('/api/shop/payments/online', { method: 'POST', body: JSON.stringify({ distributorId: id, amount: sum, provider }) });
       await WebBrowser.openBrowserAsync(res.url);
-      setDone("To'lov tizimi tasdiqlagach, summa qarzingizdan ayiriladi. Qarzlarim sahifasida ko'rasiz.");
+      setDone(t("To'lov tizimi tasdiqlagach, summa qarzingizdan ayiriladi. Qarzlarim sahifasida ko'rasiz."));
       await load();
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
     } finally {
       setBusy(null);
     }
@@ -65,12 +79,12 @@ export default function PayScreen() {
     if (fromCamera) {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        setErr('Kameraga ruxsat berilmagan');
+        setErr(t('Kameraga ruxsat berilmagan'));
         return;
       }
     }
-    const opts = { mediaTypes: ['images'] as ImagePicker.MediaType[], quality: 0.6 };
-    const res = fromCamera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
+    const pickOpts = { mediaTypes: ['images'] as ImagePicker.MediaType[], quality: 0.6 };
+    const res = fromCamera ? await ImagePicker.launchCameraAsync(pickOpts) : await ImagePicker.launchImageLibraryAsync(pickOpts);
     if (res.canceled || !res.assets?.[0]) return;
     const a = res.assets[0];
     const mimeType = a.mimeType ?? 'image/jpeg';
@@ -94,9 +108,11 @@ export default function PayScreen() {
       }
       await api('/api/shop/payments', { method: 'POST', body: form });
       setReceipt(null);
-      setDone("Chek yuborildi. Distribyutor tasdiqlagach, summa qarzingizdan ayiriladi.");
+      setDone(t('Chek yuborildi. Distribyutor tasdiqlagach, summa qarzingizdan ayiriladi.'));
+      haptic.success();
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
     } finally {
       setBusy(null);
     }
@@ -108,24 +124,29 @@ export default function PayScreen() {
         <T size="small" tone="hint">
           {opts.distributor.name}
         </T>
-        <T size="title">{formatSom(debt)}</T>
+        <Money value={debt} size="title" />
         <T size="small" tone="hint">
-          joriy qarz
+          {t('joriy qarz')}
         </T>
       </Card>
 
       {done ? (
         <>
           <Banner tone="accent">{done}</Banner>
-          <Button title="Qarzlarimga qaytish" kind="secondary" onPress={() => router.back()} />
+          <Button title={t('Qarzlarimga qaytish')} kind="secondary" onPress={() => router.back()} />
         </>
       ) : (
         <>
-          <Field label="To'lov summasi, so'm" value={amount} onChangeText={(v) => setAmount(formatAmount(Number(v.replace(/\D/g, '')) || 0).replace(/^0$/, ''))} keyboardType="number-pad" />
+          <Field
+            label={t("To'lov summasi, so'm")}
+            value={amount}
+            onChangeText={(v) => setAmount(formatAmount(Number(v.replace(/\D/g, '')) || 0).replace(/^0$/, ''))}
+            keyboardType="number-pad"
+          />
 
           {opts.online.length > 0 && (
             <>
-              <SectionTitle>Onlayn to'lash</SectionTitle>
+              <SectionTitle>{t("Onlayn to'lash")}</SectionTitle>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {opts.online.map((p) => (
                   <Button key={p} title={p === 'PAYME' ? 'Payme' : 'Click'} style={{ flex: 1 }} loading={busy === p} disabled={sum <= 0 || busy !== null} onPress={() => payOnline(p)} />
@@ -136,52 +157,50 @@ export default function PayScreen() {
 
           {opts.transfer.length > 0 && (
             <>
-              <SectionTitle>Karta yoki hisobga o'tkazish</SectionTitle>
-              {opts.transfer.map((t) => (
-                <Card key={t.id} style={{ gap: 2 }}>
+              <SectionTitle>{t("Karta yoki hisobga o'tkazish")}</SectionTitle>
+              {opts.transfer.map((m) => (
+                <Card key={m.id} style={{ gap: 2 }}>
                   <T size="small" tone="hint">
-                    {t.type === 'CARD' ? 'Karta' : 'Hisob raqami'}
+                    {m.type === 'CARD' ? t('Karta') : t('Hisob raqami')}
                   </T>
-                  <T bold selectable>
-                    {t.type === 'CARD' ? t.number.replace(/(\d{4})(?=\d)/g, '$1 ') : t.number}
+                  <T bold num selectable>
+                    {m.type === 'CARD' ? m.number.replace(/(\d{4})(?=\d)/g, '$1 ') : m.number}
                   </T>
-                  {t.holder && <T size="small">{t.holder}</T>}
-                  {t.type === 'BANK_ACCOUNT' && (
-                    <T size="small" tone="hint" selectable>
-                      MFO {t.bankMfo} · STIR {t.inn}
+                  {m.holder && <T size="small">{m.holder}</T>}
+                  {m.type === 'BANK_ACCOUNT' && (
+                    <T size="small" tone="hint" num selectable>
+                      {t('MFO {mfo} · STIR {inn}', { mfo: m.bankMfo ?? '—', inn: m.inn ?? '—' })}
                     </T>
                   )}
                 </Card>
               ))}
               <T size="small" tone="hint">
-                O'tkazgandan keyin chek rasmini yuboring: distribyutor tasdiqlaydi.
+                {t("O'tkazgandan keyin chek rasmini yuboring: distribyutor tasdiqlaydi.")}
               </T>
               {receipt ? (
                 <Card style={{ gap: 8 }}>
-                  <Image source={{ uri: receipt.uri }} style={{ width: '100%', height: 240, borderRadius: 12 }} resizeMode="contain" />
+                  <Image source={{ uri: receipt.uri }} style={{ width: '100%', height: 240, borderRadius: 12 }} resizeMode="contain" accessibilityIgnoresInvertColors />
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Button title="Boshqa rasm" kind="secondary" compact style={{ flex: 1 }} onPress={() => setReceipt(null)} />
-                    <Button title={`Yuborish · ${formatSom(sum)}`} compact style={{ flex: 2 }} loading={busy === 'receipt'} disabled={sum <= 0} onPress={sendReceipt} />
+                    <Button title={t('Boshqa rasm')} kind="secondary" compact style={{ flex: 1 }} onPress={() => setReceipt(null)} />
+                    <Button title={t('Yuborish · {sum}', { sum: formatSom(sum) })} compact style={{ flex: 2 }} loading={busy === 'receipt'} disabled={sum <= 0} onPress={sendReceipt} />
                   </View>
                 </Card>
               ) : (
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {Platform.OS !== 'web' && <Button title="Rasmga olish" kind="secondary" style={{ flex: 1 }} onPress={() => pick(true)} />}
-                  <Button title="Galereyadan tanlash" kind="secondary" style={{ flex: 1 }} onPress={() => pick(false)} />
+                  {Platform.OS !== 'web' && <Button title={t('Rasmga olish')} icon="camera-outline" kind="secondary" style={{ flex: 1 }} onPress={() => pick(true)} />}
+                  <Button title={t('Galereyadan tanlash')} icon="image-outline" kind="secondary" style={{ flex: 1 }} onPress={() => pick(false)} />
                 </View>
               )}
             </>
           )}
 
-          {opts.online.length === 0 && opts.transfer.length === 0 && <Banner>Distribyutor hali to'lov usullarini kiritmagan. Naqd to'lovni agent yoki yetkazuvchiga bering.</Banner>}
+          {opts.online.length === 0 && opts.transfer.length === 0 && (
+            <Banner>{t("Distribyutor hali to'lov usullarini kiritmagan. Naqd to'lovni agent yoki yetkazuvchiga bering.")}</Banner>
+          )}
         </>
       )}
 
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
+      {err && <Banner tone="danger">{err}</Banner>}
     </Screen>
   );
 }

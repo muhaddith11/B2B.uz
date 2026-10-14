@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// Imzolangan token: Mini App uchun Authorization sarlavhasida, panel uchun cookie'da yuradi.
-// Telegram Web'da Mini App iframe ichida ochiladi, shuning uchun do'kon tomonida cookie emas, token ishlatiladi.
+// Imzolangan token: mobil ilova uchun Authorization sarlavhasida, panel va admin uchun cookie'da yuradi.
 
 export type SessionPayload =
   | { kind: "shop"; shopUserId: string; exp: number }

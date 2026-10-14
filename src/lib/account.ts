@@ -18,7 +18,7 @@ async function deleteShopUser(tx: Tx, id: string) {
 
 async function deleteStaff(tx: Tx, id: string) {
   // Xodim buyurtma va yetkazishlar tarixida qoladi, shuning uchun yozuv o'chirilmay, shaxsiy ma'lumoti tozalanadi
-  const staff = await tx.staff.update({ where: { id }, data: { name: "O'chirilgan xodim", phone: "", telegramId: null, active: false } });
+  const staff = await tx.staff.update({ where: { id }, data: { name: "O'chirilgan xodim", phone: "", active: false } });
   await tx.pushToken.deleteMany({ where: { ownerKind: "STAFF", ownerId: id } });
   // Faol xodimi qolmagan distribyutor do'konlar qidiruvidan yashiriladi
   const left = await tx.staff.count({ where: { distributorId: staff.distributorId, active: true } });

@@ -1,9 +1,11 @@
 // Distribyutor xodimi va tovar egasi ekranlari uchun server javoblari (src/app/api/staff/*, src/app/api/brand/*)
-import type { OrderStatus, PaymentType, StaffRole } from './types';
+import { t } from './i18n';
+import type { OrderStatus, PaymentType, StaffRole, Subscription } from './types';
 
 export type StaffMe = {
   staff: { id: string; name: string; phone: string; role: StaffRole };
   distributor: { id: string; name: string; status: 'PENDING' | 'ACTIVE'; districts: string[]; categories: string[]; minOrder: number; deliveryDays: string[]; inn: string | null };
+  subscription: Subscription;
   couriers: { id: string; name: string }[];
   agents: { id: string; name: string }[];
   priceGroups: { id: string; name: string; isDefault: boolean }[];
@@ -33,6 +35,9 @@ export type StaffOrder = {
   deliveredTotal: number | null;
   source: 'APP' | 'AGENT';
   createdAt: string;
+  acceptedAt: string | null;
+  dispatchedAt: string | null;
+  deliveredAt: string | null;
   rejectReason: string | null;
   createdBy: string | null;
   courier: { id: string; name: string } | null;
@@ -107,6 +112,7 @@ export type StaffProduct = {
   minOrderPacks: number;
   inStock: boolean;
   active: boolean;
+  imageUrl: string | null;
   fromBrand: string | null;
   price: number | null;
   prices: { group: string; price: number }[];
@@ -147,6 +153,7 @@ export type BrandForStaff = {
     description: string | null;
     price: number;
     retailPrice: number | null;
+    imageUrl: string | null;
     purchasePrice: number;
     inCatalog: { productId: string; active: boolean; price: number | null } | null;
   }[];
@@ -170,37 +177,29 @@ export type PaymentMethodRow = {
   callbackUrl: string | null;
 };
 
-export const ROLE_LABEL: Record<StaffRole, string> = {
-  ADMIN: 'Admin',
-  OPERATOR: 'Operator',
-  ACCOUNTANT: 'Hisobchi',
-  AGENT: 'Agent',
-  COURIER: 'Yetkazuvchi',
-};
+const ROLE_KEY = { ADMIN: 'Admin', OPERATOR: 'Operator', ACCOUNTANT: 'Hisobchi', AGENT: 'Agent', COURIER: 'Yetkazuvchi' } as const;
+export const roleLabel = (r: StaffRole) => t(ROLE_KEY[r]);
 
-export const AGREEMENT_LABEL: Record<AgreementStatus, string> = {
-  PROPOSED: 'Taklif',
-  ACTIVE: 'Faol',
-  REJECTED: 'Rad etilgan',
-  ENDED: 'Tugagan',
-};
+const AGREEMENT_KEY = { PROPOSED: 'kelishuv|Taklif', ACTIVE: 'kelishuv|Faol', REJECTED: 'kelishuv|Rad etilgan', ENDED: 'kelishuv|Tugagan' } as const;
+export const agreementLabel = (s: AgreementStatus) => t(AGREEMENT_KEY[s]);
 
-export const BRAND_ORDER_LABEL: Record<BrandOrderStatus, string> = {
+const BRAND_ORDER_KEY = {
   SENT: 'Yuborildi',
   ACCEPTED: 'Qabul qilindi',
   REJECTED: 'Rad etildi',
   SHIPPED: "Jo'natildi",
   DELIVERED: 'Qabul qilib olindi',
   CANCELLED: 'Bekor qilindi',
-};
+} as const;
+export const brandOrderLabel = (s: BrandOrderStatus) => t(BRAND_ORDER_KEY[s]);
 
-export const CHANNEL_LABEL: Record<string, string> = {
-  CASH: 'Naqd',
-  CARD_RECEIPT: 'Chek',
-  BANK_TRANSFER: "O'tkazma",
-  PAYME: 'Payme',
-  CLICK: 'Click',
-};
+const CHANNEL_KEY = { CASH: 'Naqd', CARD_RECEIPT: 'Chek', BANK_TRANSFER: "O'tkazma" } as const;
+// To'lov kanali: Payme va Click nomi tarjima qilinmaydi; noma'lum bo'lsa "—"
+export function channelLabel(channel: string | null): string {
+  if (!channel) return '—';
+  if (channel in CHANNEL_KEY) return t(CHANNEL_KEY[channel as keyof typeof CHANNEL_KEY]);
+  return channel === 'PAYME' ? 'Payme' : channel === 'CLICK' ? 'Click' : channel;
+}
 
 // ---- Tovar egasi ----
 
@@ -226,6 +225,7 @@ export type BrandProductRow = {
   description: string | null;
   price: number;
   retailPrice: number | null;
+  imageUrl: string | null;
   active: boolean;
   distributors: number;
 };

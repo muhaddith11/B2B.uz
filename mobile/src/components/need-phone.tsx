@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { usePalette } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 
 import { Button, T } from './ui';
 
@@ -10,8 +11,8 @@ export function NeedPhone() {
   const c = usePalette();
   return (
     <View style={{ flex: 1, padding: 24, gap: 12, backgroundColor: c.bg }}>
-      <T>Avval telefon raqamingizni tasdiqlang.</T>
-      <Button title="Kirish sahifasiga" onPress={() => router.replace('/login')} />
+      <T>{t('Avval telefon raqamingizni tasdiqlang.')}</T>
+      <Button title={t('Kirish sahifasiga')} onPress={() => router.replace('/login')} />
     </View>
   );
 }

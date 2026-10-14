@@ -21,8 +21,8 @@ export default async function PanelProducts() {
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold">Tovarlar</h1>
       {["ADMIN", "OPERATOR"].includes(staff.role) && <UploadForm />}
-      <table className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white text-sm">
-        <thead className="bg-gray-50 text-left text-gray-500">
+      <table className="w-full overflow-hidden rounded-xl border border-line bg-card text-sm">
+        <thead className="bg-bg text-left text-hint">
           <tr>
             <th className="px-3 py-2 font-medium">Artikul</th>
             <th className="px-3 py-2 font-medium">Tovar</th>
@@ -34,16 +34,20 @@ export default async function PanelProducts() {
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p.id} className={`border-t border-gray-100 ${p.active ? "" : "text-gray-400"}`}>
-              <td className="px-3 py-2 text-gray-500">{p.sku}</td>
+            <tr key={p.id} className={`border-t border-line ${p.active ? "" : "text-hint"}`}>
+              <td className="px-3 py-2 text-hint">{p.sku}</td>
               <td className="px-3 py-2">
                 {p.name}
-                {p.brandProduct && <span className="ml-2 text-xs text-blue-600">{p.brandProduct.brand.name} kelishuvi</span>}
+                {p.brandProduct && <span className="ml-2 text-xs text-accent-ink">{p.brandProduct.brand.name} kelishuvi</span>}
               </td>
               <td className="px-3 py-2">{p.category}</td>
               <td className="px-3 py-2 text-right">{p.packSize}</td>
               <td className="px-3 py-2 text-right">{p.prices[0] ? formatSom(p.prices[0].price) : "—"}</td>
-              <td className="px-3 py-2">{!p.active ? "nofaol" : p.inStock ? "bor" : "tugagan"}</td>
+              <td className="px-3 py-2">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${!p.active ? "bg-field text-hint" : p.inStock ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>
+                  {!p.active ? "nofaol" : p.inStock ? "bor" : "tugagan"}
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>

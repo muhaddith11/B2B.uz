@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 
 import { TagInput } from '@/components/tag-input';
-import { Banner, Button, Field, Screen, T } from '@/components/ui';
+import { Banner, Button, Field, Screen } from '@/components/ui';
 import { NeedPhone } from '@/components/need-phone';
 import { useSession } from '@/context/session';
 import { request } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
+// Taklif qilinadigan toifalar ma'lumot sifatida saqlanadi (do'konlar shu nom bilan qidiradi), shuning uchun tarjima qilinmaydi
 const CATEGORY_HINTS = ['Ichimliklar', 'Sut mahsulotlari', 'Shirinliklar', 'Bakaleya', 'Gigiyena', 'Maishiy kimyo'];
 
 // Distribyutor o'zi ro'yxatdan o'tadi; platforma tasdiqlagach do'konlarga ko'rinadi
@@ -46,18 +48,16 @@ export default function RegisterDistributor() {
 
   return (
     <Screen gap={14}>
-      <Banner tone="accent">Ro'yxatdan o'tgach, platforma ma'lumotlaringizni tekshiradi. Shu vaqtda tovarlar, xodimlar va to'lov usullarini sozlab qo'yishingiz mumkin.</Banner>
-      <Field label="Kompaniya nomi" value={form.companyName} onChangeText={set('companyName')} />
-      <Field label="STIR (ixtiyoriy)" value={form.inn} onChangeText={(v) => set('inn')(v.replace(/\D/g, '').slice(0, 9))} keyboardType="number-pad" />
-      <TagInput label="Qaysi hududlarga yetkazasiz" value={districts} onChange={setDistricts} suggestions={knownDistricts} placeholder="Masalan: Qo'qon shahri" />
-      <TagInput label="Tovar toifalari" value={categories} onChange={setCategories} suggestions={CATEGORY_HINTS} />
-      <Field label="Ismingiz (admin)" value={form.adminName} onChangeText={set('adminName')} autoComplete="name" />
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
-      <Button title="Ro'yxatdan o'tish" onPress={submit} loading={busy} disabled={!filled} />
+      <Banner tone="accent">
+        {t("Ro'yxatdan o'tgach, platforma ma'lumotlaringizni tekshiradi. Shu vaqtda tovarlar, xodimlar va to'lov usullarini sozlab qo'yishingiz mumkin.")}
+      </Banner>
+      <Field label={t('Kompaniya nomi')} value={form.companyName} onChangeText={set('companyName')} />
+      <Field label={t('STIR (ixtiyoriy)')} value={form.inn} onChangeText={(v) => set('inn')(v.replace(/\D/g, '').slice(0, 9))} keyboardType="number-pad" />
+      <TagInput label={t('Qaysi hududlarga yetkazasiz')} value={districts} onChange={setDistricts} suggestions={knownDistricts} placeholder={t("Masalan: Qo'qon shahri")} />
+      <TagInput label={t('Tovar toifalari')} value={categories} onChange={setCategories} suggestions={CATEGORY_HINTS} />
+      <Field label={t('Ismingiz (admin)')} value={form.adminName} onChangeText={set('adminName')} autoComplete="name" />
+      {err && <Banner tone="danger">{err}</Banner>}
+      <Button title={t("Ro'yxatdan o'tish")} onPress={submit} loading={busy} disabled={!filled} />
     </Screen>
   );
 }

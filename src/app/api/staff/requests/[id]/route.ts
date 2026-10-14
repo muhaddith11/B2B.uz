@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { L } from "@/lib/i18n";
 import { approveInput, approveLink, rejectLink } from "@/lib/links";
 import { notifyShop } from "@/lib/push";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
@@ -18,7 +19,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     const parsed = approveInput.safeParse({ linkId: id, priceGroupId: body.priceGroupId, creditLimit: body.creditLimit, creditDays: body.creditDays });
     if (!parsed.success) throw new HttpError(400, "Nasiya limiti yoki muddati noto'g'ri");
     await approveLink(staff, parsed.data);
-    if (link) notifyShop(link.shopId, { title: "Ulanish tasdiqlandi", body: `${staff.distributor.name} katalogi ochildi`, data: { url: "/" } });
+    if (link) notifyShop(link.shopId, { title: "Ulanish tasdiqlandi", body: L("{name} katalogi ochildi", { name: staff.distributor.name }), data: { url: "/" } });
   } else {
     await rejectLink(staff, id);
     if (link) notifyShop(link.shopId, { title: "Ulanish so'rovi rad etildi", body: staff.distributor.name, data: { url: "/find" } });

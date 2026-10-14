@@ -204,7 +204,9 @@ Rad etilgan: avvalgi qora, har ekranda bir xil kulrang qutilar uyumi, unda pul, 
 - Ionicons outline, bitta qalinlik.
 - iOS va Android uchun bitta uslub; OS kafolatlari (safe area, orqaga, tizim shrift o'lchami) saqlanadi.
 
-**Ma'lum bo'shliqlar (tizim qoidasi emas).** Quyidagilar hali qurilmagan va kelajakdagi ekranlar meros qilib oladigan qoida emas: haptik javob, yig'iladigan katta sarlavhalar, Android ripple, skeleton yuklanish (hozir `ActivityIndicator`), yopishqoq qidiruv va chiplar, holat bosqichlarida vaqt belgilari. Faqat qurilmada tekshiriladigan narsalar ochiq: orqaga chevroni, SF / Roboto metrikasi, 130% shrift o'lchami, safe area, sakrash vaqti (sharhdagi suratlar react-native-web, 375x812).
+**Ma'lum bo'shliqlar (tizim qoidasi emas).** Hali qurilmagan: yig'iladigan katta sarlavhalar (iOS large title). Faqat haqiqiy qurilmada tekshiriladigan narsalar ochiq: orqaga chevroni, SF / Roboto metrikasi, 130% shrift o'lchami, safe area, sakrash vaqti, haptik javob kuchi, Android ripple ko'rinishi (sharhdagi suratlar react-native-web, 375x812).
+
+**Ikki til.** Ilova o'zbek (lotin) va rus tilida; birinchi ochilishda telefon tili olinadi, keyin profil pastidagi "O'zbekcha / Русский" tugmasi bilan almashtiriladi. Ruscha matn o'rtacha 20-30% uzun: tugma va qatorlar ikkala tilda ham sig'ishi kerak.
 
 ## Colors
 
@@ -237,6 +239,8 @@ Neytral kulrang-oq asos, bitta to'yingan ko'k va to'rtta faqat holat uchun ishla
 **The Soft Ground Rule.** Holat ohangi hech qachon to'liq fon bo'lmaydi: belgi, banner va xavfli tugma o'z ohangining `*-soft` fonida ohang rangidagi matn bilan chiqadi. To'liq to'yingan fon faqat `accent` (va `Count` qizil soni) uchun.
 
 **The Paired Scheme Rule.** Har bir yangi rang ikkala palitraga bir vaqtda qo'shiladi (`light` va `dark` bir xil kalitlar bilan); komponent rangni faqat `usePalette()` orqali oladi.
+
+**The Same Palette Rule.** Web sahifalar (sayt, distribyutor paneli, admin) shu ranglarni `src/app/globals.css` dagi CSS o'zgaruvchilari va Tailwind tokenlari orqali oladi: `bg`, `card`, `field`, `ink`, `hint`, `line`, `accent`, `accent-ink`, `accent-soft` va holat ohanglari. Tailwind'ning `gray-*`, `blue-*` kabi tayyor ranglari ishlatilmaydi. Tugma va maydon: `.btn` (`.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-sm`) va `.field`.
 
 ## Typography
 
@@ -335,7 +339,7 @@ Ishonchli, keng, bosh barmoq uchun.
 
 ### Status Badge va Status Steps
 - **Badge:** `pill`, 3/10 pt ichki, `softOf(tone)` fon, ohang rangidagi 12/16/600 matn.
-- **StatusSteps:** buyurtma yo'li to'rt teng chiziq (Yuborildi, Qabul qilindi, Yo'lda, Topshirildi), 4 pt oraliq; o'tilgan bosqichlar joriy holat ohangida, qolgani `border`; joriy nom 700 va ohang rangida. Rad etilgan yoki bekor qilingan buyurtmada chiziq o'rniga belgi. Buyurtma sahifasida doim bir joyda, summa ostida.
+- **StatusSteps:** buyurtma yo'li to'rt teng chiziq (Yuborildi, Qabul qilindi, Yo'lda, Topshirildi), 4 pt oraliq; o'tilgan bosqichlar joriy holat ohangida, qolgani `border`; joriy nom 700 va ohang rangida. O'tilgan har bosqich ostida vaqt (11 pt, `hint`, tabular): bugun bo'lsa "14:30", aks holda "07.10". Rad etilgan yoki bekor qilingan buyurtmada chiziq o'rniga belgi. Buyurtma sahifasida doim bir joyda, summa ostida.
 
 ### Banner
 `md` radius, 12 pt ichki, `softOf(tone)` fon, 20 pt Ionicons (ohangga qarab alert / checkmark / information) va 14/500 ohang matni. Xato holati ham shu banner (`ErrorText`).
@@ -346,6 +350,21 @@ Yashik soni. Nolda: 44 pt `accent` doira, oq 26 pt "+". Bosilganda o'z joyida `a
 ### CartBar
 Suzuvchi `accent` tugma, `lg` radius, 56 pt, chapda savat belgisi va "Savat · 3 yashik" (16/600) ostida izoh (12, tabular), o'ngda jami (17/700, tabular). Yorliq o'zgarganda QtyStepper bilan bir xil sakrash.
 
+### Yuklanish, xato va tasdiqlash
+- **Loading (skeleton):** ma'lumot o'rnida 2-5 ta oq kartochka shakli (`field` rangidagi chiziqlar) 0.5-1 shaffoflik orasida 700 ms da miltillaydi; aylanuvchi belgi faqat tugma ichida. Ekran ichida (`inline`) o'z chekkasisiz, sarlavhasiz bosh sahifada `safeTop` bilan.
+- **ErrorState:** birinchi yuklash xato bo'lsa butun ekran o'rnida: 56 pt `danger-soft` doirada ogohlantirish belgisi, sababi (`hint`, markazda) va to'liq kenglikdagi secondary "Qayta urinish". Ma'lumot bor bo'lib, keyingi yangilash xato bo'lsa, eski ma'lumot qoladi.
+- **Tasdiqlash oynasi** (`confirm`): tizim oynasi (iOS/Android Alert, web'da brauzer confirm). Sarlavha savol shaklida ("Buyurtma №12 bekor qilinsinmi?"), bir jumla oqibat, tugmalar "Ortga" va amal nomi (xavfli amalda qizil).
+
+### StickyBar
+Qidiruv va filtr chiplari ro'yxat aylantirilganda tepada qoladi: `bg` fonda, ekran chekkasigacha (chap-o'ng 16 pt ichki), ostidan o'tayotgan kartochka ko'rinmaydi. Katalog, agentning buyurtma olishi, distribyutor topish, buyurtmalar holati va tovarlar ro'yxatida.
+
+### Teginish javobi
+- **Haptik:** qadam tugmasi va chip tanlovida yengil "tick"; buyurtma yuborildi, qabul qilindi, topshirildi, to'lov yozildi kabi natijada "success"; amal bajarilmasa "error". Web'da yo'q.
+- **Android:** tugma, chip, ro'yxat qatori va belgi-tugmada tizim to'lqin effekti (ripple), shaffoflik o'zgarmaydi; iOS va web'da shaffoflik.
+
+### LanguageSwitch
+Ikki chip: "O'zbekcha" va "Русский", har doim o'z tilida yoziladi (tilni bilmagan odam ham topadi). Kirish ekranida va profil pastida (AccountLinks).
+
 ### ListRow, Row, Empty
 - **ListRow:** 48 pt, chapda 40 pt `sm` kvadrat (`softOf(tone)` fon, 20 pt belgi), nom 16/500, ostida 14 `hint`, o'ngda qiymat va chevron.
 - **Row:** chapda `hint` yorliq, o'ngda 14/500 tabular qiymat (buyurtma tafsilotlari).
@@ -354,6 +373,9 @@ Suzuvchi `accent` tugma, `lg` radius, 56 pt, chapda savat belgisi va "Savat · 3
 ## Do's and Don'ts
 
 ### Do:
+- **Do** har bir ko'rinadigan matnni `t()` orqali yozing (kalit o'zbekcha matn, ruschasi `src/lib/i18n-ru.ts` da); lug'atda yo'q kalit TypeScript xatosi beradi. Bir xil o'zbekcha so'z ruschada boshqa ma'noda bo'lsa, `"ma'no|Matn"` kalitini ishlating.
+- **Do** qaytarib bo'lmaydigan amaldan oldin (`confirm`) so'rang: buyurtmani bekor qilish, topshirish, do'konni bloklash, xodimni o'chirish, so'rov yoki to'lovni rad etish, kelishuvni tugatish, chiqish.
+- **Do** ma'lumot yuklaydigan har bir ekranda uch holatni bering: `Loading` (skeleton), `ErrorState` (qayta urinish bilan) va bo'sh holat (`Empty`).
 - **Do** har bir rangni `usePalette()` dan oling va yangi kalitni `light` hamda `dark` ga birga qo'shing.
 - **Do** summani `Money` bilan chizing: qalin tabular raqam, kichikroq " so'm", formatlash `formatAmount` / `formatSom` (U+00A0) orqali.
 - **Do** buyurtma holatini `StatusBadge` / `StatusSteps` va `ORDER_TONE` bilan ko'rsating; yangi holat qo'shilsa, unga lug'atdan bitta ohang va bitta so'z bering.

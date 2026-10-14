@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
 import { NeedPhone } from '@/components/need-phone';
-import { Button, Chip, Field, T } from '@/components/ui';
+import { Banner, Button, Chip, Field, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { request } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 // Yangi do'kon agentsiz ro'yxatdan o'tadi; raqam SMS kod bilan tasdiqlangan (phoneToken)
 export default function RegisterShopScreen() {
@@ -43,10 +44,10 @@ export default function RegisterShopScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <T tone="hint">So'ng hududingizdagi distribyutorlarni topib, ulanish so'rovini yuborasiz.</T>
-        <Field label="Do'kon nomi" value={form.shopName} onChangeText={set('shopName')} placeholder="Masalan: Barakat market" />
-        <Field label="Manzil" value={form.address} onChangeText={set('address')} placeholder="Shahar, ko'cha, uy" />
-        <Field label="Tuman yoki shahar" value={form.district} onChangeText={set('district')} />
+        <T tone="hint">{t("So'ng hududingizdagi distribyutorlarni topib, ulanish so'rovini yuborasiz.")}</T>
+        <Field label={t("Do'kon nomi")} value={form.shopName} onChangeText={set('shopName')} placeholder={t('Masalan: Barakat market')} />
+        <Field label={t('Manzil')} value={form.address} onChangeText={set('address')} placeholder={t("Shahar, ko'cha, uy")} />
+        <Field label={t('Tuman yoki shahar')} value={form.district} onChangeText={set('district')} />
         {districts.length > 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {districts.map((d) => (
@@ -54,13 +55,9 @@ export default function RegisterShopScreen() {
             ))}
           </View>
         )}
-        <Field label="Ismingiz" value={form.ownerName} onChangeText={set('ownerName')} autoComplete="name" />
-        {err && (
-          <T size="small" tone="danger">
-            {err}
-          </T>
-        )}
-        <Button title="Ro'yxatdan o'tish" onPress={submit} loading={busy} disabled={!filled} />
+        <Field label={t('Ismingiz')} value={form.ownerName} onChangeText={set('ownerName')} autoComplete="name" />
+        {err && <Banner tone="danger">{err}</Banner>}
+        <Button title={t("Ro'yxatdan o'tish")} onPress={submit} loading={busy} disabled={!filled} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

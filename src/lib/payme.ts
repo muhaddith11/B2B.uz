@@ -1,11 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
-import type { OnlinePayment, PaymentMethod } from "@prisma/client";
+import type { OnlinePayment, Prisma } from "@prisma/client";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { db } from "./db";
 import { applyOnlinePayment, notifyOnlinePaid, reverseOnlinePayment } from "./payments";
+import { platformPayme } from "./subscription";
 
 // Payme Merchant API (JSON-RPC): https://developer.help.paycom.uz
-// Har bir distribyutorning Payme kassasi uchun alohida manzil: /api/payments/payme/<PaymentMethod.id>
+// Har bir distribyutorning Payme kassasi uchun alohida manzil: /api/payments/payme/<PaymentMethod.id> (qarz to'lovlari).
+// Platformaning o'z kassasi (obuna to'lovlari): /api/subscription/payme. Protokol bir xil, faqat kassa farq qiladi.
 // Hisob maydoni (account): order_id = OnlinePayment.id. Summalar tiyinda.
 
 export const PAYME_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -50,12 +52,19 @@ export function paymeTimedOut(createTime: bigint | number, now: number): boolean
 }
 
 type Params = Record<string, unknown>;
-type Method = PaymentMethod;
 
-async function findByAccount(method: Method, params: Params) {
+// Kassa: kaliti va qaysi to'lovlar unga tegishli. Bir kassa boshqa kassaning to'lovlarini ko'rmaydi
+type Cashbox = {
+  key: string;
+  scope: Prisma.OnlinePaymentWhereInput;
+  // Payme kabinetida kalit almashtirilganda (ChangePassword)
+  changeKey?: (key: string) => Promise<void>;
+};
+
+async function findByAccount(box: Cashbox, params: Params) {
   const account = (params.account ?? {}) as Record<string, unknown>;
   const orderId = typeof account.order_id === "string" ? account.order_id : "";
-  const payment = orderId ? await db.onlinePayment.findFirst({ where: { id: orderId, paymentMethodId: method.id } }) : null;
+  const payment = orderId ? await db.onlinePayment.findFirst({ where: { id: orderId, ...box.scope } }) : null;
   if (!payment) throw new PaymeError(-31050, "order_id");
   return payment;
 }
@@ -65,26 +74,27 @@ function checkPayable(payment: OnlinePayment, amount: unknown) {
   if (typeof amount !== "number" || amount !== payment.amount * 100) throw new PaymeError(-31001);
 }
 
-async function findByTxn(method: Method, params: Params) {
+async function findByTxn(box: Cashbox, params: Params) {
   const id = typeof params.id === "string" ? params.id : "";
-  const payment = id ? await db.onlinePayment.findFirst({ where: { provider: "PAYME", providerTxnId: id, paymentMethodId: method.id } }) : null;
+  const payment = id ? await db.onlinePayment.findFirst({ where: { provider: "PAYME", providerTxnId: id, ...box.scope } }) : null;
   if (!payment) throw new PaymeError(-31003);
   return payment;
 }
 
 const ms = (d: Date | null) => (d ? d.getTime() : 0);
 
+// Muddati o'tgan (12 soat) kutilayotgan tranzaksiyani bekor qilish: faqat hali kutilayotgan bo'lsa
 async function cancelPending(payment: OnlinePayment, reason: number) {
-  return db.onlinePayment.update({
-    where: { id: payment.id },
+  await db.onlinePayment.updateMany({
+    where: { id: payment.id, providerState: 1 },
     data: { providerState: -1, status: "CANCELLED", cancelledAt: new Date(), cancelReason: reason },
   });
 }
 
-async function dispatch(method: Method, name: string, params: Params) {
+async function dispatch(box: Cashbox, name: string, params: Params) {
   switch (name) {
     case "CheckPerformTransaction": {
-      checkPayable(await findByAccount(method, params), params.amount);
+      checkPayable(await findByAccount(box, params), params.amount);
       return { allow: true };
     }
 
@@ -92,7 +102,7 @@ async function dispatch(method: Method, name: string, params: Params) {
       const txnId = typeof params.id === "string" ? params.id : "";
       const time = typeof params.time === "number" ? params.time : Date.now();
       if (!txnId) throw new PaymeError(-32600);
-      const existing = await db.onlinePayment.findFirst({ where: { provider: "PAYME", providerTxnId: txnId, paymentMethodId: method.id } });
+      const existing = await db.onlinePayment.findFirst({ where: { provider: "PAYME", providerTxnId: txnId, ...box.scope } });
       if (existing) {
         if (existing.providerState !== 1) throw new PaymeError(-31008);
         if (paymeTimedOut(existing.providerCreateTime ?? 0, Date.now())) {
@@ -101,7 +111,7 @@ async function dispatch(method: Method, name: string, params: Params) {
         }
         return { create_time: Number(existing.providerCreateTime), transaction: existing.id, state: 1 };
       }
-      const payment = await findByAccount(method, params);
+      const payment = await findByAccount(box, params);
       checkPayable(payment, params.amount);
       if (payment.providerTxnId && payment.providerState === 1) throw new PaymeError(-31052, "order_id");
       // Shart bilan: bir vaqtda kelgan ikki tranzaksiyadan faqat bittasi to'lovga bog'lanadi
@@ -121,7 +131,7 @@ async function dispatch(method: Method, name: string, params: Params) {
     }
 
     case "PerformTransaction": {
-      const payment = await findByTxn(method, params);
+      const payment = await findByTxn(box, params);
       if (payment.providerState === 2) return { transaction: payment.id, perform_time: ms(payment.performedAt), state: 2 };
       if (payment.providerState !== 1) throw new PaymeError(-31008);
       if (paymeTimedOut(payment.providerCreateTime ?? 0, Date.now())) {
@@ -131,15 +141,14 @@ async function dispatch(method: Method, name: string, params: Params) {
       const now = new Date();
       const performed = await db.$transaction(async (tx) => {
         // Holat shart bilan o'zgaradi: Payme takroriy so'rovi yoki bir vaqtdagi bekor qilish bilan to'qnashsa,
-        // to'lov qarz daftariga bir marta yoziladi
+        // to'lov bir marta qo'llanadi (qarz daftariga yoziladi yoki obuna uzayadi)
         const claimed = await tx.onlinePayment.updateMany({
           where: { id: payment.id, providerState: 1 },
           data: { providerState: 2, status: "PAID", performedAt: now },
         });
         if (claimed.count === 0) return false;
-        const full = await tx.onlinePayment.findUniqueOrThrow({ where: { id: payment.id }, include: { paymentMethod: true } });
-        const entry = await applyOnlinePayment(tx, full, payment.providerTxnId!, now);
-        await tx.onlinePayment.update({ where: { id: payment.id }, data: { ledgerEntryId: entry.id } });
+        const full = await tx.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } });
+        await applyOnlinePayment(tx, full, payment.providerTxnId!, now);
         return true;
       });
       if (!performed) {
@@ -147,12 +156,12 @@ async function dispatch(method: Method, name: string, params: Params) {
         if (fresh.providerState === 2) return { transaction: fresh.id, perform_time: ms(fresh.performedAt), state: 2 };
         throw new PaymeError(-31008);
       }
-      await notifyOnlinePaid(payment.shopLinkId, payment.amount);
+      await notifyOnlinePaid(payment);
       return { transaction: payment.id, perform_time: now.getTime(), state: 2 };
     }
 
     case "CancelTransaction": {
-      const payment = await findByTxn(method, params);
+      const payment = await findByTxn(box, params);
       const reason = typeof params.reason === "number" ? params.reason : null;
       const cancelled = (p: OnlinePayment) => ({ transaction: p.id, cancel_time: ms(p.cancelledAt), state: p.providerState });
       if (payment.providerState === -1 || payment.providerState === -2) return cancelled(payment);
@@ -169,7 +178,7 @@ async function dispatch(method: Method, name: string, params: Params) {
           data: { providerState: -2, status: "CANCELLED", cancelledAt: now, cancelReason: reason },
         });
         if (paid.count === 0) return false;
-        // Bajarilgan to'lov bekor qilinsa, qarz daftariga teskari yozuv tushadi
+        // Bajarilgan to'lov bekor qilinsa: qarz daftariga teskari yozuv yoki obuna oylari qaytariladi
         await reverseOnlinePayment(tx, await tx.onlinePayment.findUniqueOrThrow({ where: { id: payment.id } }), now);
         return true;
       });
@@ -179,7 +188,7 @@ async function dispatch(method: Method, name: string, params: Params) {
     }
 
     case "CheckTransaction": {
-      const p = await findByTxn(method, params);
+      const p = await findByTxn(box, params);
       return {
         create_time: Number(p.providerCreateTime ?? 0),
         perform_time: ms(p.performedAt),
@@ -194,7 +203,7 @@ async function dispatch(method: Method, name: string, params: Params) {
       const from = typeof params.from === "number" ? params.from : 0;
       const to = typeof params.to === "number" ? params.to : Date.now();
       const rows = await db.onlinePayment.findMany({
-        where: { paymentMethodId: method.id, provider: "PAYME", providerCreateTime: { gte: BigInt(from), lte: BigInt(to) } },
+        where: { ...box.scope, provider: "PAYME", providerCreateTime: { gte: BigInt(from), lte: BigInt(to) } },
         orderBy: { providerCreateTime: "asc" },
       });
       return {
@@ -216,7 +225,8 @@ async function dispatch(method: Method, name: string, params: Params) {
     case "ChangePassword": {
       const password = typeof params.password === "string" ? params.password : "";
       if (!password) throw new PaymeError(-32600);
-      await db.paymentMethod.update({ where: { id: method.id }, data: { secretKeyEnc: encryptSecret(password) } });
+      if (!box.changeKey) throw new PaymeError(-32504);
+      await box.changeKey(password);
       return { success: true };
     }
 
@@ -225,17 +235,48 @@ async function dispatch(method: Method, name: string, params: Params) {
   }
 }
 
-export async function handlePayme(methodId: string, auth: string | null, body: unknown) {
+async function respond(load: () => Promise<Cashbox | null>, auth: string | null, body: unknown) {
   const req = (body && typeof body === "object" ? body : {}) as { id?: unknown; method?: unknown; params?: unknown };
   const id = req.id ?? null;
   try {
-    const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "PAYME", active: true } });
-    if (!method?.secretKeyEnc || !checkPaymeAuth(auth, decryptSecret(method.secretKeyEnc))) throw new PaymeError(-32504);
+    const box = await load();
+    if (!box || !checkPaymeAuth(auth, box.key)) throw new PaymeError(-32504);
     if (typeof req.method !== "string" || !req.params || typeof req.params !== "object") throw new PaymeError(-32600);
-    return { id, result: await dispatch(method, req.method, req.params as Params) };
+    return { id, result: await dispatch(box, req.method, req.params as Params) };
   } catch (e) {
     if (e instanceof PaymeError) return { id, error: { code: e.code, message: MESSAGES[e.code] ?? MESSAGES[-32400], data: e.data } };
     console.error("payme:", e);
     return { id, error: { code: -32400, message: MESSAGES[-32400] } };
   }
+}
+
+// Distribyutor kassasi: do'konlarning qarz to'lovlari
+export function handlePayme(methodId: string, auth: string | null, body: unknown) {
+  return respond(
+    async () => {
+      const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "PAYME", active: true } });
+      if (!method?.secretKeyEnc) return null;
+      return {
+        key: decryptSecret(method.secretKeyEnc),
+        scope: { purpose: "DEBT", paymentMethodId: method.id },
+        changeKey: async (key) => {
+          await db.paymentMethod.update({ where: { id: method.id }, data: { secretKeyEnc: encryptSecret(key) } });
+        },
+      };
+    },
+    auth,
+    body,
+  );
+}
+
+// Platforma kassasi: tashkilotlarning obuna to'lovlari. Kalit muhit o'zgaruvchisida (Vercel'da almashtiriladi)
+export function handlePlatformPayme(auth: string | null, body: unknown) {
+  return respond(
+    async () => {
+      const cfg = platformPayme();
+      return cfg ? { key: cfg.key, scope: { purpose: "SUBSCRIPTION", provider: "PAYME" } } : null;
+    },
+    auth,
+    body,
+  );
 }

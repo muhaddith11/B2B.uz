@@ -74,3 +74,6 @@ Ilova identifikatori: `uz.captar.app` (`app.json`). Ilova nomi, ikonka va splash
 | `src/context/session.tsx` | Kirish (token, hisob turi, rol) va savat |
 | `src/context/staff.tsx` | Xodim va uning roli |
 | `src/lib/api.ts`, `storage.ts`, `push.ts` | Server bilan aloqa, shifrlangan xotira, push bildirishnomalar |
+| `src/lib/i18n.ts`, `i18n-ru.ts`, `src/context/language.tsx` | Ikki til: `t("o'zbekcha matn")`, ruschasi lug'atda (yo'q bo'lsa TypeScript xatosi), til tanlash |
+| `src/lib/confirm.ts`, `haptics.ts` | Qaytarib bo'lmaydigan amaldan oldin so'rash, teginish javobi |
+| `locales/*.json` | Ilova nomi va iOS ruxsat matnlari (kamera, galereya) ikki tilda |

@@ -2,6 +2,7 @@
 // testlar bir-biriga xalaqit bermaydi va bazani tozalash shart emas.
 import type { PaymentType, Prisma, StaffRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { trialPeriod } from "@/lib/subscription";
 import { signToken } from "@/lib/token";
 
 let seq = 0;
@@ -20,7 +21,7 @@ export const tokens = {
 
 export async function makeDistributor(data: Partial<Prisma.DistributorCreateInput> = {}) {
   const dist = await db.distributor.create({
-    data: { name: `Distribyutor ${uid()}`, districts: ["Chilonzor"], categories: ["Ichimlik"], status: "ACTIVE", ...data },
+    data: { name: `Distribyutor ${uid()}`, districts: ["Chilonzor"], categories: ["Ichimlik"], status: "ACTIVE", ...trialPeriod(), ...data },
   });
   const group = await db.priceGroup.create({ data: { distributorId: dist.id, name: "Oddiy", isDefault: true } });
   return { ...dist, defaultGroupId: group.id };
@@ -38,9 +39,9 @@ export async function makeStaff(distributorId: string, role: StaffRole) {
   return { ...staff, token: tokens.staff(staff.id) };
 }
 
-export async function makeShop() {
+export async function makeShop(data: Partial<Prisma.ShopCreateInput> = {}) {
   const shop = await db.shop.create({
-    data: { name: `Do'kon ${uid()}`, address: "Bunyodkor ko'chasi 1", district: "Chilonzor", users: { create: { name: "Ega", phone: phone(), role: "OWNER" } } },
+    data: { name: `Do'kon ${uid()}`, address: "Bunyodkor ko'chasi 1", district: "Chilonzor", ...trialPeriod(), ...data, users: { create: { name: "Ega", phone: phone(), role: "OWNER" } } },
     include: { users: true },
   });
   const owner = shop.users[0];

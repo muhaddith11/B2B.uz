@@ -1,11 +1,13 @@
-import { Prisma, type OnlinePayment, type PaymentMethod, type PaymentMethodType, type StaffRole } from "@prisma/client";
+import { Prisma, type OnlinePayment, type StaffRole } from "@prisma/client";
 import { z } from "zod";
+import { clickCheckoutUrl, paymeCheckoutUrl, paymeTestMode, publicUrl } from "./checkout";
 import { db } from "./db";
-import { formatSom } from "./money";
+import { L, som } from "./i18n";
 import { activeLink } from "./orders";
 import { notifyShop, notifyStaff } from "./push";
 import { HttpError } from "./session";
 import { linkScope } from "./staff-data";
+import { extendSubscription, notifySubscriptionPaid, shortenSubscription, subscriberOf } from "./subscription";
 import { prepareUpload, storeUpload } from "./uploads";
 
 // To'lovlar: qarz daftariga faqat yangi yozuv qo'shiladi.
@@ -14,10 +16,6 @@ import { prepareUpload, storeUpload } from "./uploads";
 
 export const MAX_PAYMENT = 1_000_000_000;
 const amountSchema = z.coerce.number().int().positive().max(MAX_PAYMENT);
-
-export function publicUrl(): string {
-  return (process.env.PUBLIC_URL || "http://localhost:3000").replace(/\/$/, "");
-}
 
 // Do'konga ko'rsatiladigan to'lov usullari: kalitlarsiz
 export async function paymentOptions(distributorId: string) {
@@ -79,7 +77,7 @@ export async function recordPayment(staff: { id: string; distributorId: string; 
     }
     throw e;
   }
-  notifyShop(link.shopId, { title: "To'lov qabul qilindi", body: formatSom(input.amount), data: { url: "/debts" } });
+  notifyShop(link.shopId, { title: "To'lov qabul qilindi", body: som(input.amount), data: { url: "/debts" } });
   return entry;
 }
 
@@ -123,7 +121,7 @@ export async function submitReceipt(shopUser: { id: string; shopId: string }, fo
   });
   notifyStaff(link.distributorId, ["ADMIN", "ACCOUNTANT"], {
     title: "Chek bilan to'lov",
-    body: `${formatSom(amount.data)}, tasdiqlash kerak`,
+    body: L("{sum}, tasdiqlash kerak", { sum: som(amount.data) }),
     data: { url: "/staff/payments" },
   });
   return entry;
@@ -145,23 +143,13 @@ export async function reviewPayment(staff: { id: string; distributorId: string }
   });
   notifyShop(entry.shopLink.shopId, {
     title: action === "confirm" ? "To'lov tasdiqlandi" : "To'lov rad etildi",
-    body: `${formatSom(-entry.amount)}${action === "reject" && reason ? `: ${reason}` : ""}`,
+    body: action === "reject" && reason ? L("{sum}: {reason}", { sum: som(-entry.amount), reason }) : som(-entry.amount),
     data: { url: "/debts" },
   });
   return updated;
 }
 
 // ---- Payme va Click ----
-
-export function paymeCheckoutUrl(merchantId: string, paymentId: string, amount: number, returnUrl: string, test = false): string {
-  const params = `m=${merchantId};ac.order_id=${paymentId};a=${amount * 100};c=${returnUrl}`;
-  return `https://checkout.${test ? "test." : ""}paycom.uz/${Buffer.from(params).toString("base64")}`;
-}
-
-export function clickCheckoutUrl(serviceId: string, merchantId: string, paymentId: string, amount: number, returnUrl: string): string {
-  const q = new URLSearchParams({ service_id: serviceId, merchant_id: merchantId, amount: String(amount), transaction_param: paymentId, return_url: returnUrl });
-  return `https://my.click.uz/services/pay?${q}`;
-}
 
 export const onlinePaymentInput = z.object({
   distributorId: z.string().min(1),
@@ -176,7 +164,7 @@ export async function createOnlinePayment(shopUser: { shopId: string }, input: z
     orderBy: { isPrimary: "desc" },
   });
   if (!method?.merchantId || (input.provider === "CLICK" && !method.serviceId)) {
-    throw new HttpError(400, `Bu distribyutor ${input.provider === "PAYME" ? "Payme" : "Click"} orqali to'lov qabul qilmaydi`);
+    throw new HttpError(400, L("Bu distribyutor {provider} orqali to'lov qabul qilmaydi", { provider: input.provider === "PAYME" ? "Payme" : "Click" }));
   }
   const payment = await db.onlinePayment.create({
     data: { shopLinkId: link.id, paymentMethodId: method.id, provider: input.provider, amount: input.amount },
@@ -184,42 +172,46 @@ export async function createOnlinePayment(shopUser: { shopId: string }, input: z
   const returnUrl = `${publicUrl()}/pay/done`;
   const url =
     input.provider === "PAYME"
-      ? paymeCheckoutUrl(method.merchantId, payment.id, input.amount, returnUrl, process.env.PAYME_TEST === "1")
+      ? paymeCheckoutUrl(method.merchantId, payment.id, input.amount, returnUrl, paymeTestMode())
       : clickCheckoutUrl(method.serviceId!, method.merchantId, payment.id, input.amount, returnUrl);
   return { id: payment.id, url };
 }
 
-// To'lov tizimi tasdiqlagan to'lovni qarz daftariga yozish (tranzaksiya ichida chaqiriladi)
-export async function applyOnlinePayment(
-  tx: Prisma.TransactionClient,
-  payment: OnlinePayment & { paymentMethod: PaymentMethod },
-  providerTxnId: string,
-  now: Date,
-) {
-  const channel: PaymentMethodType = payment.provider;
+// To'lov tizimi tasdiqlagan to'lovni qo'llash (tranzaksiya ichida chaqiriladi):
+// qarz to'lovi qarz daftariga yoziladi, obuna to'lovi tashkilot obunasini uzaytiradi
+export async function applyOnlinePayment(tx: Prisma.TransactionClient, payment: OnlinePayment, providerTxnId: string, now: Date) {
+  if (payment.purpose === "SUBSCRIPTION") {
+    await extendSubscription(tx, subscriberOf(payment), payment.months!, now);
+    return;
+  }
+  const channel = payment.provider === "PAYME" ? "PAYME" : "CLICK";
   const entry = await tx.ledgerEntry.create({
     data: {
-      shopLinkId: payment.shopLinkId,
+      shopLinkId: payment.shopLinkId!,
       type: "PAYMENT",
       amount: -payment.amount,
       date: now,
       status: "CONFIRMED",
-      channel: channel === "PAYME" ? "PAYME" : "CLICK",
+      channel,
       paymentMethodId: payment.paymentMethodId,
       providerTxnId: `${channel.toLowerCase()}:${providerTxnId}`,
       createdBy: "system",
       note: channel === "PAYME" ? "Payme orqali" : "Click orqali",
     },
   });
-  return entry;
+  await tx.onlinePayment.update({ where: { id: payment.id }, data: { ledgerEntryId: entry.id } });
 }
 
-// To'lov tizimi bajarilgan to'lovni bekor qilsa: teskari yozuv
+// To'lov tizimi bajarilgan to'lovni bekor qilsa: qarz daftariga teskari yozuv yoki obuna oylari qaytariladi
 export async function reverseOnlinePayment(tx: Prisma.TransactionClient, payment: OnlinePayment, now: Date) {
+  if (payment.purpose === "SUBSCRIPTION") {
+    await shortenSubscription(tx, subscriberOf(payment), payment.months!);
+    return;
+  }
   if (!payment.ledgerEntryId) return;
   await tx.ledgerEntry.create({
     data: {
-      shopLinkId: payment.shopLinkId,
+      shopLinkId: payment.shopLinkId!,
       type: "ADJUSTMENT",
       amount: payment.amount,
       date: now,
@@ -230,9 +222,10 @@ export async function reverseOnlinePayment(tx: Prisma.TransactionClient, payment
   });
 }
 
-export async function notifyOnlinePaid(shopLinkId: string, amount: number) {
-  const link = await db.shopLink.findUnique({ where: { id: shopLinkId }, include: { shop: true } });
+export async function notifyOnlinePaid(payment: OnlinePayment) {
+  if (payment.purpose === "SUBSCRIPTION") return notifySubscriptionPaid(subscriberOf(payment));
+  const link = await db.shopLink.findUnique({ where: { id: payment.shopLinkId! }, include: { shop: true } });
   if (!link) return;
-  notifyShop(link.shopId, { title: "To'lov qabul qilindi", body: formatSom(amount), data: { url: "/debts" } });
-  notifyStaff(link.distributorId, ["ADMIN", "ACCOUNTANT"], { title: "Onlayn to'lov", body: `${link.shop.name}: ${formatSom(amount)}`, data: { url: "/staff" } });
+  notifyShop(link.shopId, { title: "To'lov qabul qilindi", body: som(payment.amount), data: { url: "/debts" } });
+  notifyStaff(link.distributorId, ["ADMIN", "ACCOUNTANT"], { title: "Onlayn to'lov", body: L("{name}: {sum}", { name: link.shop.name, sum: som(payment.amount) }), data: { url: "/staff" } });
 }

@@ -1,5 +1,7 @@
 import { randomInt, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
+import { L } from "./i18n";
+import { normalizePhone } from "./phone";
 import { HttpError } from "./session";
 import { sendSms } from "./sms";
 import { keyedHash } from "./token";
@@ -35,9 +37,9 @@ const hashOf = (phone: string, code: string) => keyedHash(`otp:${phone}:${code}`
 
 // Cheklovlar: raqam bo'yicha (sendAllowed), IP bo'yicha va butun platforma bo'yicha.
 // Tekshiruv va yozuv bitta qulf ostida: parallel so'rovlar bir-birini ko'rmay o'tib ketmaydi.
-export async function issueOtp(phone: string, ip: string | null, now = new Date()): Promise<string> {
+export async function issueOtp(phone: string, ip: string | null, now = new Date(), fixedCode?: string): Promise<string> {
   const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const code = fixedCode ?? String(randomInt(0, 1_000_000)).padStart(6, "0");
   await db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${OTP_LOCK_KEY})`;
     const recent = await tx.otpCode.findMany({ where: { phone, createdAt: { gt: hourAgo } }, select: { createdAt: true } });
@@ -45,7 +47,7 @@ export async function issueOtp(phone: string, ip: string | null, now = new Date(
       recent.map((r) => r.createdAt),
       now,
     );
-    if (!allowed.ok) throw new HttpError(429, `Yangi kodni ${allowed.retryInSec} soniyadan keyin so'rang`);
+    if (!allowed.ok) throw new HttpError(429, L("Yangi kodni {sec} soniyadan keyin so'rang", { sec: allowed.retryInSec }));
 
     const fromIp = ip ? await tx.otpCode.count({ where: { ip, createdAt: { gt: hourAgo } } }) : 0;
     const total = await tx.otpCode.count({ where: { createdAt: { gt: hourAgo } } });
@@ -73,9 +75,19 @@ export function otpSmsText(code: string): string {
   return (process.env.OTP_SMS_TEXT || DEFAULT_OTP_TEXT).replace("{code}", code);
 }
 
+// App Store va Google Play tekshiruvchilari uchun: REVIEW_PHONE raqamiga SMS yuborilmaydi, kod har doim REVIEW_CODE.
+// Ikkalasi ham to'g'ri yozilgandagina ishlaydi; raqamga faqat demo hisoblar bog'lanadi (npm run db:review)
+export function reviewCodeFor(phone: string): string | null {
+  const reviewPhone = normalizePhone(process.env.REVIEW_PHONE ?? "");
+  const code = process.env.REVIEW_CODE ?? "";
+  return reviewPhone && reviewPhone === phone && /^\d{6}$/.test(code) ? code : null;
+}
+
 // Kod yaratib, SMS bilan yuboradi. SMS ketmasa kod o'chiriladi: foydalanuvchi bir daqiqa kutmasdan qayta urina oladi.
 export async function deliverOtp(phone: string, ip: string | null): Promise<string> {
-  const code = await issueOtp(phone, ip);
+  const review = reviewCodeFor(phone);
+  const code = await issueOtp(phone, ip, new Date(), review ?? undefined);
+  if (review) return code;
   try {
     await sendSms(phone, otpSmsText(code));
   } catch (e) {

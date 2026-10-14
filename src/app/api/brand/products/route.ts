@@ -20,6 +20,7 @@ export const GET = handle(async (req: Request) => {
       description: p.description,
       price: p.price,
       retailPrice: p.retailPrice,
+      imageUrl: p.imageUrl,
       active: p.active,
       distributors: p._count.products, // nechta distribyutor katalogida
     })),

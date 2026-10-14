@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { devAuthEnabled, PANEL_COOKIE } from "@/lib/session";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
-// Sinov rejimida xodim tanlab kirish. Haqiqiy kirish (Telegram orqali kod) keyingi bosqichda.
+// Paneldan chiqish va sinov rejimida xodim tanlab kirish (haqiqiy kirish SMS kod bilan: login-actions.ts)
 export async function POST(req: Request) {
   const form = await req.formData();
   const store = await cookies();

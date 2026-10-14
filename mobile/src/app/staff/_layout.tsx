@@ -1,26 +1,27 @@
 import { Stack } from 'expo-router';
 
 import { StaffProvider } from '@/context/staff';
+import { t } from '@/lib/i18n';
 
 // Distribyutor xodimi ekranlari: tablar va ichki sahifalar
 export default function StaffLayout() {
   return (
     <StaffProvider>
-      <Stack screenOptions={{ headerBackTitle: 'Orqaga', headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
+      <Stack screenOptions={{ headerBackTitle: t('Orqaga'), headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="order/[id]" options={{ title: 'Buyurtma' }} />
-        <Stack.Screen name="shop/[linkId]" options={{ title: "Do'kon" }} />
-        <Stack.Screen name="shop-new" options={{ title: "Yangi do'kon qo'shish" }} />
-        <Stack.Screen name="new-order/[linkId]" options={{ title: 'Buyurtma olish' }} />
-        <Stack.Screen name="requests" options={{ title: "Ulanish so'rovlari" }} />
-        <Stack.Screen name="payments" options={{ title: "To'lovlar" }} />
-        <Stack.Screen name="products" options={{ title: 'Tovarlar' }} />
-        <Stack.Screen name="product-new" options={{ title: 'Yangi tovar' }} />
-        <Stack.Screen name="brands" options={{ title: 'Tovar egalari' }} />
-        <Stack.Screen name="brand/[id]" options={{ title: 'Tovar egasi' }} />
-        <Stack.Screen name="team" options={{ title: 'Xodimlar' }} />
-        <Stack.Screen name="settings" options={{ title: 'Sozlamalar' }} />
-        <Stack.Screen name="payment-methods" options={{ title: "To'lov usullari" }} />
+        <Stack.Screen name="order/[id]" options={{ title: t('Buyurtma') }} />
+        <Stack.Screen name="shop/[linkId]" options={{ title: t("Do'kon") }} />
+        <Stack.Screen name="shop-new" options={{ title: t("Yangi do'kon qo'shish") }} />
+        <Stack.Screen name="new-order/[linkId]" options={{ title: t('Buyurtma olish') }} />
+        <Stack.Screen name="requests" options={{ title: t("Ulanish so'rovlari") }} />
+        <Stack.Screen name="payments" options={{ title: t("To'lovlar") }} />
+        <Stack.Screen name="products" options={{ title: t('Tovarlar') }} />
+        <Stack.Screen name="product-new" options={{ title: t('Yangi tovar') }} />
+        <Stack.Screen name="brands" options={{ title: t('Tovar egalari') }} />
+        <Stack.Screen name="brand/[id]" options={{ title: t('Tovar egasi') }} />
+        <Stack.Screen name="team" options={{ title: t('Xodimlar') }} />
+        <Stack.Screen name="settings" options={{ title: t('Sozlamalar') }} />
+        <Stack.Screen name="payment-methods" options={{ title: t("To'lov usullari") }} />
       </Stack>
     </StaffProvider>
   );

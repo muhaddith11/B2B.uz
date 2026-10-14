@@ -22,6 +22,9 @@ export const GET = handle(async (req: Request) => {
         total: o.total,
         deliveredTotal: o.deliveredTotal,
         createdAt: o.createdAt,
+        acceptedAt: o.acceptedAt,
+        dispatchedAt: o.dispatchedAt,
+        deliveredAt: o.deliveredAt,
         rejectReason: o.rejectReason,
         distributor: { id: o.shopLink.distributorId, name: o.shopLink.distributor.name },
         items: o.items.map((i) => ({

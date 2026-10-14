@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Badge, Chip, Empty, Loading, PressCard, Screen, SearchInput, SectionTitle, T } from '@/components/ui';
+import { Badge, Chip, Empty, Loading, PressCard, Screen, SearchInput, SectionTitle, StickyBar, T } from '@/components/ui';
 import { useSession } from '@/context/session';
-import { AGREEMENT_LABEL, type BrandCard } from '@/lib/staff-types';
+import { t } from '@/lib/i18n';
+import { agreementLabel, type BrandCard } from '@/lib/staff-types';
 
 // Tovar egalari: kelishuvlarim va barcha tasdiqlangan brendlar
 export default function StaffBrands() {
@@ -18,7 +19,7 @@ export default function StaffBrands() {
     const params = new URLSearchParams();
     if (q.trim()) params.set('q', q.trim());
     if (category) params.set('category', category);
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<{ categories: string[]; brands: BrandCard[] }>(`/api/staff/brands?${params}`)
         .then((d) => {
           setData(d);
@@ -26,35 +27,37 @@ export default function StaffBrands() {
         })
         .catch((e) => setErr(e.message));
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [api, q, category]);
 
   const mine = data?.brands.filter((b) => b.agreement && (b.agreement.status === 'ACTIVE' || b.agreement.status === 'PROPOSED')) ?? [];
   const others = data?.brands.filter((b) => !mine.includes(b)) ?? [];
 
   return (
-    <Screen gap={8}>
-      <SearchInput value={q} onChangeText={setQ} placeholder="Brend yoki tovar nomi" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {[null, ...(data?.categories ?? [])].map((c) => (
-          <Chip key={c ?? 'all'} label={c ?? 'Hammasi'} active={category === c} onPress={() => setCategory(c)} />
-        ))}
-      </ScrollView>
+    <Screen gap={8} sticky>
+      <StickyBar>
+        <SearchInput value={q} onChangeText={setQ} placeholder={t('Brend yoki tovar nomi')} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {[null, ...(data?.categories ?? [])].map((c) => (
+            <Chip key={c ?? 'all'} label={c ?? t('Hammasi')} active={category === c} onPress={() => setCategory(c)} />
+          ))}
+        </ScrollView>
+      </StickyBar>
       {err && (
         <T size="small" tone="danger">
           {err}
         </T>
       )}
-      {!data && !err && <Loading />}
-      {mine.length > 0 && <SectionTitle>Kelishuvlarim</SectionTitle>}
+      {!data && !err && <Loading inline />}
+      {mine.length > 0 && <SectionTitle>{t('Kelishuvlarim')}</SectionTitle>}
       {mine.map((b) => (
         <BrandRow key={b.id} b={b} />
       ))}
-      {others.length > 0 && <SectionTitle>Tovar egalari</SectionTitle>}
+      {others.length > 0 && <SectionTitle>{t('Tovar egalari')}</SectionTitle>}
       {others.map((b) => (
         <BrandRow key={b.id} b={b} />
       ))}
-      {data && data.brands.length === 0 && <Empty>Hech narsa topilmadi</Empty>}
+      {data && data.brands.length === 0 && <Empty icon="ribbon-outline">{t('Hech narsa topilmadi')}</Empty>}
     </Screen>
   );
 }
@@ -69,13 +72,13 @@ function BrandRow({ b }: { b: BrandCard }) {
         </T>
         {b.agreement && (
           <Badge
-            label={incoming ? 'Sizga taklif' : AGREEMENT_LABEL[b.agreement.status]}
+            label={incoming ? t('Sizga taklif') : agreementLabel(b.agreement.status)}
             tone={incoming ? 'warn' : b.agreement.status === 'ACTIVE' ? 'ok' : b.agreement.status === 'PROPOSED' ? 'accent' : 'hint'}
           />
         )}
       </View>
       <T size="small" tone="hint">
-        {b.categories.join(', ')} · {b.productCount} ta tovar
+        {b.categories.join(', ')} · {t('{n} ta tovar', { n: b.productCount })}
       </T>
       {b.description && (
         <T size="small" numberOfLines={2}>

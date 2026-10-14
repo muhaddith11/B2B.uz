@@ -1,19 +1,26 @@
 import type { PushOwner, StaffRole } from "@prisma/client";
 import { after } from "next/server";
 import { db } from "./db";
+import { isLang, render, type Text } from "./i18n";
 
 // Mobil ilovaga push bildirishnoma: Expo push xizmati orqali. Token bo'lmasa, hech narsa yuborilmaydi.
 // Xabar yuborish asosiy amalni to'xtatmasligi kerak: xato logga yoziladi, xolos.
+// Matn har qurilmaga o'sha qurilmada tanlangan tilda boradi (o'zbek yoki rus).
 
-type Message = { title: string; body: string; data?: Record<string, string> };
+type Message = { title: Text; body: Text; data?: Record<string, string> };
+type Device = { token: string; lang: string };
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
-async function send(tokens: string[], msg: Message) {
-  if (tokens.length === 0) return;
+async function send(devices: Device[], msg: Message) {
+  if (devices.length === 0) return;
+  const all = devices.map((d) => {
+    const lang = isLang(d.lang) ? d.lang : "uz";
+    return { to: d.token, sound: "default", title: render(msg.title, lang), body: render(msg.body, lang), data: msg.data ?? {} };
+  });
   // Expo bir so'rovda 100 tagacha xabar qabul qiladi
-  for (let i = 0; i < tokens.length; i += 100) {
-    const batch = tokens.slice(i, i + 100).map((to) => ({ to, sound: "default", title: msg.title, body: msg.body, data: msg.data ?? {} }));
+  for (let i = 0; i < all.length; i += 100) {
+    const batch = all.slice(i, i + 100);
     const res = await fetch(EXPO_PUSH_URL, {
       method: "POST",
       headers: {
@@ -33,10 +40,9 @@ async function send(tokens: string[], msg: Message) {
   }
 }
 
-async function tokensFor(ownerKind: PushOwner, ownerIds: string[]) {
+async function tokensFor(ownerKind: PushOwner, ownerIds: string[]): Promise<Device[]> {
   if (ownerIds.length === 0) return [];
-  const rows = await db.pushToken.findMany({ where: { ownerKind, ownerId: { in: ownerIds } }, select: { token: true } });
-  return rows.map((r) => r.token);
+  return db.pushToken.findMany({ where: { ownerKind, ownerId: { in: ownerIds } }, select: { token: true, lang: true } });
 }
 
 // Javob qaytgandan keyin yuboriladi. Vercel'da funksiya javobdan keyin to'xtatilishi mumkin, shuning uchun after()
@@ -74,7 +80,7 @@ export function notifyBrand(brandId: string, msg: Message) {
   });
 }
 
-export async function registerPushToken(token: string, ownerKind: PushOwner, ownerId: string) {
-  // Bitta qurilmada boshqa hisob bilan kirilsa, token yangi egaga o'tadi
-  await db.pushToken.upsert({ where: { token }, create: { token, ownerKind, ownerId }, update: { ownerKind, ownerId } });
+export async function registerPushToken(token: string, ownerKind: PushOwner, ownerId: string, lang: string = "uz") {
+  // Bitta qurilmada boshqa hisob bilan kirilsa, token yangi egaga o'tadi; til o'zgarsa yangilanadi
+  await db.pushToken.upsert({ where: { token }, create: { token, ownerKind, ownerId, lang }, update: { ownerKind, ownerId, lang } });
 }

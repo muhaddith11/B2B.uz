@@ -12,7 +12,8 @@
       "bundleIdentifier": "uz.captar.app",
       "supportsTablet": false,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
@@ -43,13 +44,26 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "To'lov chekini yuklash uchun galereyaga ruxsat bering",
-          "cameraPermission": "To'lov chekini rasmga olish uchun kameraga ruxsat bering",
+          "photosPermission": "To'lov cheki va tovar rasmini yuklash uchun galereyaga ruxsat bering",
+          "cameraPermission": "To'lov cheki va tovar rasmini olish uchun kameraga ruxsat bering",
           "microphonePermission": false
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "uz",
+            "ru"
+          ]
+        }
+      ]
     ],
+    "locales": {
+      "uz": "./locales/uz.json",
+      "ru": "./locales/ru.json"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

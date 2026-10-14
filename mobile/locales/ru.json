@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Captar",
+    "NSCameraUsageDescription": "Разрешите доступ к камере, чтобы сфотографировать чек об оплате или товар",
+    "NSPhotoLibraryUsageDescription": "Разрешите доступ к галерее, чтобы загрузить чек об оплате или фото товара"
+  },
+  "android": {
+    "app_name": "Captar"
+  }
+}

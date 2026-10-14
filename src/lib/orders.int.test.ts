@@ -26,6 +26,7 @@ describe("buyurtma yaratish", () => {
     expect(order.status).toBe("ACCEPTED");
     expect(order.source).toBe("AGENT");
     expect(order.createdByStaffId).toBe(w.agent.id);
+    expect(order.acceptedAt).toBeInstanceOf(Date);
   });
 
   it("noto'g'ri buyurtmalarni rad etadi", async () => {
@@ -110,6 +111,10 @@ describe("buyurtma holati va qarz daftari", () => {
     expect(done.status).toBe("DELIVERED");
     expect(done.deliveredTotal).toBe(10_000);
     expect(done.courierId).toBe(w.courier.id);
+    // Har bosqich vaqti yoziladi (ilovadagi buyurtma yo'lida ko'rinadi)
+    expect(done.acceptedAt).toBeInstanceOf(Date);
+    expect(done.dispatchedAt!.getTime()).toBeGreaterThanOrEqual(done.acceptedAt!.getTime());
+    expect(done.deliveredAt!.getTime()).toBeGreaterThanOrEqual(done.dispatchedAt!.getTime());
     const entries = await db.ledgerEntry.findMany({ where: { orderId: o.id }, orderBy: { amount: "desc" } });
     expect(entries.map((e) => [e.type, e.amount, e.channel])).toEqual([
       ["DEBT", 10_000, null],

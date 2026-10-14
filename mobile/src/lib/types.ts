@@ -1,4 +1,5 @@
 // Server API javoblari (src/app/api/shop/* va src/app/api/auth/*)
+import { t } from './i18n';
 
 export type LinkSummary = {
   linkId: string;
@@ -12,9 +13,13 @@ export type LinkSummary = {
   activeOrders: number;
 };
 
+// Tashkilot (do'kon yoki distribyutor) obunasi: server src/lib/subscription.ts subscriptionInfo
+export type Subscription = { state: 'ACTIVE' | 'GRACE' | 'EXPIRED'; paidUntil: string; trial: boolean; daysLeft: number; blocksAt: string };
+
 export type HomeData = {
   user: { name: string; role: string };
   shop: { name: string; address: string };
+  subscription: Subscription;
   links: LinkSummary[];
   requests: { distributorId: string; name: string; createdAt: string }[];
 };
@@ -64,6 +69,9 @@ export type ShopOrder = {
   total: number;
   deliveredTotal: number | null;
   createdAt: string;
+  acceptedAt: string | null;
+  dispatchedAt: string | null;
+  deliveredAt: string | null;
   rejectReason: string | null;
   distributor: { id: string; name: string };
   items: { productId: string; name: string; packSize: number; qty: number; deliveredQty: number | null; price: number }[];
@@ -92,17 +100,20 @@ export type PaymentOptions = {
   online: ('PAYME' | 'CLICK')[];
 };
 
-export const STATUS_LABEL: Record<OrderStatus, string> = {
+const STATUS_KEY = {
   SENT: 'Yuborildi',
   ACCEPTED: 'Qabul qilindi',
   REJECTED: 'Rad etildi',
   IN_DELIVERY: "Yo'lda",
   DELIVERED: 'Topshirildi',
   CANCELLED: 'Bekor qilindi',
-};
+} as const;
 
-export const PAYMENT_LABEL: Record<PaymentType, string> = {
-  CASH: 'Naqd',
-  TRANSFER: "O'tkazma",
-  CREDIT: 'Nasiya',
-};
+export const statusLabel = (s: OrderStatus) => t(STATUS_KEY[s]);
+
+const PAYMENT_KEY = { CASH: 'Naqd', TRANSFER: "O'tkazma", CREDIT: 'Nasiya' } as const;
+
+export const paymentLabel = (p: PaymentType) => t(PAYMENT_KEY[p]);
+
+// Holat bosqichlari vaqti (buyurtma yo'lida ko'rinadi)
+export type StepTimes = { createdAt: string; acceptedAt: string | null; dispatchedAt: string | null; deliveredAt: string | null };

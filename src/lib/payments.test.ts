@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { clickSign } from "./click";
 import { decryptSecret, encryptSecret } from "./crypto";
-import { clickCheckoutUrl, paymeCheckoutUrl } from "./payments";
+import { clickCheckoutUrl, paymeCheckoutUrl } from "./checkout";
 import { checkPaymeAuth, PAYME_TIMEOUT_MS, paymeTimedOut } from "./payme";
 
 beforeAll(() => {

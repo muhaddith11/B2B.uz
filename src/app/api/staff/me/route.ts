@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { handle, requireStaff } from "@/lib/session";
+import { subscriptionInfo } from "@/lib/subscription";
 
 // Xodim va distribyutor haqida: ekranlar rolga qarab chiziladi
 export const GET = handle(async (req: Request) => {
@@ -13,6 +14,8 @@ export const GET = handle(async (req: Request) => {
   return Response.json({
     staff: { id: staff.id, name: staff.name, phone: staff.phone, role: staff.role },
     distributor: { id: d.id, name: d.name, status: d.status, districts: d.districts, categories: d.categories, minOrder: d.minOrder, deliveryDays: d.deliveryDays, inn: d.inn },
+    // Obuna holati (ilovada faqat ko'rsatiladi, to'lov saytda)
+    subscription: subscriptionInfo(d),
     couriers,
     agents,
     priceGroups,

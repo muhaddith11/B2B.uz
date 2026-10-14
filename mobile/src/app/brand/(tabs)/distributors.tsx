@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Badge, Chip, Empty, Loading, PressCard, Screen, SearchInput, T } from '@/components/ui';
+import { Badge, Chip, Empty, Loading, PressCard, Screen, SearchInput, StickyBar, T } from '@/components/ui';
 import { useSession } from '@/context/session';
-import { AGREEMENT_LABEL, type DistributorForBrand } from '@/lib/staff-types';
+import { t } from '@/lib/i18n';
+import { agreementLabel, type DistributorForBrand } from '@/lib/staff-types';
 
 type Data = { categories: string[]; districts: string[]; distributors: DistributorForBrand[] };
 
@@ -22,7 +23,7 @@ export default function BrandDistributors() {
     if (q.trim()) params.set('q', q.trim());
     if (category) params.set('category', category);
     if (district) params.set('district', district);
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<Data>(`/api/brand/distributors?${params}`)
         .then((d) => {
           setData(d);
@@ -30,45 +31,49 @@ export default function BrandDistributors() {
         })
         .catch((e) => setErr(e.message));
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [api, q, category, district]);
 
   return (
-    <Screen gap={8}>
-      <SearchInput value={q} onChangeText={setQ} placeholder="Distribyutor nomi" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {[null, ...(data?.districts ?? [])].map((d) => (
-          <Chip key={d ?? 'all'} label={d ?? 'Barcha hududlar'} active={district === d} onPress={() => setDistrict(d)} />
-        ))}
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {[null, ...(data?.categories ?? [])].map((c) => (
-          <Chip key={c ?? 'all'} label={c ?? 'Barcha toifalar'} active={category === c} onPress={() => setCategory(c)} />
-        ))}
-      </ScrollView>
+    <Screen gap={8} sticky>
+      <StickyBar>
+        <SearchInput value={q} onChangeText={setQ} placeholder={t('Distribyutor nomi')} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {[null, ...(data?.districts ?? [])].map((d) => (
+            <Chip key={d ?? 'all'} label={d ?? t('Barcha hududlar')} active={district === d} onPress={() => setDistrict(d)} />
+          ))}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {[null, ...(data?.categories ?? [])].map((c) => (
+            <Chip key={c ?? 'all'} label={c ?? t('Barcha toifalar')} active={category === c} onPress={() => setCategory(c)} />
+          ))}
+        </ScrollView>
+      </StickyBar>
       {err && (
         <T size="small" tone="danger">
           {err}
         </T>
       )}
-      {!data && !err && <Loading />}
+      {!data && !err && <Loading inline />}
       {data?.distributors.map((d) => (
-        <PressCard key={d.id} onPress={() => router.push(d.agreement && (d.agreement.status === 'ACTIVE' || d.agreement.status === 'PROPOSED') ? `/brand/agreement/${d.agreement.id}` : `/brand/distributor/${d.id}`)}>
+        <PressCard
+          key={d.id}
+          onPress={() => router.push(d.agreement && (d.agreement.status === 'ACTIVE' || d.agreement.status === 'PROPOSED') ? `/brand/agreement/${d.agreement.id}` : `/brand/distributor/${d.id}`)}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <T bold style={{ flex: 1 }}>
               {d.name}
             </T>
-            {d.agreement && <Badge label={AGREEMENT_LABEL[d.agreement.status]} tone={d.agreement.status === 'ACTIVE' ? 'ok' : d.agreement.status === 'PROPOSED' ? 'accent' : 'hint'} />}
+            {d.agreement && <Badge label={agreementLabel(d.agreement.status)} tone={d.agreement.status === 'ACTIVE' ? 'ok' : d.agreement.status === 'PROPOSED' ? 'accent' : 'hint'} />}
           </View>
           <T size="small" tone="hint">
             {d.districts.join(', ')}
           </T>
           <T size="small">
-            {d.categories.join(', ')} · {d.shops} ta do'kon · {d.products} ta tovar
+            {d.categories.join(', ')} · {t("{n} ta do'kon", { n: d.shops })} · {t('{n} ta tovar', { n: d.products })}
           </T>
         </PressCard>
       ))}
-      {data?.distributors.length === 0 && <Empty>Hech narsa topilmadi</Empty>}
+      {data?.distributors.length === 0 && <Empty icon="business-outline">{t('Hech narsa topilmadi')}</Empty>}
     </Screen>
   );
 }

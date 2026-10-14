@@ -1,10 +1,14 @@
 import { useState } from 'react';
 
 import { TagInput } from '@/components/tag-input';
-import { Banner, Button, Field, Screen, T } from '@/components/ui';
+import { Banner, Button, Field, Screen } from '@/components/ui';
 import { NeedPhone } from '@/components/need-phone';
 import { useSession } from '@/context/session';
 import { request } from '@/lib/api';
+import { t } from '@/lib/i18n';
+
+// Toifa nomlari ma'lumot sifatida saqlanadi (distribyutorlar shu nom bilan qidiradi), shuning uchun tarjima qilinmaydi
+const CATEGORY_HINTS = ['Ichimliklar', 'Sharbat', 'Sut mahsulotlari', 'Shirinliklar', 'Gigiyena'];
 
 // Tovar egasi (ishlab chiqaruvchi) o'zi ro'yxatdan o'tadi; platforma tasdiqlagach distribyutorlarga ko'rinadi
 export default function RegisterBrand() {
@@ -33,18 +37,14 @@ export default function RegisterBrand() {
 
   return (
     <Screen gap={14}>
-      <Banner tone="accent">Ro'yxatdan o'tgach, platforma tekshiradi. Shu vaqtda tovarlaringizni qo'shib qo'yishingiz mumkin.</Banner>
-      <Field label="Brend yoki kompaniya nomi" value={form.brandName} onChangeText={set('brandName')} />
-      <Field label="STIR (ixtiyoriy)" value={form.inn} onChangeText={(v) => set('inn')(v.replace(/\D/g, '').slice(0, 9))} keyboardType="number-pad" />
-      <TagInput label="Tovar toifalari" value={categories} onChange={setCategories} suggestions={['Ichimliklar', 'Sharbat', 'Sut mahsulotlari', 'Shirinliklar', 'Gigiyena']} />
-      <Field label="Qisqacha (ixtiyoriy)" value={form.description} onChangeText={set('description')} multiline style={{ minHeight: 80, textAlignVertical: 'top' }} />
-      <Field label="Ismingiz" value={form.contactName} onChangeText={set('contactName')} autoComplete="name" />
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
-      <Button title="Ro'yxatdan o'tish" onPress={submit} loading={busy} disabled={!filled} />
+      <Banner tone="accent">{t("Ro'yxatdan o'tgach, platforma tekshiradi. Shu vaqtda tovarlaringizni qo'shib qo'yishingiz mumkin.")}</Banner>
+      <Field label={t('Brend yoki kompaniya nomi')} value={form.brandName} onChangeText={set('brandName')} />
+      <Field label={t('STIR (ixtiyoriy)')} value={form.inn} onChangeText={(v) => set('inn')(v.replace(/\D/g, '').slice(0, 9))} keyboardType="number-pad" />
+      <TagInput label={t('Tovar toifalari')} value={categories} onChange={setCategories} suggestions={CATEGORY_HINTS} />
+      <Field label={t('Qisqacha (ixtiyoriy)')} value={form.description} onChangeText={set('description')} multiline style={{ minHeight: 80, textAlignVertical: 'top' }} />
+      <Field label={t('Ismingiz')} value={form.contactName} onChangeText={set('contactName')} autoComplete="name" />
+      {err && <Banner tone="danger">{err}</Banner>}
+      <Button title={t("Ro'yxatdan o'tish")} onPress={submit} loading={busy} disabled={!filled} />
     </Screen>
   );
 }

@@ -3,7 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 
 import { useSession } from '@/context/session';
 
-// Ekran ochilganda (va har safar qaytganda) ma'lumotni yangilaydi; pastga tortib yangilash uchun reload
+// Ekran ochilganda (va har safar qaytganda) ma'lumotni yangilaydi; pastga tortib yangilash uchun reload,
+// birinchi yuklash xato bo'lsa "Qayta urinish" uchun retry
 export function useLoad<T>(path: string) {
   const { api } = useSession();
   const [data, setData] = useState<T | null>(null);
@@ -36,5 +37,10 @@ export function useLoad<T>(path: string) {
     }, [load]),
   );
 
-  return { data, setData, error, refreshing, reload: () => load(true) };
+  const retry = useCallback(() => {
+    setError(null);
+    load(false);
+  }, [load]);
+
+  return { data, setData, error, refreshing, reload: () => load(true), retry };
 }

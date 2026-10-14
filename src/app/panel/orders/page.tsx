@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { OrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { formatSom } from "@/lib/money";
+import { formatDateTime, formatSom } from "@/lib/money";
 import { getStaff } from "@/lib/session";
 import { acceptOrder, deliverOrder, rejectOrder, shipOrder } from "../actions";
 
@@ -39,37 +39,37 @@ export default async function PanelOrders({ searchParams }: { searchParams: Prom
   return (
     <div>
       <h1 className="text-2xl font-semibold">Buyurtmalar</h1>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Link
             key={t.status}
             href={`/panel/orders?status=${t.status}`}
-            className={`rounded-full px-3 py-1 text-sm ${t.status === status ? "bg-blue-600 text-white" : "border border-gray-200 bg-white"}`}
+            className={`rounded-full px-3 py-1 text-sm ${t.status === status ? "bg-accent text-white" : "border border-line bg-card"}`}
           >
             {t.label}
           </Link>
         ))}
       </div>
 
-      {orders.length === 0 && <p className="mt-6 text-gray-500">Bu holatda buyurtma yo'q.</p>}
+      {orders.length === 0 && <p className="mt-6 text-hint">Bu holatda buyurtma yo'q.</p>}
 
       <div className="mt-4 grid gap-3">
         {orders.map((o) => (
-          <details key={o.id} className="rounded-xl border border-gray-200 bg-white">
+          <details key={o.id} className="rounded-xl border border-line bg-card">
             <summary className="flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3">
               <span className="font-semibold">№{o.number}</span>
               <span>{o.shopLink.shop.name}</span>
-              <span className="text-sm text-gray-500">{o.createdAt.toLocaleString("uz-UZ")}</span>
-              <span className="text-sm text-gray-500">{PAYMENT[o.paymentType]}</span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-hint">{formatDateTime(o.createdAt)}</span>
+              <span className="text-sm text-hint">{PAYMENT[o.paymentType]}</span>
+              <span className="text-sm text-hint">
                 {o.source === "AGENT" ? `Agent: ${o.createdByStaff?.name ?? "—"}` : `Ilova: ${o.createdByShopUser?.name ?? "—"}`}
               </span>
               <span className="ml-auto font-semibold">{formatSom(o.deliveredTotal ?? o.total)}</span>
             </summary>
-            <div className="border-t border-gray-100 px-4 py-3">
+            <div className="border-t border-line px-4 py-3">
               <table className="w-full text-sm">
-                <thead className="text-left text-gray-500">
+                <thead className="text-left text-hint">
                   <tr>
                     <th className="py-1 font-medium">Artikul</th>
                     <th className="py-1 font-medium">Tovar</th>
@@ -80,8 +80,8 @@ export default async function PanelOrders({ searchParams }: { searchParams: Prom
                 </thead>
                 <tbody>
                   {o.items.map((it) => (
-                    <tr key={it.id} className="border-t border-gray-100">
-                      <td className="py-1 text-gray-500">{it.product.sku}</td>
+                    <tr key={it.id} className="border-t border-line">
+                      <td className="py-1 text-hint">{it.product.sku}</td>
                       <td className="py-1">{it.product.name}</td>
                       <td className="py-1 text-right">{it.deliveredQty ?? it.qty}</td>
                       <td className="py-1 text-right">{formatSom(it.price)}</td>
@@ -90,32 +90,32 @@ export default async function PanelOrders({ searchParams }: { searchParams: Prom
                   ))}
                 </tbody>
               </table>
-              {o.rejectReason && <p className="mt-2 text-sm text-red-600">Rad etish sababi: {o.rejectReason}</p>}
+              {o.rejectReason && <p className="mt-2 text-sm text-danger">Rad etish sababi: {o.rejectReason}</p>}
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {o.status === "SENT" && (
                   <>
                     <form action={acceptOrder}>
                       <input type="hidden" name="orderId" value={o.id} />
-                      <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">Qabul qilish</button>
+                      <button className="btn btn-sm btn-primary">Qabul qilish</button>
                     </form>
                     <form action={rejectOrder} className="flex gap-2">
                       <input type="hidden" name="orderId" value={o.id} />
-                      <input name="reason" placeholder="Rad etish sababi" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                      <button className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600">Rad etish</button>
+                      <input name="reason" placeholder="Rad etish sababi" className="field text-sm" />
+                      <button className="rounded-lg border border-danger/40 px-4 py-2 text-sm text-danger">Rad etish</button>
                     </form>
                   </>
                 )}
                 {o.status === "ACCEPTED" && (
                   <form action={shipOrder}>
                     <input type="hidden" name="orderId" value={o.id} />
-                    <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">Yo'lga chiqarish</button>
+                    <button className="btn btn-sm btn-primary">Yo'lga chiqarish</button>
                   </form>
                 )}
                 {o.status === "IN_DELIVERY" && (
                   <form action={deliverOrder}>
                     <input type="hidden" name="orderId" value={o.id} />
-                    <button className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white">Topshirildi</button>
+                    <button className="btn btn-sm btn-primary">Topshirildi</button>
                   </form>
                 )}
               </div>

@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,11 +17,14 @@ import {
   type ViewProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 import { R, softOf, TOUCH, usePalette, type Palette, type Tone } from '@/constants/theme';
-import { formatAmount } from '@/lib/money';
-import { STATUS_LABEL, type OrderStatus } from '@/lib/types';
+import { fileUrl } from '@/lib/api';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
+import { formatAmount, formatSom, formatStepTime } from '@/lib/money';
+import { statusLabel, type OrderStatus, type StepTimes } from '@/lib/types';
 
 export type { Tone };
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -34,6 +38,10 @@ const SIZES: Record<Size, { fontSize: number; lineHeight: number; fontWeight: '4
   small: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
   tiny: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
 };
+
+// Android'da bosilganda tizimning to'lqin effekti (ripple), iOS va web'da shaffoflik
+const ANDROID = Platform.OS === 'android';
+const rippleColor = (c: Palette, onAccent = false) => (onAccent ? 'rgba(255,255,255,0.24)' : c.border);
 
 function toneColor(c: Palette, tone: Tone): string {
   return tone === 'accent' ? c.accentInk : c[tone];
@@ -64,7 +72,8 @@ export function Money({ value, size = 'body', tone = 'text', bold = true }: { va
     <T size={size} tone={tone} bold={bold} num style={{ flexShrink: 0 }}>
       {formatAmount(value)}
       <T size={small} tone={tone} style={{ fontWeight: '500' }}>
-        {' '}so'm
+        {' '}
+        {t("so'm")}
       </T>
     </T>
   );
@@ -115,17 +124,19 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: !!off, busy: !!loading }}
       disabled={off}
+      android_ripple={{ color: rippleColor(c, kind === 'primary') }}
       style={({ pressed }) => [
         {
           backgroundColor: col.bg,
           borderRadius: R.md,
+          overflow: 'hidden',
           minHeight: compact ? 40 : 52,
           paddingHorizontal: compact ? 14 : 18,
           flexDirection: 'row',
           gap: 8,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: off ? 0.45 : pressed ? 0.82 : 1,
+          opacity: off ? 0.45 : pressed && !ANDROID ? 0.82 : 1,
         },
         style,
       ]}
@@ -135,7 +146,7 @@ export function Button({
       ) : (
         <>
           {icon && <Ionicons name={icon} size={compact ? 18 : 20} color={col.fg} />}
-          <Text style={{ color: col.fg, fontSize: compact ? 14 : 16, fontWeight: '600' }} numberOfLines={1}>
+          <Text style={{ color: col.fg, fontSize: compact ? 14 : 16, fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
             {title}
           </Text>
         </>
@@ -152,7 +163,8 @@ export function IconButton({ icon, label, onPress, tone = 'text' }: { icon: Icon
       accessibilityLabel={label}
       onPress={onPress}
       hitSlop={4}
-      style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? c.field : 'transparent' })}>
+      android_ripple={{ color: rippleColor(c), borderless: true, radius: 22 }}
+      style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed && !ANDROID ? c.field : 'transparent' })}>
       <Ionicons name={icon} size={22} color={toneColor(c, tone)} />
     </Pressable>
   );
@@ -216,7 +228,7 @@ export function SearchInput(props: TextInputProps) {
         {...props}
       />
       {props.value ? (
-        <Pressable accessibilityLabel="Tozalash" hitSlop={8} onPress={() => props.onChangeText?.('')}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('Tozalash')} hitSlop={8} onPress={() => props.onChangeText?.('')}>
           <Ionicons name="close-circle" size={18} color={c.hint} />
         </Pressable>
       ) : null}
@@ -230,18 +242,23 @@ export function Chip({ label, active, onPress, count }: { label: string; active:
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      onPress={onPress}
+      onPress={() => {
+        if (!active) haptic.tick();
+        onPress();
+      }}
+      android_ripple={{ color: rippleColor(c, active) }}
       style={({ pressed }) => ({
         backgroundColor: active ? c.accent : c.card,
         borderColor: active ? c.accent : c.border,
         borderWidth: 1,
         borderRadius: R.pill,
+        overflow: 'hidden',
         paddingHorizontal: 14,
         minHeight: 36,
         flexDirection: 'row',
         gap: 6,
         alignItems: 'center',
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed && !ANDROID ? 0.85 : 1,
       })}>
       <Text style={{ color: active ? c.accentText : c.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
       {count !== undefined && <Text style={{ color: active ? c.accentText : c.hint, fontSize: 13, fontVariant: ['tabular-nums'] }}>{count}</Text>}
@@ -267,30 +284,40 @@ function useBump(value: unknown) {
 export function QtyStepper({ packs, onChange, label = true, full }: { packs: number; onChange: (packs: number) => void; label?: boolean; full?: boolean }) {
   const c = usePalette();
   const bump = useBump(packs);
+  const change = (n: number) => {
+    haptic.tick();
+    onChange(n);
+  };
   if (packs === 0) {
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Savatga qo'shish"
-        onPress={() => onChange(1)}
+        accessibilityLabel={t("Savatga qo'shish")}
+        onPress={() => change(1)}
         hitSlop={6}
-        style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 })}>
+        android_ripple={{ color: rippleColor(c, true), borderless: true, radius: 22 }}
+        style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', opacity: pressed && !ANDROID ? 0.85 : 1 })}>
         <Ionicons name="add" size={26} color={c.accentText} />
       </Pressable>
     );
   }
   const side = { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' } as const;
+  const ripple = { color: rippleColor(c), borderless: true, radius: 22 };
   return (
     <Animated.View
-      style={[bump,{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.accentSoft, borderRadius: 22, height: 44 }, full && { flex: 1, justifyContent: 'space-between' }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={packs === 1 ? 'Savatdan olib tashlash' : 'Kamaytirish'} onPress={() => onChange(packs - 1)} style={side}>
+      style={[bump, { flexDirection: 'row', alignItems: 'center', backgroundColor: c.accentSoft, borderRadius: 22, height: 44 }, full && { flex: 1, justifyContent: 'space-between' }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={packs === 1 ? t('Savatdan olib tashlash') : t('Kamaytirish')}
+        onPress={() => change(packs - 1)}
+        android_ripple={ripple}
+        style={side}>
         <Ionicons name={packs === 1 ? 'trash-outline' : 'remove'} size={20} color={c.accentInk} />
       </Pressable>
-      <T bold num tone="accent" style={{ minWidth: label ? 64 : 24, textAlign: 'center' }} accessibilityLabel={`${packs} yashik`}>
-        {packs}
-        {label ? ' yashik' : ''}
+      <T bold num tone="accent" numberOfLines={1} style={{ minWidth: label ? 64 : 24, textAlign: 'center', flexShrink: 1 }}>
+        {label ? t('{n} yashik', { n: packs }) : packs}
       </T>
-      <Pressable accessibilityRole="button" accessibilityLabel="Ko'paytirish" onPress={() => onChange(packs + 1)} style={side}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t("Ko'paytirish")} onPress={() => change(packs + 1)} android_ripple={ripple} style={side}>
         <Ionicons name="add" size={22} color={c.accentInk} />
       </Pressable>
     </Animated.View>
@@ -301,7 +328,7 @@ export function QtyStepper({ packs, onChange, label = true, full }: { packs: num
 export function Thumb({ uri, name, size = 56 }: { uri?: string | null; name: string; size?: number | '100%' }) {
   const c = usePalette();
   const box = { width: size, height: size === '100%' ? undefined : size, aspectRatio: size === '100%' ? 1.25 : undefined, borderRadius: R.md, backgroundColor: c.accentSoft } as const;
-  if (uri) return <Image source={{ uri }} style={box} contentFit="cover" transition={150} />;
+  if (uri) return <Image source={{ uri: fileUrl(uri) }} style={box} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />;
   return (
     <View style={[box, { alignItems: 'center', justifyContent: 'center' }]}>
       <Text style={{ color: c.accentInk, fontSize: typeof size === 'number' ? size * 0.4 : 30, fontWeight: '700', opacity: 0.75 }}>{name.trim().charAt(0).toUpperCase()}</Text>
@@ -309,12 +336,34 @@ export function Thumb({ uri, name, size = 56 }: { uri?: string | null; name: str
   );
 }
 
-export function Loading() {
+// Yuklanish: ma'lumot o'rnida kartochka shakllari yumshoq miltillaydi (aylanuvchi belgi o'rniga)
+function SkeletonBlock({ width, height = 14 }: { width: number | `${number}%`; height?: number }) {
   const c = usePalette();
+  return <View style={{ width, height, borderRadius: height / 2, backgroundColor: c.field }} />;
+}
+
+// inline: ekran ichida (o'z chekkasi bor joyda), aks holda butun ekran o'rnida
+export function Loading({ rows = 3, safeTop, inline }: { rows?: number; safeTop?: boolean; inline?: boolean }) {
+  const insets = useSafeAreaInsets();
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.value = withRepeat(withSequence(withTiming(0.5, { duration: 700 }), withTiming(1, { duration: 700 })), -1);
+  }, [opacity]);
+  const pulse = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const pad = inline ? 0 : 16;
   return (
-    <View style={{ padding: 40, alignItems: 'center' }}>
-      <ActivityIndicator color={c.accent} />
-    </View>
+    <Animated.View style={[{ padding: pad, paddingTop: safeTop ? insets.top + 8 : pad, gap: 12 }, pulse]} accessibilityRole="progressbar" accessibilityLabel={t('Yuklanmoqda')}>
+      {Array.from({ length: rows }, (_, i) => (
+        <Card key={i} style={{ gap: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+            <SkeletonBlock width="55%" height={16} />
+            <SkeletonBlock width="20%" height={16} />
+          </View>
+          <SkeletonBlock width="75%" />
+          <SkeletonBlock width="40%" />
+        </Card>
+      ))}
+    </Animated.View>
   );
 }
 
@@ -326,7 +375,23 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Pastga tortib yangilanadigan ekran
+// Ma'lumot yuklanmadi (masalan, internet yo'q): sababi va qayta urinish tugmasi
+export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const c = usePalette();
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="alert-circle-outline" size={28} color={c.danger} />
+      </View>
+      <T tone="hint" style={{ textAlign: 'center', maxWidth: 300 }}>
+        {message}
+      </T>
+      <Button title={t('Qayta urinish')} icon="refresh" kind="secondary" onPress={onRetry} style={{ alignSelf: 'stretch' }} />
+    </View>
+  );
+}
+
+// Pastga tortib yangilanadigan ekran. sticky: birinchi bola (qidiruv, filtr) tepada yopishib turadi
 export function Screen({
   children,
   refreshing,
@@ -334,6 +399,7 @@ export function Screen({
   gap = 12,
   bottom = 32,
   safeTop,
+  sticky,
 }: {
   children: React.ReactNode;
   refreshing?: boolean;
@@ -342,6 +408,7 @@ export function Screen({
   bottom?: number;
   // Sarlavhasiz ekran (bosh sahifa): yuqoridan tizim paneli uchun joy
   safeTop?: boolean;
+  sticky?: boolean;
 }) {
   const c = usePalette();
   const insets = useSafeAreaInsets();
@@ -350,16 +417,25 @@ export function Screen({
       style={{ backgroundColor: c.bg }}
       contentContainerStyle={{ padding: 16, paddingTop: safeTop ? insets.top + 8 : 16, gap, paddingBottom: bottom }}
       keyboardShouldPersistTaps="handled"
+      stickyHeaderIndices={sticky ? [0] : undefined}
       refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.accent} colors={[c.accent]} /> : undefined}>
       {children}
     </ScrollView>
   );
 }
 
+// Yopishqoq sarlavha foni: ostidan o'tayotgan ro'yxat ko'rinmasin (ekran chekkasigacha)
+export function StickyBar({ children, gap = 8 }: { children: React.ReactNode; gap?: number }) {
+  const c = usePalette();
+  return <View style={{ backgroundColor: c.bg, marginHorizontal: -16, paddingHorizontal: 16, marginTop: -16, paddingTop: 16, paddingBottom: 4, gap }}>{children}</View>;
+}
+
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, minHeight: 28 }}>
-      <T size="h2">{children}</T>
+      <T size="h2" accessibilityRole="header">
+        {children}
+      </T>
       {right}
     </View>
   );
@@ -385,32 +461,37 @@ export const ORDER_TONE: Record<OrderStatus, Tone> = {
 };
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge label={STATUS_LABEL[status]} tone={ORDER_TONE[status]} />;
+  return <Badge label={statusLabel(status)} tone={ORDER_TONE[status]} />;
 }
 
-// Buyurtma yo'li: to'rt bosqich har doim bir joyda va bir o'lchamda
+// Buyurtma yo'li: to'rt bosqich har doim bir joyda va bir o'lchamda; vaqt ma'lum bo'lsa har bosqich ostida
 const STEPS: OrderStatus[] = ['SENT', 'ACCEPTED', 'IN_DELIVERY', 'DELIVERED'];
+const stepTime = (s: OrderStatus, times: StepTimes) =>
+  s === 'SENT' ? times.createdAt : s === 'ACCEPTED' ? times.acceptedAt : s === 'IN_DELIVERY' ? times.dispatchedAt : times.deliveredAt;
 
-export function StatusSteps({ status }: { status: OrderStatus }) {
+export function StatusSteps({ status, times }: { status: OrderStatus; times?: StepTimes }) {
   const c = usePalette();
   if (status === 'REJECTED' || status === 'CANCELLED') return <StatusBadge status={status} />;
   const at = STEPS.indexOf(status);
   return (
-    <View style={{ gap: 8 }} accessibilityLabel={`Holat: ${STATUS_LABEL[status]}`}>
+    <View style={{ gap: 8 }} accessible accessibilityLabel={t('Holat: {status}', { status: statusLabel(status) })}>
       <View style={{ flexDirection: 'row', gap: 4 }}>
         {STEPS.map((s, i) => (
           <View key={s} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= at ? toneColor(c, ORDER_TONE[status]) : c.border }} />
         ))}
       </View>
       <View style={{ flexDirection: 'row', gap: 4 }}>
-        {STEPS.map((s, i) => (
-          <Text
-            key={s}
-            numberOfLines={1}
-            style={{ flex: 1, fontSize: 12, lineHeight: 16, fontWeight: i === at ? '700' : '500', color: i === at ? toneColor(c, ORDER_TONE[status]) : c.hint }}>
-            {STATUS_LABEL[s]}
-          </Text>
-        ))}
+        {STEPS.map((s, i) => {
+          const time = times && i <= at ? stepTime(s, times) : null;
+          return (
+            <View key={s} style={{ flex: 1, gap: 1 }}>
+              <Text numberOfLines={1} style={{ fontSize: 12, lineHeight: 16, fontWeight: i === at ? '700' : '500', color: i === at ? toneColor(c, ORDER_TONE[status]) : c.hint }}>
+                {statusLabel(s)}
+              </Text>
+              {time ? <Text style={{ fontSize: 11, lineHeight: 14, color: c.hint, fontVariant: ['tabular-nums'] }}>{formatStepTime(time)}</Text> : null}
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -490,6 +571,7 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
         accessibilityRole="button"
         disabled={disabled}
         onPress={onPress}
+        android_ripple={{ color: rippleColor(c, true) }}
         style={({ pressed }) => ({
           minHeight: 56,
           borderRadius: R.lg,
@@ -498,7 +580,7 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          opacity: disabled ? 0.5 : pressed ? 0.9 : 1,
+          opacity: disabled ? 0.5 : pressed && !ANDROID ? 0.9 : 1,
           shadowColor: c.accent,
           shadowOpacity: 0.3,
           shadowRadius: 14,
@@ -509,11 +591,15 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
           <Ionicons name="cart-outline" size={22} color={c.accentText} />
           <View style={{ flexShrink: 1 }}>
             <Text style={{ color: c.accentText, fontSize: 16, fontWeight: '600' }}>{label}</Text>
-            {sub ? <Text style={{ color: c.accentText, fontSize: 12, opacity: 0.9, fontVariant: ['tabular-nums'] }} numberOfLines={1}>{sub}</Text> : null}
+            {sub ? (
+              <Text style={{ color: c.accentText, fontSize: 12, opacity: 0.9, fontVariant: ['tabular-nums'] }} numberOfLines={1}>
+                {sub}
+              </Text>
+            ) : null}
           </View>
         </View>
         <Text style={{ color: c.accentText, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], flexShrink: 0, marginLeft: 12 }} numberOfLines={1}>
-          {formatAmount(total)} so'm
+          {formatSom(total)}
         </Text>
       </Pressable>
     </Animated.View>
@@ -560,7 +646,7 @@ export function ListRow({
   );
   if (!onPress) return body;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+    <Pressable accessibilityRole="button" onPress={onPress} android_ripple={{ color: rippleColor(c) }} style={({ pressed }) => ({ opacity: pressed && !ANDROID ? 0.7 : 1 })}>
       {body}
     </Pressable>
   );

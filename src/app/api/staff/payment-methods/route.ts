@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { encryptSecret } from "@/lib/crypto";
 import { db } from "@/lib/db";
-import { publicUrl } from "@/lib/payments";
+import { publicUrl } from "@/lib/checkout";
 import { handle, HttpError, requireStaff } from "@/lib/session";
 
 // To'lov usullari: karta, hisob raqam, Payme, Click. Kalitlar shifrlanadi va hech qachon qaytarilmaydi.

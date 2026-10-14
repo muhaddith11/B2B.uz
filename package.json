@@ -10,6 +10,7 @@
     "test": "vitest run --project unit",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
+    "db:review": "node --env-file-if-exists=.env --import tsx prisma/review.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",

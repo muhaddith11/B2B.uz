@@ -71,7 +71,7 @@ describe("hisobni o'chirish", () => {
 
   it("xodim: shaxsiy ma'lumoti tozalanadi va o'chiriladi; faol xodim qolmasa distribyutor yashiriladi", async () => {
     await deleteAccount({ kind: "staff", id: "st1" });
-    expect(calls[0]).toBe(`staff.update {"where":{"id":"st1"},"data":{"name":"O'chirilgan xodim","phone":"","telegramId":null,"active":false}}`);
+    expect(calls[0]).toBe(`staff.update {"where":{"id":"st1"},"data":{"name":"O'chirilgan xodim","phone":"","active":false}}`);
     expect(calls).toContain('distributor.update {"where":{"id":"d1"},"data":{"status":"PENDING"}}');
   });
 

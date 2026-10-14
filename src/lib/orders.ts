@@ -1,10 +1,11 @@
 import { z } from "zod";
 import type { OrderStatus, PaymentType, Prisma, ShopLink, Distributor } from "@prisma/client";
 import { db } from "./db";
+import { L, som, type TextKey } from "./i18n";
 import { addDays, checkCredit } from "./ledger";
-import { formatSom } from "./money";
 import { notifyShop, notifyStaff } from "./push";
 import { HttpError } from "./session";
+import { assertTrading, DISTRIBUTOR_PAUSED, EXPIRED_DISTRIBUTOR, EXPIRED_SHOP } from "./subscription";
 
 const itemsSchema = z
   .array(z.object({ productId: z.string().min(1), qty: z.number().int().positive() }))
@@ -25,14 +26,15 @@ export const agentOrderInput = z.object({
   items: itemsSchema,
 });
 
-export const STATUS_LABEL: Record<OrderStatus, string> = {
-  SENT: "yuborildi",
-  ACCEPTED: "qabul qilindi",
-  REJECTED: "rad etildi",
-  IN_DELIVERY: "yo'lga chiqdi",
-  DELIVERED: "topshirildi",
-  CANCELLED: "bekor qilindi",
-};
+// Do'konga bildirishnoma: buyurtma holati o'zgardi
+const STATUS_TEXT = {
+  SENT: "Buyurtmangiz yuborildi",
+  ACCEPTED: "Buyurtmangiz qabul qilindi",
+  REJECTED: "Buyurtmangiz rad etildi",
+  IN_DELIVERY: "Buyurtmangiz yo'lga chiqdi",
+  DELIVERED: "Buyurtmangiz topshirildi",
+  CANCELLED: "Buyurtmangiz bekor qilindi",
+} as const satisfies Record<OrderStatus, TextKey>;
 
 // Do'kon uchun narx: ulanishdagi narx guruhi, bo'lmasa distribyutorning asosiy guruhi
 export async function priceGroupFor(link: { priceGroupId: string | null; distributorId: string }) {
@@ -64,6 +66,13 @@ export async function createOrderForLink(
   input: { paymentType: PaymentType; items: { productId: string; qty: number }[] },
 ) {
   if (link.status !== "ACTIVE") throw new HttpError(403, "Bu do'kon bilan ulanish faol emas");
+  // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi
+  if ("staffId" in creator) {
+    assertTrading(link.distributor, EXPIRED_DISTRIBUTOR);
+  } else {
+    assertTrading(await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true } }), EXPIRED_SHOP);
+    assertTrading(link.distributor, DISTRIBUTOR_PAUSED);
+  }
   const groupId = await priceGroupFor(link);
 
   const products = await db.product.findMany({
@@ -75,17 +84,17 @@ export async function createOrderForLink(
   const lines = input.items.map((item) => {
     const p = byId.get(item.productId);
     if (!p) throw new HttpError(400, "Tovar topilmadi yoki katalogdan olib tashlangan");
-    if (!p.inStock) throw new HttpError(400, `"${p.name}" tugagan`);
-    if (item.qty % p.packSize !== 0) throw new HttpError(400, `"${p.name}" yashik bo'yicha (${p.packSize} dona) buyurtma qilinadi`);
-    if (item.qty < p.minOrderPacks * p.packSize) throw new HttpError(400, `"${p.name}" uchun minimal buyurtma ${p.minOrderPacks} yashik`);
+    if (!p.inStock) throw new HttpError(400, L('"{name}" tugagan', { name: p.name }));
+    if (item.qty % p.packSize !== 0) throw new HttpError(400, L(`"{name}" yashik bo'yicha ({packSize} dona) buyurtma qilinadi`, { name: p.name, packSize: p.packSize }));
+    if (item.qty < p.minOrderPacks * p.packSize) throw new HttpError(400, L('"{name}" uchun minimal buyurtma {packs} yashik', { name: p.name, packs: p.minOrderPacks }));
     const price = p.prices[0]?.price;
-    if (price === undefined) throw new HttpError(400, `"${p.name}" uchun narx yo'q`);
+    if (price === undefined) throw new HttpError(400, L(`"{name}" uchun narx yo'q`, { name: p.name }));
     return { productId: p.id, qty: item.qty, price };
   });
 
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
   if (total < link.distributor.minOrder) {
-    throw new HttpError(400, `Minimal buyurtma ${formatSom(link.distributor.minOrder)}`);
+    throw new HttpError(400, L("Minimal buyurtma {sum}", { sum: som(link.distributor.minOrder) }));
   }
 
   const fromStaff = "staffId" in creator;
@@ -105,8 +114,8 @@ export async function createOrderForLink(
           check.reason === "CREDIT_OFF"
             ? "Bu distribyutor nasiya bermagan"
             : check.reason === "OVERDUE_BLOCK"
-              ? `Muddati ${check.overdueDays} kun o'tgan qarz bor, nasiya vaqtincha yopiq`
-              : `Nasiya limiti ${formatSom(check.exceedBy)}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring`;
+              ? L("Muddati {days} kun o'tgan qarz bor, nasiya vaqtincha yopiq", { days: check.overdueDays })
+              : L("Nasiya limiti {sum}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring", { sum: som(check.exceedBy) });
         throw new HttpError(400, msg);
       }
     }
@@ -121,6 +130,7 @@ export async function createOrderForLink(
         createdByStaffId: fromStaff ? creator.staffId : null,
         // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
         status: fromStaff ? "ACCEPTED" : "SENT",
+        acceptedAt: fromStaff ? new Date() : null,
         items: { create: lines },
       },
       include: { items: true, shopLink: { include: { shop: true } } },
@@ -128,11 +138,11 @@ export async function createOrderForLink(
   });
 
   if (fromStaff) {
-    notifyShop(link.shopId, { title: `Buyurtma №${order.number}`, body: `Agent ${formatSom(total)}lik buyurtma oldi`, data: { url: "/orders" } });
+    notifyShop(link.shopId, { title: L("Buyurtma №{n}", { n: order.number }), body: L("Agent {sum}lik buyurtma oldi", { sum: som(total) }), data: { url: "/orders" } });
   } else {
     notifyStaff(link.distributorId, ["ADMIN", "OPERATOR"], {
-      title: `Yangi buyurtma №${order.number}`,
-      body: `${order.shopLink.shop.name}: ${formatSom(total)}`,
+      title: L("Yangi buyurtma №{n}", { n: order.number }),
+      body: L("{name}: {sum}", { name: order.shopLink.shop.name, sum: som(total) }),
       data: { url: `/staff/order/${order.id}` },
     });
   }
@@ -179,9 +189,14 @@ export type StatusOptions = {
 // Distribyutor tomonidan holatni o'zgartirish. Topshirilganda qarz daftariga yozuv tushadi.
 export async function changeOrderStatus(staff: { id: string; distributorId: string }, orderId: string, to: OrderStatus, opts: StatusOptions = {}) {
   const updated = await db.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({ where: { id: orderId }, include: { shopLink: true, items: true } });
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { shopLink: { include: { distributor: { select: { paidUntil: true } } } }, items: true },
+    });
     if (!order || order.shopLink.distributorId !== staff.distributorId) throw new HttpError(404, "Buyurtma topilmadi");
     if (!canTransition(order.status, to)) throw new HttpError(400, "Bu holatga o'tkazib bo'lmaydi");
+    // Obuna tugagan distribyutor yangi buyurtmani qabul qilmaydi; boshlangan yetkazish va topshirish ishlayveradi
+    if (to === "ACCEPTED") assertTrading(order.shopLink.distributor, EXPIRED_DISTRIBUTOR);
 
     // Holat shart bilan o'zgartiriladi: bir vaqtdagi ikki so'rovdan (ikki marta bosish, operator va yetkazuvchi,
     // do'kon bekor qilishi) faqat bittasi o'tadi, shuning uchun qarz daftariga yozuv ikki marta tushmaydi
@@ -190,6 +205,9 @@ export async function changeOrderStatus(staff: { id: string; distributorId: stri
 
     const data: Prisma.OrderUpdateInput = { status: to };
     if (to === "REJECTED") data.rejectReason = opts.rejectReason ?? null;
+    if (to === "ACCEPTED") data.acceptedAt = new Date();
+    if (to === "IN_DELIVERY") data.dispatchedAt = new Date();
+    if (to === "DELIVERED") data.deliveredAt = new Date();
 
     if (to === "IN_DELIVERY" && opts.courierId) {
       const courier = await tx.staff.findFirst({ where: { id: opts.courierId, distributorId: staff.distributorId, role: "COURIER", active: true } });
@@ -238,10 +256,15 @@ export async function changeOrderStatus(staff: { id: string; distributorId: stri
     return tx.order.update({ where: { id: order.id }, data, include: { shopLink: true } });
   });
 
-  const extra = to === "REJECTED" && updated.rejectReason ? `: ${updated.rejectReason}` : to === "DELIVERED" && updated.deliveredTotal !== null ? `, ${formatSom(updated.deliveredTotal)}` : "";
-  notifyShop(updated.shopLink.shopId, { title: `Buyurtma №${updated.number}`, body: `Buyurtmangiz ${STATUS_LABEL[to]}${extra}`, data: { url: "/orders" } });
+  const body =
+    to === "REJECTED" && updated.rejectReason
+      ? L("Buyurtmangiz rad etildi: {reason}", { reason: updated.rejectReason })
+      : to === "DELIVERED" && updated.deliveredTotal !== null
+        ? L("Buyurtmangiz topshirildi, {sum}", { sum: som(updated.deliveredTotal) })
+        : L(STATUS_TEXT[to]);
+  notifyShop(updated.shopLink.shopId, { title: L("Buyurtma №{n}", { n: updated.number }), body, data: { url: "/orders" } });
   if (to === "IN_DELIVERY" && updated.courierId) {
-    notifyStaff(staff.distributorId, [], { title: "Yangi yetkazish", body: `Buyurtma №${updated.number}`, data: { url: `/staff/order/${updated.id}` } }, [updated.courierId]);
+    notifyStaff(staff.distributorId, [], { title: "Yangi yetkazish", body: L("Buyurtma №{n}", { n: updated.number }), data: { url: `/staff/order/${updated.id}` } }, [updated.courierId]);
   }
   return updated;
 }
@@ -262,7 +285,7 @@ export async function cancelOrderByShop(shopId: string, orderId: string) {
     return tx.order.findUniqueOrThrow({ where: { id: order.id } });
   });
   notifyStaff(order.shopLink.distributorId, ["ADMIN", "OPERATOR"], {
-    title: `Buyurtma №${order.number} bekor qilindi`,
+    title: L("Buyurtma №{n} bekor qilindi", { n: order.number }),
     body: order.shopLink.shop.name,
     data: { url: `/staff/order/${order.id}` },
   });

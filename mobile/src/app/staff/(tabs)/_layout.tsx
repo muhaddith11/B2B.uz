@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePalette } from '@/constants/theme';
 import { useStaff } from '@/context/staff';
+import { t } from '@/lib/i18n';
 
 // Tablar rolga qarab: agent bosh sahifasida do'konlari, yetkazuvchida yetkazishlar
 export default function StaffTabs() {
@@ -19,14 +20,14 @@ export default function StaffTabs() {
         name="index"
         options={{
           headerShown: false,
-          title: agent ? "Do'konlarim" : courier ? 'Yetkazish' : 'Bosh sahifa',
+          title: agent ? t("Do'konlarim") : courier ? t('Yetkazish') : t('Bosh sahifa'),
           tabBarIcon: ({ color }) => <Ionicons name={agent ? 'storefront-outline' : courier ? 'car-outline' : 'home-outline'} color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: agent ? 'Buyurtmalarim' : 'Buyurtmalar',
+          title: agent ? t('Buyurtmalarim') : t('Buyurtmalar'),
           href: courier ? null : undefined,
           tabBarIcon: ({ color }) => <Ionicons name="receipt-outline" color={color} size={22} />,
         }}
@@ -34,15 +35,12 @@ export default function StaffTabs() {
       <Tabs.Screen
         name="shops"
         options={{
-          title: "Do'konlar",
+          title: t("Do'konlar"),
           href: agent || courier ? null : undefined,
           tabBarIcon: ({ color }) => <Ionicons name="storefront-outline" color={color} size={22} />,
         }}
       />
-      <Tabs.Screen
-        name="more"
-        options={{ title: "Ko'proq", tabBarIcon: ({ color }) => <Ionicons name="menu-outline" color={color} size={22} /> }}
-      />
+      <Tabs.Screen name="more" options={{ title: t("Ko'proq"), tabBarIcon: ({ color }) => <Ionicons name="menu-outline" color={color} size={22} /> }} />
     </Tabs>
   );
 }

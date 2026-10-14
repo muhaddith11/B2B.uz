@@ -3,10 +3,19 @@ import { bearerPayload, getStaff, handle, HttpError } from "@/lib/session";
 import { linkScope } from "@/lib/staff-data";
 import { readUpload } from "@/lib/uploads";
 
-// Yuklangan chekni faqat o'sha do'kon yoki o'sha distribyutor xodimi ko'radi
+// Tovar rasmi hammaga ochiq (katalogda ko'rinadi), lekin faqat biror tovarga biriktirilgan bo'lsa.
+// Yuklangan chekni faqat o'sha do'kon yoki o'sha distribyutor xodimi ko'radi.
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ folder: string; name: string }> }) => {
   const { folder, name } = await ctx.params;
   const url = `/api/files/${folder}/${name}`;
+
+  if (folder === "products") {
+    const used = (await db.product.count({ where: { imageUrl: url } })) + (await db.brandProduct.count({ where: { imageUrl: url } }));
+    const file = used > 0 ? await readUpload(folder, name) : null;
+    if (!file) throw new HttpError(404, "Fayl topilmadi");
+    // Fayl nomi tasodifiy va o'zgarmaydi: uzoq keshlanadi
+    return new Response(new Uint8Array(file.data), { headers: { "content-type": file.type, "cache-control": "public, max-age=31536000, immutable" } });
+  }
   const entry = await db.ledgerEntry.findFirst({ where: { receiptUrl: url }, include: { shopLink: true } });
   if (!entry) throw new HttpError(404, "Fayl topilmadi");
 

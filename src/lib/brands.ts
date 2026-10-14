@@ -1,7 +1,7 @@
 import type { AgreementSide, BrandOrderStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
-import { formatSom } from "./money";
+import { L, som, type TextKey } from "./i18n";
 import { notifyBrand, notifyStaff } from "./push";
 import { HttpError } from "./session";
 
@@ -56,9 +56,9 @@ export async function proposeAgreement(side: AgreementSide, brandId: string, dis
     return created;
   });
   if (side === "BRAND") {
-    notifyStaff(distributorId, ["ADMIN"], { title: "Kelishuv taklifi", body: `${brand.name} hamkorlik taklif qilmoqda`, data: { url: `/staff/brand/${brandId}` } });
+    notifyStaff(distributorId, ["ADMIN"], { title: "Kelishuv taklifi", body: L("{name} hamkorlik taklif qilmoqda", { name: brand.name }), data: { url: `/staff/brand/${brandId}` } });
   } else {
-    notifyBrand(brandId, { title: "Kelishuv taklifi", body: `${dist.name} hamkorlik taklif qilmoqda`, data: { url: `/brand/agreement/${agreement.id}` } });
+    notifyBrand(brandId, { title: "Kelishuv taklifi", body: L("{name} hamkorlik taklif qilmoqda", { name: dist.name }), data: { url: `/brand/agreement/${agreement.id}` } });
   }
   return agreement;
 }
@@ -91,11 +91,11 @@ export async function respondAgreement(side: AgreementSide, sideId: string, agre
     return tx.agreement.findUniqueOrThrow({ where: { id: a.id } });
   });
 
-  const label = { ACTIVE: "qabul qilindi", REJECTED: "rad etildi", ENDED: "tugatildi" }[data.status];
+  const title = ({ ACTIVE: "Kelishuv qabul qilindi", REJECTED: "Kelishuv rad etildi", ENDED: "Kelishuv tugatildi" } as const)[data.status];
   if (side === "BRAND") {
-    notifyStaff(a.distributorId, ["ADMIN"], { title: `Kelishuv ${label}`, body: a.brand.name, data: { url: `/staff/brand/${a.brandId}` } });
+    notifyStaff(a.distributorId, ["ADMIN"], { title, body: a.brand.name, data: { url: `/staff/brand/${a.brandId}` } });
   } else {
-    notifyBrand(a.brandId, { title: `Kelishuv ${label}`, body: a.distributor.name, data: { url: `/brand/agreement/${a.id}` } });
+    notifyBrand(a.brandId, { title, body: a.distributor.name, data: { url: `/brand/agreement/${a.id}` } });
   }
   return updated;
 }
@@ -154,7 +154,7 @@ export async function createBrandOrder(staff: { id: string; distributorId: strin
   const lines = input.items.map((i) => {
     const p = byId.get(i.brandProductId);
     if (!p) throw new HttpError(400, "Tovar topilmadi");
-    if (i.qty % p.packSize !== 0) throw new HttpError(400, `"${p.name}" yashik bo'yicha (${p.packSize} dona) buyurtma qilinadi`);
+    if (i.qty % p.packSize !== 0) throw new HttpError(400, L(`"{name}" yashik bo'yicha ({packSize} dona) buyurtma qilinadi`, { name: p.name, packSize: p.packSize }));
     return { brandProductId: p.id, qty: i.qty, price: purchasePrice(p.price, a.discountPercent) };
   });
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
@@ -162,7 +162,7 @@ export async function createBrandOrder(staff: { id: string; distributorId: strin
     data: { agreementId: a.id, brandId: a.brandId, distributorId: staff.distributorId, total, note: input.note || null, items: { create: lines } },
     include: { distributor: true },
   });
-  notifyBrand(a.brandId, { title: `Xarid buyurtmasi №${order.number}`, body: `${order.distributor.name}: ${formatSom(total)}`, data: { url: `/brand/order/${order.id}` } });
+  notifyBrand(a.brandId, { title: L("Xarid buyurtmasi №{n}", { n: order.number }), body: L("{name}: {sum}", { name: order.distributor.name, sum: som(total) }), data: { url: `/brand/order/${order.id}` } });
   return order;
 }
 
@@ -182,14 +182,14 @@ export function canMoveBrandOrder(from: BrandOrderStatus, to: BrandOrderStatus, 
   return brandOrderTransitions[from].some((t) => t.by === by && t.to.includes(to));
 }
 
-const BRAND_ORDER_LABEL: Record<BrandOrderStatus, string> = {
-  SENT: "yuborildi",
-  ACCEPTED: "qabul qilindi",
-  REJECTED: "rad etildi",
-  SHIPPED: "jo'natildi",
-  DELIVERED: "qabul qilib olindi",
-  CANCELLED: "bekor qilindi",
-};
+const BRAND_ORDER_TEXT = {
+  SENT: "Xarid buyurtmasi yuborildi",
+  ACCEPTED: "Xarid buyurtmasi qabul qilindi",
+  REJECTED: "Xarid buyurtmasi rad etildi",
+  SHIPPED: "Xarid buyurtmasi jo'natildi",
+  DELIVERED: "Xarid buyurtmasi qabul qilib olindi",
+  CANCELLED: "Xarid buyurtmasi bekor qilindi",
+} as const satisfies Record<BrandOrderStatus, TextKey>;
 
 export async function moveBrandOrder(side: AgreementSide, sideId: string, orderId: string, to: BrandOrderStatus, rejectReason?: string) {
   const o = await db.brandOrder.findUnique({ where: { id: orderId }, include: { brand: true, distributor: true } });
@@ -203,9 +203,9 @@ export async function moveBrandOrder(side: AgreementSide, sideId: string, orderI
   });
   if (res.count === 0) throw new HttpError(409, "Buyurtma holati hozirgina o'zgardi. Sahifani yangilang");
   const updated = await db.brandOrder.findUniqueOrThrow({ where: { id: o.id } });
-  const body = `Xarid buyurtmasi ${BRAND_ORDER_LABEL[to]}`;
-  if (side === "BRAND") notifyStaff(o.distributorId, ["ADMIN"], { title: `${o.brand.name}, №${o.number}`, body, data: { url: `/staff/brand/${o.brandId}` } });
-  else notifyBrand(o.brandId, { title: `${o.distributor.name}, №${o.number}`, body, data: { url: `/brand/order/${o.id}` } });
+  const body = BRAND_ORDER_TEXT[to];
+  if (side === "BRAND") notifyStaff(o.distributorId, ["ADMIN"], { title: L("{name}, №{n}", { name: o.brand.name, n: o.number }), body, data: { url: `/staff/brand/${o.brandId}` } });
+  else notifyBrand(o.brandId, { title: L("{name}, №{n}", { name: o.distributor.name, n: o.number }), body, data: { url: `/brand/order/${o.id}` } });
   return updated;
 }
 

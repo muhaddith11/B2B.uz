@@ -2,17 +2,20 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { TagInput } from '@/components/tag-input';
-import { Button, Chip, Field, Loading, Screen, T } from '@/components/ui';
+import { Banner, Button, Chip, ErrorState, Field, Loading, Screen, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
+import { haptic } from '@/lib/haptics';
+import { t, tx } from '@/lib/i18n';
 import type { StaffMe } from '@/lib/staff-types';
 
+// Bazada o'zbekcha qisqartma saqlanadi, ekranda tanlangan tilda ko'rinadi
 const DAYS = ['Du', 'Se', 'Chor', 'Pa', 'Ju', 'Sha', 'Ya', 'Har kuni'];
 
 // Kompaniya sozlamalari: do'konlar distribyutor topishda shularni ko'radi
 export default function StaffSettings() {
-  const { me } = useStaff();
-  if (!me) return <Loading />;
+  const { me, error, reload } = useStaff();
+  if (!me) return error ? <ErrorState message={error} onRetry={reload} /> : <Loading rows={2} />;
   return <SettingsForm distributor={me.distributor} />;
 }
 
@@ -38,9 +41,11 @@ function SettingsForm({ distributor: d }: { distributor: StaffMe['distributor'] 
         body: JSON.stringify({ name: f.name, inn: f.inn || null, minOrder: Number(f.minOrder) || 0, districts: f.districts, categories: f.categories, deliveryDays: f.deliveryDays }),
       });
       await reload();
-      setMsg({ ok: true, text: 'Saqlandi' });
+      setMsg({ ok: true, text: t('Saqlandi') });
+      haptic.success();
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
+      haptic.error();
     } finally {
       setBusy(false);
     }
@@ -48,27 +53,23 @@ function SettingsForm({ distributor: d }: { distributor: StaffMe['distributor'] 
 
   return (
     <Screen gap={14}>
-      <Field label="Kompaniya nomi" value={f.name} onChangeText={(v) => setF({ ...f, name: v })} />
-      <Field label="STIR" value={f.inn} onChangeText={(v) => setF({ ...f, inn: v.replace(/\D/g, '').slice(0, 9) })} keyboardType="number-pad" />
-      <Field label="Minimal buyurtma, so'm" value={f.minOrder} onChangeText={(v) => setF({ ...f, minOrder: v.replace(/\D/g, '') })} keyboardType="number-pad" />
-      <TagInput label="Yetkazish hududlari" value={f.districts} onChange={(v) => setF({ ...f, districts: v })} />
-      <TagInput label="Tovar toifalari" value={f.categories} onChange={(v) => setF({ ...f, categories: v })} />
+      <Field label={t('Kompaniya nomi')} value={f.name} onChangeText={(v) => setF({ ...f, name: v })} />
+      <Field label={t('STIR')} value={f.inn} onChangeText={(v) => setF({ ...f, inn: v.replace(/\D/g, '').slice(0, 9) })} keyboardType="number-pad" />
+      <Field label={t("Minimal buyurtma, so'm")} value={f.minOrder} onChangeText={(v) => setF({ ...f, minOrder: v.replace(/\D/g, '') })} keyboardType="number-pad" />
+      <TagInput label={t('Yetkazish hududlari')} value={f.districts} onChange={(v) => setF({ ...f, districts: v })} />
+      <TagInput label={t('Tovar toifalari')} value={f.categories} onChange={(v) => setF({ ...f, categories: v })} />
       <View style={{ gap: 6 }}>
         <T size="small" tone="hint">
-          Yetkazish kunlari
+          {t('Yetkazish kunlari')}
         </T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {DAYS.map((day) => (
-            <Chip key={day} label={day} active={f.deliveryDays.includes(day)} onPress={() => toggleDay(day)} />
+            <Chip key={day} label={tx(day)} active={f.deliveryDays.includes(day)} onPress={() => toggleDay(day)} />
           ))}
         </View>
       </View>
-      <Button title="Saqlash" onPress={save} loading={busy} disabled={f.districts.length === 0 || f.categories.length === 0} />
-      {msg && (
-        <T size="small" tone={msg.ok ? 'ok' : 'danger'}>
-          {msg.text}
-        </T>
-      )}
+      <Button title={t('Saqlash')} onPress={save} loading={busy} disabled={f.districts.length === 0 || f.categories.length === 0} />
+      {msg && <Banner tone={msg.ok ? 'ok' : 'danger'}>{msg.text}</Banner>}
     </Screen>
   );
 }

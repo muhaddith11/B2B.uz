@@ -133,6 +133,12 @@ enum PushOwner {
   BRAND_USER
 }
 
+// Onlayn to'lov nima uchun: do'kon distribyutorga qarz to'laydi yoki tashkilot platformaga obuna to'laydi
+enum PaymentPurpose {
+  DEBT // distribyutorning Payme/Click kassasiga, qarz daftariga yoziladi
+  SUBSCRIPTION // platformaning kassasiga, obuna muddatini uzaytiradi
+}
+
 enum PromotionType {
   PERCENT
   N_PLUS_ONE
@@ -147,16 +153,20 @@ model Distributor {
   minOrder     Int               @default(0) // minimal buyurtma, so'm
   deliveryDays String[] // masalan: ["Du", "Chor", "Ju"]
   status       DistributorStatus @default(PENDING)
+  // Obuna: tashkilot (barcha xodimlari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
+  trialEndsAt  DateTime
+  paidUntil    DateTime
   createdAt    DateTime          @default(now())
 
-  staff          Staff[]
-  products       Product[]
-  priceGroups    PriceGroup[]
-  links          ShopLink[]
-  paymentMethods PaymentMethod[]
-  promotions     Promotion[]
-  agreements     Agreement[]
-  brandOrders    BrandOrder[]
+  staff                Staff[]
+  products             Product[]
+  priceGroups          PriceGroup[]
+  links                ShopLink[]
+  paymentMethods       PaymentMethod[]
+  promotions           Promotion[]
+  agreements           Agreement[]
+  brandOrders          BrandOrder[]
+  subscriptionPayments OnlinePayment[] @relation("DistributorSubscription")
 }
 
 model Staff {
@@ -165,7 +175,6 @@ model Staff {
   distributor   Distributor @relation(fields: [distributorId], references: [id])
   name          String
   phone         String
-  telegramId    BigInt?     @unique
   role          StaffRole
   active        Boolean     @default(true)
   createdAt     DateTime    @default(now())
@@ -179,17 +188,21 @@ model Staff {
 }
 
 model Shop {
-  id        String   @id @default(cuid())
-  name      String
-  address   String
-  district  String
-  lat       Float?
-  lng       Float?
-  inn       String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  district    String
+  lat         Float?
+  lng         Float?
+  inn         String?
+  // Obuna: do'kon (barcha sotuvchilari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
+  trialEndsAt DateTime
+  paidUntil   DateTime
+  createdAt   DateTime @default(now())
 
-  users ShopUser[]
-  links ShopLink[]
+  users                ShopUser[]
+  links                ShopLink[]
+  subscriptionPayments OnlinePayment[] @relation("ShopSubscription")
 }
 
 model ShopUser {
@@ -198,7 +211,6 @@ model ShopUser {
   shop       Shop         @relation(fields: [shopId], references: [id])
   name       String
   phone      String
-  telegramId BigInt?      @unique
   role       ShopUserRole @default(OWNER)
   createdAt  DateTime     @default(now())
 
@@ -306,6 +318,10 @@ model Order {
   courierId           String?
   courier             Staff?      @relation("OrderCourier", fields: [courierId], references: [id])
   rejectReason        String?
+  // Holat bosqichlari vaqti (ilovadagi buyurtma yo'lida ko'rinadi)
+  acceptedAt          DateTime?
+  dispatchedAt        DateTime?
+  deliveredAt         DateTime?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
@@ -522,28 +538,46 @@ model BrandOrderItem {
   price          Int // chegirma bilan, buyurtma paytida qotadi
 }
 
-// Payme yoki Click orqali onlayn to'lov: to'lov tizimi tasdiqlagach qarz daftariga yoziladi
+// Payme yoki Click orqali onlayn to'lov. To'lov tizimi tasdiqlagach:
+// DEBT: distribyutor kassasiga, qarz daftariga yoziladi (shopLinkId, paymentMethodId majburiy);
+// SUBSCRIPTION: platforma kassasiga, tashkilot obunasi uzayadi (subscriber* dan biri va months majburiy).
+// Bu shartlar bazada CHECK cheklovi bilan ham tekshiriladi (migratsiyaga qarang).
 model OnlinePayment {
-  id                 String              @id @default(cuid())
-  number             Int                 @unique @default(autoincrement()) // Click merchant_prepare_id uchun
-  shopLinkId         String
-  shopLink           ShopLink            @relation(fields: [shopLinkId], references: [id])
-  paymentMethodId    String
-  paymentMethod      PaymentMethod       @relation(fields: [paymentMethodId], references: [id])
-  provider           PaymentMethodType
-  amount             Int // so'm
-  status             OnlinePaymentStatus @default(CREATED)
-  providerTxnId      String?
-  providerState      Int? // Payme: 1 yaratilgan, 2 bajarilgan, -1/-2 bekor qilingan
-  providerCreateTime BigInt? // Payme create_time, ms
-  performedAt        DateTime?
-  cancelledAt        DateTime?
-  cancelReason       Int?
-  ledgerEntryId      String?             @unique
-  createdAt          DateTime            @default(now())
+  id                      String              @id @default(cuid())
+  number                  Int                 @unique @default(autoincrement()) // Click merchant_prepare_id uchun
+  purpose                 PaymentPurpose      @default(DEBT)
+  shopLinkId              String?
+  shopLink                ShopLink?           @relation(fields: [shopLinkId], references: [id], onDelete: Restrict)
+  paymentMethodId         String?
+  paymentMethod           PaymentMethod?      @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  subscriberDistributorId String?
+  subscriberDistributor   Distributor?        @relation("DistributorSubscription", fields: [subscriberDistributorId], references: [id], onDelete: Restrict)
+  subscriberShopId        String?
+  subscriberShop          Shop?               @relation("ShopSubscription", fields: [subscriberShopId], references: [id], onDelete: Restrict)
+  months                  Int? // obuna: necha oyga
+  provider                PaymentMethodType
+  amount                  Int // so'm
+  status                  OnlinePaymentStatus @default(CREATED)
+  providerTxnId           String?
+  providerState           Int? // Payme: 1 yaratilgan, 2 bajarilgan, -1/-2 bekor qilingan
+  providerCreateTime      BigInt? // Payme create_time, ms
+  performedAt             DateTime?
+  cancelledAt             DateTime?
+  cancelReason            Int?
+  ledgerEntryId           String?             @unique
+  createdAt               DateTime            @default(now())
 
   @@unique([provider, providerTxnId])
   @@index([shopLinkId])
+  @@index([subscriberDistributorId])
+  @@index([subscriberShopId])
+}
+
+// Platforma sozlamalari (admin sahifasidan o'zgartiriladi), masalan obunaning oylik narxi
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 // Mobil ilovaga push bildirishnoma (Expo push token)
@@ -552,6 +586,8 @@ model PushToken {
   token     String    @unique
   ownerKind PushOwner
   ownerId   String
+  // Ilovada tanlangan til: bildirishnoma shu tilda yuboriladi
+  lang      String    @default("uz")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

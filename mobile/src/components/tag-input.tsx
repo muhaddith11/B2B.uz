@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { usePalette } from '@/constants/theme';
+import { t } from '@/lib/i18n';
 
 import { Chip, SearchInput, T } from './ui';
 
@@ -30,7 +31,7 @@ export function TagInput({
 
   return (
     <View style={{ gap: 6 }}>
-      <T size="small" tone="hint">
+      <T size="small" tone="hint" style={{ fontWeight: '500' }}>
         {label}
       </T>
       {value.length > 0 && (
@@ -39,7 +40,8 @@ export function TagInput({
             <Pressable
               key={v}
               onPress={() => onChange(value.filter((x) => x !== v))}
-              accessibilityLabel={`${v}ni olib tashlash`}
+              accessibilityRole="button"
+              accessibilityLabel={t('{v}ni olib tashlash', { v })}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.accent, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
               <Text style={{ color: c.accentText, fontSize: 14 }}>{v}</Text>
               <Text style={{ color: c.accentText, fontSize: 14 }}>×</Text>
@@ -47,11 +49,11 @@ export function TagInput({
           ))}
         </View>
       )}
-      <SearchInput value={text} onChangeText={setText} placeholder={placeholder ?? "Yozing va qo'shing"} onSubmitEditing={() => add(text)} returnKeyType="done" />
+      <SearchInput value={text} onChangeText={setText} placeholder={placeholder ?? t("Yozing va qo'shing")} onSubmitEditing={() => add(text)} returnKeyType="done" />
       {text.trim().length >= 2 && (
-        <Pressable onPress={() => add(text)}>
+        <Pressable accessibilityRole="button" onPress={() => add(text)}>
           <T size="small" tone="accent">
-            + "{text.trim()}" ni qo'shish
+            {t(`+ "{v}" ni qo'shish`, { v: text.trim() })}
           </T>
         </Pressable>
       )}

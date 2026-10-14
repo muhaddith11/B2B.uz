@@ -2,10 +2,12 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, Field, Screen, T } from '@/components/ui';
+import { Banner, Button, Field, Screen } from '@/components/ui';
 import { useSession } from '@/context/session';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
 
-// Bitta tovar qo'shish: narx barcha narx guruhlariga yoziladi
+// Bitta tovar qo'shish: narx barcha narx guruhlariga yoziladi. Rasmni ro'yxatda tovar ustiga bosib qo'shiladi.
 export default function StaffProductNew() {
   const { api } = useSession();
   const [f, setF] = useState({ sku: '', name: '', brand: '', category: '', unit: 'dona', packSize: '1', minOrderPacks: '1', price: '', barcode: '' });
@@ -22,9 +24,11 @@ export default function StaffProductNew() {
         method: 'POST',
         body: JSON.stringify({ ...f, packSize: Number(f.packSize), minOrderPacks: Number(f.minOrderPacks) || 1, price: Number(f.price), barcode: f.barcode || undefined }),
       });
+      haptic.success();
       router.back();
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
       setBusy(false);
     }
   }
@@ -33,29 +37,25 @@ export default function StaffProductNew() {
 
   return (
     <Screen gap={12}>
-      <Field label="Artikul" value={f.sku} onChangeText={set('sku')} autoCapitalize="characters" />
-      <Field label="Nomi" value={f.name} onChangeText={set('name')} placeholder="Masalan: Sharbat, olma, 1 l" />
-      <Field label="Brend" value={f.brand} onChangeText={set('brand')} />
-      <Field label="Toifa" value={f.category} onChangeText={set('category')} />
+      <Field label={t('Artikul')} value={f.sku} onChangeText={set('sku')} autoCapitalize="characters" />
+      <Field label={t('Nomi')} value={f.name} onChangeText={set('name')} placeholder={t('Masalan: Sharbat, olma, 1 l')} />
+      <Field label={t('Brend')} value={f.brand} onChangeText={set('brand')} />
+      <Field label={t('Toifa')} value={f.category} onChangeText={set('category')} />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}>
-          <Field label="O'lchov" value={f.unit} onChangeText={set('unit')} />
+          <Field label={t("O'lchov")} value={f.unit} onChangeText={set('unit')} />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Yashikda nechta" value={f.packSize} onChangeText={digits('packSize')} keyboardType="number-pad" />
+          <Field label={t('Yashikda nechta')} value={f.packSize} onChangeText={digits('packSize')} keyboardType="number-pad" />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Min., yashik" value={f.minOrderPacks} onChangeText={digits('minOrderPacks')} keyboardType="number-pad" />
+          <Field label={t('Min., yashik')} value={f.minOrderPacks} onChangeText={digits('minOrderPacks')} keyboardType="number-pad" />
         </View>
       </View>
-      <Field label="Narx, bir dona, so'm" value={f.price} onChangeText={digits('price')} keyboardType="number-pad" />
-      <Field label="Shtrix-kod (ixtiyoriy)" value={f.barcode} onChangeText={digits('barcode')} keyboardType="number-pad" />
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
-      <Button title="Qo'shish" onPress={submit} loading={busy} disabled={!filled} />
+      <Field label={t("Narx, bir dona, so'm")} value={f.price} onChangeText={digits('price')} keyboardType="number-pad" />
+      <Field label={t('Shtrix-kod (ixtiyoriy)')} value={f.barcode} onChangeText={digits('barcode')} keyboardType="number-pad" />
+      {err && <Banner tone="danger">{err}</Banner>}
+      <Button title={t("Qo'shish")} onPress={submit} loading={busy} disabled={!filled} />
     </Screen>
   );
 }

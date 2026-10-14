@@ -2,14 +2,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AccountLinks } from '@/components/account-links';
+import { AccountLinks, askSignOut } from '@/components/account-links';
+import { subscriptionText } from '@/components/subscription';
 import { Badge, Card, Divider, ListRow, Screen, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
-import { ROLE_LABEL } from '@/lib/staff-types';
+import { t, type Key } from '@/lib/i18n';
+import { roleLabel } from '@/lib/staff-types';
 import type { StaffRole } from '@/lib/types';
 
-type Item = { href: Parameters<typeof router.push>[0]; label: string; icon: keyof typeof Ionicons.glyphMap; roles: StaffRole[] };
+type Item = { href: Parameters<typeof router.push>[0]; label: Key; icon: keyof typeof Ionicons.glyphMap; roles: StaffRole[] };
 
 const ITEMS: Item[] = [
   { href: '/staff/requests', label: "Ulanish so'rovlari", icon: 'person-add-outline', roles: ['ADMIN', 'OPERATOR'] },
@@ -32,12 +34,15 @@ export default function StaffMore() {
         <Card style={{ gap: 6 }}>
           <T size="h2">{me.staff.name}</T>
           <T size="small" tone="hint" num>
-            {ROLE_LABEL[me.staff.role]} · {me.staff.phone}
+            {roleLabel(me.staff.role)} · {me.staff.phone}
           </T>
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <T size="small">{me.distributor.name}</T>
-            {me.distributor.status === 'PENDING' && <Badge label="tekshiruvda" tone="warn" />}
+            {me.distributor.status === 'PENDING' && <Badge label={t('tekshiruvda')} tone="warn" />}
           </View>
+          <T size="small" tone={me.subscription.state === 'ACTIVE' ? 'hint' : me.subscription.state === 'GRACE' ? 'warn' : 'danger'}>
+            {t('Obuna · {status}', { status: subscriptionText(me.subscription) })}
+          </T>
         </Card>
       )}
       {items.length > 0 && (
@@ -45,13 +50,13 @@ export default function StaffMore() {
           {items.map((i, n) => (
             <View key={i.label} style={{ gap: 8 }}>
               {n > 0 && <Divider />}
-              <ListRow icon={i.icon} title={i.label} onPress={() => router.push(i.href)} />
+              <ListRow icon={i.icon} title={t(i.label)} onPress={() => router.push(i.href)} />
             </View>
           ))}
         </Card>
       )}
       <Card style={{ paddingVertical: 8 }}>
-        <ListRow icon="log-out-outline" tone="danger" title="Chiqish" onPress={signOut} />
+        <ListRow icon="log-out-outline" tone="danger" title={t('Chiqish')} onPress={() => askSignOut(signOut)} />
       </Card>
       <AccountLinks />
     </Screen>

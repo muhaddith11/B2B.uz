@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { distributorRegistration, lockRegistration, phoneFromToken } from "@/lib/registration";
 import { handle, readJson } from "@/lib/session";
+import { trialPeriod } from "@/lib/subscription";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Distribyutor o'zi ro'yxatdan o'tadi. Platforma tasdiqlaguncha (status PENDING) do'konlar uni ko'rmaydi.
@@ -16,7 +17,7 @@ export const POST = handle(async (req: Request) => {
     });
     if (existing) return existing;
     const dist = await tx.distributor.create({
-      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING" },
+      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING", ...trialPeriod() },
     });
     await tx.priceGroup.create({ data: { distributorId: dist.id, name: "Oddiy", isDefault: true } });
     return tx.staff.create({ data: { distributorId: dist.id, name: input.adminName, phone, role: "ADMIN" } });

@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Captar",
+    "NSCameraUsageDescription": "To'lov cheki va tovar rasmini olish uchun kameraga ruxsat bering",
+    "NSPhotoLibraryUsageDescription": "To'lov cheki va tovar rasmini yuklash uchun galereyaga ruxsat bering"
+  },
+  "android": {
+    "app_name": "Captar"
+  }
+}

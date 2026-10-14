@@ -25,6 +25,9 @@ describe("do'kon ilovasi", () => {
     const bad = await orders.POST(req("/api/shop/orders", { token: t, body: { distributorId: w.dist.id, items: [] } }));
     expect(bad.status).toBe(400);
     expect(await bad.json()).toEqual({ error: "Buyurtma ma'lumotlari noto'g'ri" });
+    // Ilova rus tilida bo'lsa, xato ham ruscha
+    const badRu = await orders.POST(req("/api/shop/orders", { token: t, body: { distributorId: w.dist.id, items: [] }, headers: { "x-lang": "ru" } }));
+    expect(await badRu.json()).toEqual({ error: "Неверные данные заказа" });
 
     const list = (await (await orders.GET(req("/api/shop/orders", { token: t }))).json()) as { orders: { total: number; status: string }[] };
     expect(list.orders).toEqual([expect.objectContaining({ total: 30_000, status: "SENT" })]);

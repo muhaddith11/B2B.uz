@@ -2,9 +2,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, Chip, Field, Screen, T } from '@/components/ui';
+import { Banner, Button, Chip, Field, Screen, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
 
 // Agent do'konga borib, uni ulaydi. Egasi shu raqam bilan ilovaga SMS orqali kiradi.
 export default function StaffShopNew() {
@@ -20,23 +22,26 @@ export default function StaffShopNew() {
     setErr(null);
     try {
       const res = await api<{ linkId: string; existingShop: boolean }>('/api/staff/shops', { method: 'POST', body: JSON.stringify(form) });
+      haptic.success();
       router.replace(`/staff/shop/${res.linkId}`);
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
       setBusy(false);
     }
   }
 
-  const filled = form.shopName.trim().length >= 2 && form.address.trim().length >= 5 && form.district.trim().length >= 2 && form.ownerName.trim().length >= 2 && form.phone.replace(/\D/g, '').length >= 12;
+  const filled =
+    form.shopName.trim().length >= 2 && form.address.trim().length >= 5 && form.district.trim().length >= 2 && form.ownerName.trim().length >= 2 && form.phone.replace(/\D/g, '').length >= 12;
 
   return (
     <Screen gap={14}>
       <T size="small" tone="hint">
-        Egasining raqami tizimda bo'lsa, o'sha do'kon ulanadi. Nasiya shartlarini keyin admin belgilaydi.
+        {t("Egasining raqami tizimda bo'lsa, o'sha do'kon ulanadi. Nasiya shartlarini keyin admin belgilaydi.")}
       </T>
-      <Field label="Do'kon nomi" value={form.shopName} onChangeText={set('shopName')} />
-      <Field label="Manzil" value={form.address} onChangeText={set('address')} placeholder="Shahar, ko'cha, uy" />
-      <Field label="Tuman yoki shahar" value={form.district} onChangeText={set('district')} />
+      <Field label={t("Do'kon nomi")} value={form.shopName} onChangeText={set('shopName')} />
+      <Field label={t('Manzil')} value={form.address} onChangeText={set('address')} placeholder={t("Shahar, ko'cha, uy")} />
+      <Field label={t('Tuman yoki shahar')} value={form.district} onChangeText={set('district')} />
       {me && me.distributor.districts.length > 1 && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {me.distributor.districts.map((d) => (
@@ -44,14 +49,10 @@ export default function StaffShopNew() {
           ))}
         </View>
       )}
-      <Field label="Egasining ismi" value={form.ownerName} onChangeText={set('ownerName')} />
-      <Field label="Egasining telefoni" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" />
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
-      <Button title="Do'konni qo'shish" onPress={submit} loading={busy} disabled={!filled} />
+      <Field label={t('Egasining ismi')} value={form.ownerName} onChangeText={set('ownerName')} />
+      <Field label={t('Egasining telefoni')} value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" />
+      {err && <Banner tone="danger">{err}</Banner>}
+      <Button title={t("Do'konni qo'shish")} onPress={submit} loading={busy} disabled={!filled} />
     </Screen>
   );
 }

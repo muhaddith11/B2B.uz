@@ -3,23 +3,32 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorText, Loading, Money, StatusBadge, StatusSteps, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, StatusBadge, StatusSteps, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { confirm } from '@/lib/confirm';
+import { haptic } from '@/lib/haptics';
+import { t } from '@/lib/i18n';
 import { formatDate } from '@/lib/money';
-import { PAYMENT_LABEL, type ShopOrder } from '@/lib/types';
+import { paymentLabel, type ShopOrder } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
 
 export default function OrdersScreen() {
   const c = usePalette();
   const { setQty, api } = useSession();
-  const { data, error, refreshing, reload } = useLoad<{ orders: ShopOrder[] }>('/api/shop/orders');
+  const { data, error, refreshing, reload, retry } = useLoad<{ orders: ShopOrder[] }>('/api/shop/orders');
   const [open, setOpen] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Distribyutor hali qabul qilmagan buyurtmani bekor qilish
+  // Distribyutor hali qabul qilmagan buyurtmani bekor qilish: qaytarib bo'lmaydi, shuning uchun avval so'raladi
   async function cancel(o: ShopOrder) {
+    const ok = await confirm({
+      title: t('Buyurtma №{n} bekor qilinsinmi?', { n: o.number }),
+      message: t("Bekor qilingan buyurtmani qaytarib bo'lmaydi, lekin uni takrorlash mumkin."),
+      action: t('Bekor qilish'),
+    });
+    if (!ok) return;
     setCancelling(o.id);
     setErr(null);
     try {
@@ -27,12 +36,13 @@ export default function OrdersScreen() {
       reload();
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
     } finally {
       setCancelling(null);
     }
   }
 
-  if (error && !data) return <ErrorText>{error}</ErrorText>;
+  if (error && !data) return <ErrorState message={error} onRetry={retry} />;
   if (!data) return <Loading />;
 
   // Takrorlash: oldingi buyurtmani savatga qaytaradi; narx savatda yangi prays bo'yicha hisoblanadi
@@ -49,8 +59,8 @@ export default function OrdersScreen() {
       contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={c.accent} colors={[c.accent]} />}
       ListEmptyComponent={
-        <Empty icon="receipt-outline" action={<Button title="Buyurtma berish" kind="secondary" onPress={() => router.push('/')} />}>
-          Hali buyurtma yo'q
+        <Empty icon="receipt-outline" action={<Button title={t('Buyurtma berish')} kind="secondary" onPress={() => router.push('/')} />}>
+          {t("Hali buyurtma yo'q")}
         </Empty>
       }
       renderItem={({ item: o }) => {
@@ -70,7 +80,7 @@ export default function OrdersScreen() {
               </T>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <T size="small" tone="hint" num>
-                  {formatDate(o.createdAt)} · {PAYMENT_LABEL[o.paymentType]}
+                  {formatDate(o.createdAt)} · {paymentLabel(o.paymentType)}
                 </T>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Money value={o.deliveredTotal ?? o.total} />
@@ -78,11 +88,11 @@ export default function OrdersScreen() {
                 </View>
               </View>
             </Pressable>
-            {changed && <Banner tone="warn">Distribyutor miqdorni o'zgartirgan</Banner>}
-            {o.rejectReason && <Banner tone="danger">Sabab: {o.rejectReason}</Banner>}
+            {changed && <Banner tone="warn">{t("Distribyutor miqdorni o'zgartirgan")}</Banner>}
+            {o.rejectReason && <Banner tone="danger">{t('Sabab: {reason}', { reason: o.rejectReason })}</Banner>}
             {isOpen && (
               <View style={{ gap: 12 }}>
-                <StatusSteps status={o.status} />
+                <StatusSteps status={o.status} times={o} />
                 <Divider />
                 <View style={{ gap: 8 }}>
                   {o.items.map((it) => {
@@ -93,15 +103,17 @@ export default function OrdersScreen() {
                           {it.name}
                         </T>
                         <T size="small" tone={diff ? 'warn' : 'hint'} num style={{ fontWeight: '500' }}>
-                          {diff ? `${it.deliveredQty} / ${it.qty}` : it.qty} dona
+                          {diff ? t('{a} / {b} dona', { a: it.deliveredQty ?? 0, b: it.qty }) : t('{n} dona', { n: it.qty })}
                         </T>
                       </View>
                     );
                   })}
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {o.status === 'SENT' && <Button title="Bekor qilish" kind="danger" compact loading={cancelling === o.id} onPress={() => cancel(o)} style={{ flex: 1 }} />}
-                  <Button title="Takrorlash" icon="repeat" kind="secondary" compact onPress={() => repeat(o)} style={{ flex: 1 }} />
+                  {o.status === 'SENT' && (
+                    <Button title={t('Bekor qilish')} kind="danger" compact loading={cancelling === o.id} onPress={() => cancel(o)} style={{ flex: 1 }} />
+                  )}
+                  <Button title={t('Takrorlash')} icon="repeat" kind="secondary" compact onPress={() => repeat(o)} style={{ flex: 1 }} />
                 </View>
                 {err && <Banner tone="danger">{err}</Banner>}
               </View>

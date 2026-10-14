@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AccountLinks } from '@/components/account-links';
-import { Badge, Banner, Card, Empty, ErrorText, IconButton, Loading, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { AccountLinks, askSignOut } from '@/components/account-links';
+import { Badge, Banner, Card, Empty, ErrorState, IconButton, Loading, Money, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { t } from '@/lib/i18n';
 import { formatSom } from '@/lib/money';
-import { AGREEMENT_LABEL, type BrandAgreementRow, type BrandMe } from '@/lib/staff-types';
+import { agreementLabel, type BrandAgreementRow, type BrandMe } from '@/lib/staff-types';
 import { useLoad } from '@/lib/use-load';
 
 // Tovar egasi: savdo (distribyutorlar orqali), kelishuvlar va takliflar
@@ -16,8 +17,8 @@ export default function BrandHome() {
   const me = useLoad<BrandMe>('/api/brand/me');
   const ag = useLoad<{ agreements: BrandAgreementRow[] }>('/api/brand/agreements');
 
-  if (me.error && !me.data) return <ErrorText>{me.error}</ErrorText>;
-  if (!me.data) return <Loading />;
+  if (me.error && !me.data) return <ErrorState message={me.error} onRetry={me.retry} />;
+  if (!me.data) return <Loading safeTop />;
   const d = me.data;
   const maxSum = Math.max(1, ...d.sales.distributors.map((x) => x.sum));
 
@@ -31,36 +32,40 @@ export default function BrandHome() {
       }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <T size="title">{d.brand.name}</T>
+          <T size="title" accessibilityRole="header">
+            {d.brand.name}
+          </T>
           <T size="small" tone="hint">
             {d.user.name}
           </T>
         </View>
-        <IconButton icon="log-out-outline" label="Chiqish" tone="hint" onPress={signOut} />
+        <IconButton icon="log-out-outline" label={t('Chiqish')} tone="hint" onPress={() => askSignOut(signOut)} />
       </View>
-      {d.brand.status === 'PENDING' && <Banner>Hisobingiz platforma tekshiruvida. Tasdiqlangach, distribyutorlarga taklif yubora olasiz. Hozircha tovarlaringizni qo'shib qo'ying.</Banner>}
+      {d.brand.status === 'PENDING' && (
+        <Banner>{t("Hisobingiz platforma tekshiruvida. Tasdiqlangach, distribyutorlarga taklif yubora olasiz. Hozircha tovarlaringizni qo'shib qo'ying.")}</Banner>
+      )}
 
       <Card style={{ gap: 4 }}>
         <T size="small" tone="hint">
-          Oxirgi {d.sales.days} kunda do'konlarga sotilgan
+          {t("Oxirgi {n} kunda do'konlarga sotilgan", { n: d.sales.days })}
         </T>
-        <T size="title">{formatSom(d.sales.total)}</T>
+        <Money value={d.sales.total} size="title" />
         <T size="small" tone="hint">
-          {d.counts.activeAgreements} ta faol kelishuv · {d.counts.products} ta tovar
+          {t('{n} ta faol kelishuv', { n: d.counts.activeAgreements })} · {t('{n} ta tovar', { n: d.counts.products })}
         </T>
       </Card>
 
       {d.counts.newOrders > 0 && (
         <PressCard onPress={() => router.push('/brand/orders')}>
           <T bold tone="accent">
-            {d.counts.newOrders} ta yangi xarid buyurtmasi ›
+            {t('{n} ta yangi xarid buyurtmasi ›', { n: d.counts.newOrders })}
           </T>
         </PressCard>
       )}
 
       {d.sales.distributors.length > 0 && (
         <>
-          <SectionTitle>Distribyutorlar bo'yicha</SectionTitle>
+          <SectionTitle>{t("Distribyutorlar bo'yicha")}</SectionTitle>
           <Card style={{ gap: 10 }}>
             {d.sales.distributors.map((x) => (
               <View key={x.distributorId} style={{ gap: 4 }}>
@@ -71,16 +76,17 @@ export default function BrandHome() {
               </View>
             ))}
           </Card>
-          <SectionTitle>Tovarlar bo'yicha</SectionTitle>
+          <SectionTitle>{t("Tovarlar bo'yicha")}</SectionTitle>
           <Card style={{ gap: 6 }}>
             {d.sales.products.map((p) => (
-              <Row key={p.name} label={`${p.name} · ${p.qty} dona`} value={formatSom(p.sum)} />
+              <Row key={p.name} label={`${p.name} · ${t('{n} dona', { n: p.qty })}`} value={formatSom(p.sum)} />
             ))}
           </Card>
         </>
       )}
 
-      <SectionTitle>Kelishuvlar</SectionTitle>
+      <SectionTitle>{t('Kelishuvlar')}</SectionTitle>
+      {!ag.data && !ag.error && <Loading inline rows={2} />}
       {ag.data?.agreements.map((a) => {
         const incoming = a.status === 'PROPOSED' && a.initiatedBy === 'DISTRIBUTOR';
         return (
@@ -89,15 +95,15 @@ export default function BrandHome() {
               <T bold style={{ flex: 1 }}>
                 {a.distributor.name}
               </T>
-              <Badge label={incoming ? 'Sizga taklif' : AGREEMENT_LABEL[a.status]} tone={incoming ? 'warn' : a.status === 'ACTIVE' ? 'ok' : a.status === 'PROPOSED' ? 'accent' : 'hint'} />
+              <Badge label={incoming ? t('Sizga taklif') : agreementLabel(a.status)} tone={incoming ? 'warn' : a.status === 'ACTIVE' ? 'ok' : a.status === 'PROPOSED' ? 'accent' : 'hint'} />
             </View>
             <T size="small" tone="hint">
-              {a.districts.join(', ')} · chegirma {a.discountPercent}%
+              {a.districts.join(', ')} · {t('chegirma {n}%', { n: a.discountPercent })}
             </T>
           </PressCard>
         );
       })}
-      {ag.data && ag.data.agreements.length === 0 && <Empty>Hali kelishuv yo'q. "Distribyutorlar" bo'limidan hamkor toping.</Empty>}
+      {ag.data && ag.data.agreements.length === 0 && <Empty icon="ribbon-outline">{t('Hali kelishuv yo\'q. "Distribyutorlar" bo\'limidan hamkor toping.')}</Empty>}
       <AccountLinks />
     </Screen>
   );

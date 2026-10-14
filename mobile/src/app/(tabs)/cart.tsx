@@ -3,11 +3,13 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorText, Loading, Money, QtyStepper, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, QtyStepper, T } from '@/components/ui';
 import { R, usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { haptic } from '@/lib/haptics';
+import { t, tx } from '@/lib/i18n';
 import { formatSom } from '@/lib/money';
-import { PAYMENT_LABEL, type CatalogData, type HomeData, type LinkSummary, type PaymentType } from '@/lib/types';
+import { paymentLabel, type CatalogData, type HomeData, type LinkSummary, type PaymentType } from '@/lib/types';
 
 type Group = { link: LinkSummary; catalog: CatalogData };
 type Result = { ok: true; number: number } | { ok: false; error: string };
@@ -30,34 +32,43 @@ export default function CartScreen() {
 
   const distKey = Object.keys(cart).sort().join(',');
 
+  // Savatdagi distribyutorlar katalogi (narx va minimal buyurtma uchun); alive: ekran yopilgach javob yozilmaydi
+  const load = useCallback(
+    async (alive: () => boolean) => {
+      try {
+        const ids = distKey ? distKey.split(',') : [];
+        if (ids.length === 0) {
+          if (alive()) setGroups([]);
+          return;
+        }
+        const home = await api<HomeData>('/api/shop/home');
+        const loaded = await Promise.all(
+          ids.map(async (id) => {
+            const link = home.links.find((l) => l.distributor.id === id);
+            if (!link) return null;
+            const catalog = await api<CatalogData>(`/api/shop/catalog?distributorId=${encodeURIComponent(id)}`);
+            return { link, catalog };
+          }),
+        );
+        if (alive()) {
+          setGroups(loaded.filter((g): g is Group => g !== null));
+          setErr(null);
+        }
+      } catch (e) {
+        if (alive()) setErr((e as Error).message);
+      }
+    },
+    [api, distKey],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      (async () => {
-        try {
-          const ids = distKey ? distKey.split(',') : [];
-          if (ids.length === 0) {
-            setGroups([]);
-            return;
-          }
-          const home = await api<HomeData>('/api/shop/home');
-          const loaded = await Promise.all(
-            ids.map(async (id) => {
-              const link = home.links.find((l) => l.distributor.id === id);
-              if (!link) return null;
-              const catalog = await api<CatalogData>(`/api/shop/catalog?distributorId=${encodeURIComponent(id)}`);
-              return { link, catalog };
-            }),
-          );
-          if (alive) setGroups(loaded.filter((g): g is Group => g !== null));
-        } catch (e) {
-          if (alive) setErr((e as Error).message);
-        }
-      })();
+      load(() => alive);
       return () => {
         alive = false;
       };
-    }, [api, distKey]),
+    }, [load]),
   );
 
   async function submit() {
@@ -81,11 +92,24 @@ export default function CartScreen() {
     }
     setResults(next);
     setSending(false);
+    if (Object.values(next).some((r) => !r.ok)) haptic.error();
+    else haptic.success();
   }
 
-  if (err) return <ErrorText>{err}</ErrorText>;
+  if (err && !groups) {
+    return (
+      <ErrorState
+        message={err}
+        onRetry={() => {
+          setErr(null);
+          load(() => true);
+        }}
+      />
+    );
+  }
 
   const sent = Object.values(results).filter((r): r is { ok: true; number: number } => r.ok);
+  const numbers = sent.map((r) => `№${r.number}`).join(', ');
 
   if (!distKey)
     return (
@@ -95,21 +119,23 @@ export default function CartScreen() {
             <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: c.okSoft, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="checkmark" size={40} color={c.ok} />
             </View>
-            <T size="title">Buyurtma yuborildi</T>
-            <T tone="hint" style={{ textAlign: 'center' }}>
-              {sent.map((r) => `№${r.number}`).join(', ')}. Distribyutor qabul qilganda xabar keladi.
+            <T size="title" accessibilityRole="header">
+              {t('Buyurtma yuborildi')}
             </T>
-            <Button title="Buyurtmalarimni ko'rish" onPress={() => router.push('/orders')} style={{ alignSelf: 'stretch' }} />
+            <T tone="hint" style={{ textAlign: 'center' }}>
+              {t('{numbers}. Distribyutor qabul qilganda xabar keladi.', { numbers })}
+            </T>
+            <Button title={t("Buyurtmalarimni ko'rish")} onPress={() => router.push('/orders')} style={{ alignSelf: 'stretch' }} />
           </>
         ) : (
-          <Empty icon="cart-outline" action={<Button title="Distribyutorni tanlash" kind="secondary" onPress={() => router.push('/')} />}>
-            Savat bo'sh. Distribyutor katalogidan tovar qo'shing.
+          <Empty icon="cart-outline" action={<Button title={t('Distribyutorni tanlash')} kind="secondary" onPress={() => router.push('/')} />}>
+            {t("Savat bo'sh. Distribyutor katalogidan tovar qo'shing.")}
           </Empty>
         )}
       </View>
     );
 
-  if (!groups) return <Loading />;
+  if (!groups) return <Loading rows={2} />;
 
   const active = groups.filter(({ catalog }) => catalog.products.some((p) => (cart[catalog.distributor.id]?.[p.id] ?? 0) > 0));
   const totalOf = (catalog: CatalogData) => catalog.products.reduce((x, p) => x + (cart[catalog.distributor.id]?.[p.id] ?? 0) * p.price, 0);
@@ -120,7 +146,7 @@ export default function CartScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 140 }}>
-        {sent.length > 0 && <Banner tone="ok">Yuborildi: {sent.map((r) => `№${r.number}`).join(', ')}</Banner>}
+        {sent.length > 0 && <Banner tone="ok">{t('Yuborildi: {numbers}', { numbers })}</Banner>}
 
         {active.map(({ link, catalog }) => {
           const id = catalog.distributor.id;
@@ -138,9 +164,9 @@ export default function CartScreen() {
                 <T size="h2" numberOfLines={1} style={{ flex: 1 }}>
                   {catalog.distributor.name}
                 </T>
-                <Pressable onPress={() => router.push(`/distributor/${id}`)} hitSlop={8}>
+                <Pressable accessibilityRole="button" onPress={() => router.push(`/distributor/${id}`)} hitSlop={8}>
                   <T size="small" tone="accent" style={{ fontWeight: '600' }}>
-                    Yana qo'shish
+                    {t("Yana qo'shish")}
                   </T>
                 </Pressable>
               </View>
@@ -148,15 +174,16 @@ export default function CartScreen() {
               {lines.map((p, i) => {
                 const qty = cart[id][p.id];
                 return (
-                  <View key={p.id} style={{ gap: 12 }}>
+                  <View key={p.id} style={{ gap: 8 }}>
                     {i > 0 && <Divider />}
+                    {/* Nom to'liq kenglikda: hisoblagich yonida siqilib qolmaydi (ruschada "2 коробки" uzunroq) */}
+                    <T size="small" bold numberOfLines={2}>
+                      {p.name}
+                    </T>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <View style={{ flex: 1, gap: 2 }}>
-                        <T size="small" bold numberOfLines={2}>
-                          {p.name}
-                        </T>
                         <T size="tiny" tone="hint" num>
-                          {qty} {p.unit} × {formatSom(p.price)}
+                          {qty} {tx(p.unit)} × {formatSom(p.price)}
                         </T>
                         <Money value={qty * p.price} size="small" />
                       </View>
@@ -166,23 +193,26 @@ export default function CartScreen() {
                 );
               })}
 
-              {minLeft > 0 && <Banner tone="warn">Minimal buyurtmagacha yana {formatSom(minLeft)}</Banner>}
+              {minLeft > 0 && <Banner tone="warn">{t('Minimal buyurtmagacha yana {sum}', { sum: formatSom(minLeft) })}</Banner>}
 
               <View style={{ gap: 8 }}>
                 <T size="small" tone="hint" style={{ fontWeight: '500' }}>
-                  To'lov usuli
+                  {t("To'lov usuli")}
                 </T>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {(['CASH', 'TRANSFER', 'CREDIT'] as const).map((t) => {
-                    const disabled = t === 'CREDIT' && !creditOk;
-                    const on = pay === t;
+                <View style={{ flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
+                  {(['CASH', 'TRANSFER', 'CREDIT'] as const).map((type) => {
+                    const disabled = type === 'CREDIT' && !creditOk;
+                    const on = pay === type;
                     return (
                       <Pressable
-                        key={t}
+                        key={type}
                         accessibilityRole="radio"
                         accessibilityState={{ selected: on, disabled }}
                         disabled={disabled}
-                        onPress={() => setPayment((s) => ({ ...s, [id]: t }))}
+                        onPress={() => {
+                          if (!on) haptic.tick();
+                          setPayment((s) => ({ ...s, [id]: type }));
+                        }}
                         style={{
                           flex: 1,
                           minHeight: 64,
@@ -193,11 +223,12 @@ export default function CartScreen() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 4,
+                          paddingHorizontal: 4,
                           opacity: disabled ? 0.45 : 1,
                         }}>
-                        <Ionicons name={PAY_ICON[t]} size={20} color={on ? c.accentInk : c.hint} />
-                        <T size="small" tone={on ? 'accent' : 'text'} style={{ fontWeight: '600' }}>
-                          {PAYMENT_LABEL[t]}
+                        <Ionicons name={PAY_ICON[type]} size={20} color={on ? c.accentInk : c.hint} />
+                        <T size="small" tone={on ? 'accent' : 'text'} numberOfLines={1} style={{ fontWeight: '600' }}>
+                          {paymentLabel(type)}
                         </T>
                       </Pressable>
                     );
@@ -205,15 +236,15 @@ export default function CartScreen() {
                 </View>
                 {link.creditLimit > 0 && (
                   <T size="tiny" tone={link.overdueAmount > 0 ? 'danger' : 'hint'} num>
-                    Bo'sh nasiya: {formatSom(link.creditAvailable)}
-                    {link.overdueAmount > 0 ? " · muddati o'tgan qarz bor" : ''}
+                    {t("Bo'sh nasiya: {sum}", { sum: formatSom(link.creditAvailable) })}
+                    {link.overdueAmount > 0 ? ` · ${t("muddati o'tgan qarz bor")}` : ''}
                   </T>
                 )}
               </View>
 
               <Divider />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <T bold>Jami</T>
+                <T bold>{t('Jami')}</T>
                 <Money value={total} size="h2" />
               </View>
               {result && !result.ok && <Banner tone="danger">{result.error}</Banner>}
@@ -223,19 +254,21 @@ export default function CartScreen() {
       </ScrollView>
 
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, gap: 10, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <T tone="hint">{active.length > 1 ? `${active.length} ta distribyutorga alohida` : 'Hammasi bo\'lib'}</T>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <T tone="hint" style={{ flexShrink: 1 }}>
+            {active.length > 1 ? t('{n} ta distribyutorga alohida', { n: active.length }) : t("Hammasi bo'lib")}
+          </T>
           <Money value={grand} size="h2" />
         </View>
         {short.length > 0 && (
           <T size="small" tone="warn" num>
             {short.length === 1 && active.length === 1
-              ? 'Minimal buyurtmaga yetmagan'
-              : `Minimal buyurtmaga yetmagan: ${short.map(({ catalog }) => catalog.distributor.name).join(', ')}`}
+              ? t('Minimal buyurtmaga yetmagan')
+              : t('Minimal buyurtmaga yetmagan: {names}', { names: short.map(({ catalog }) => catalog.distributor.name).join(', ') })}
           </T>
         )}
         <Button
-          title={active.length > 1 ? `${active.length} ta buyurtma yuborish` : 'Buyurtma berish'}
+          title={active.length > 1 ? t('{n} ta buyurtma yuborish', { n: active.length }) : t('Buyurtma berish')}
           icon="paper-plane-outline"
           onPress={submit}
           loading={sending}

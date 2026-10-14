@@ -4,12 +4,14 @@ import { View } from 'react-native';
 
 import { AuthImage } from '@/components/auth-image';
 import { CallLink, CashForm, OrderCard } from '@/components/staff';
-import { Badge, Button, Card, Chip, ErrorText, Field, Loading, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { Badge, Banner, Button, Card, Chip, ErrorState, Field, Loading, Money, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
+import { confirm } from '@/lib/confirm';
+import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
-import { CHANNEL_LABEL, type ShopDetail } from '@/lib/staff-types';
+import { channelLabel, type ShopDetail } from '@/lib/staff-types';
 import { useLoad } from '@/lib/use-load';
 
 // Do'kon kartasi: qarz, shartlar, buyurtma olish, to'lov qabul qilish, qarz daftari
@@ -17,12 +19,12 @@ export default function StaffShopScreen() {
   const c = usePalette();
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const { can } = useStaff();
-  const { data, error, refreshing, reload } = useLoad<ShopDetail>(`/api/staff/shops/${linkId}`);
+  const { data, error, refreshing, reload, retry } = useLoad<ShopDetail>(`/api/staff/shops/${linkId}`);
   const [panel, setPanel] = useState<'cash' | 'terms' | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
 
-  if (error && !data) return <ErrorText>{error}</ErrorText>;
-  if (!data) return <Loading />;
+  if (error && !data) return <ErrorState message={error} onRetry={retry} />;
+  if (!data) return <Loading rows={2} />;
   const s = data.summary;
 
   return (
@@ -31,23 +33,24 @@ export default function StaffShopScreen() {
       <Card style={{ gap: 4 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <T size="small" tone="hint">
-            Qarz
+            {t('Qarz')}
           </T>
-          {data.status === 'BLOCKED' && <Badge label="Bloklangan" tone="danger" />}
+          {data.status === 'BLOCKED' && <Badge label={t('Bloklangan')} tone="danger" />}
         </View>
-        <T size="title" tone={s.overdueAmount > 0 ? 'danger' : 'text'}>
-          {formatSom(s.debt)}
-        </T>
+        <Money value={s.debt} size="title" tone={s.overdueAmount > 0 ? 'danger' : 'text'} />
         {s.overdueAmount > 0 && (
-          <T size="small" tone="danger">
-            Muddati {s.overdueDays} kun o'tgan: {formatSom(s.overdueAmount)}
+          <T size="small" tone="danger" num>
+            {t("Muddati {n} kun o'tgan: {sum}", { n: s.overdueDays, sum: formatSom(s.overdueAmount) })}
           </T>
         )}
-        {s.nextDue && <Row label="Eng yaqin muddat" value={formatDate(s.nextDue)} />}
-        <Row label="Nasiya limiti" value={data.terms.creditLimit > 0 ? `${formatSom(data.terms.creditLimit)}, ${data.terms.creditDays} kun` : 'berilmagan'} />
-        {data.terms.creditLimit > 0 && <Row label="Bo'sh nasiya" value={formatSom(s.creditAvailable)} />}
-        <Row label="Narx guruhi" value={data.terms.priceGroup?.name ?? 'Asosiy'} />
-        <Row label="Agent" value={data.terms.agent?.name ?? '—'} />
+        {s.nextDue && <Row label={t('Eng yaqin muddat')} value={formatDate(s.nextDue)} />}
+        <Row
+          label={t('Nasiya limiti')}
+          value={data.terms.creditLimit > 0 ? t('{sum}, {n} kun', { sum: formatSom(data.terms.creditLimit), n: data.terms.creditDays }) : t('berilmagan')}
+        />
+        {data.terms.creditLimit > 0 && <Row label={t("Bo'sh nasiya")} value={formatSom(s.creditAvailable)} />}
+        <Row label={t('Narx guruhi')} value={data.terms.priceGroup?.name ?? t('Asosiy')} />
+        <Row label={t('Agent')} value={data.terms.agent?.name ?? '—'} />
       </Card>
 
       <Card style={{ gap: 4 }}>
@@ -61,16 +64,18 @@ export default function StaffShopScreen() {
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {can('ADMIN', 'OPERATOR', 'AGENT') && data.status === 'ACTIVE' && (
-          <Button title="Buyurtma olish" style={{ flex: 1 }} onPress={() => router.push(`/staff/new-order/${linkId}`)} />
+          <Button title={t('Buyurtma olish')} style={{ flex: 1 }} onPress={() => router.push(`/staff/new-order/${linkId}`)} />
         )}
-        <Button title="To'lov qabul qilish" kind="secondary" style={{ flex: 1 }} onPress={() => setPanel(panel === 'cash' ? null : 'cash')} />
+        <Button title={t("To'lov qabul qilish")} kind="secondary" style={{ flex: 1 }} onPress={() => setPanel(panel === 'cash' ? null : 'cash')} />
       </View>
       {panel === 'cash' && (
         <Card>
           <CashForm linkId={linkId} onDone={reload} />
         </Card>
       )}
-      {can('ADMIN') && <Button title={panel === 'terms' ? 'Shartlarni yopish' : "Nasiya va narx shartlarini o'zgartirish"} kind="secondary" onPress={() => setPanel(panel === 'terms' ? null : 'terms')} />}
+      {can('ADMIN') && (
+        <Button title={panel === 'terms' ? t('Shartlarni yopish') : t("Nasiya va narx shartlarini o'zgartirish")} kind="secondary" onPress={() => setPanel(panel === 'terms' ? null : 'terms')} />
+      )}
       {panel === 'terms' && (
         <TermsForm
           data={data}
@@ -81,38 +86,42 @@ export default function StaffShopScreen() {
         />
       )}
 
-      {data.orders.length > 0 && <SectionTitle>Oxirgi buyurtmalar</SectionTitle>}
+      {data.orders.length > 0 && <SectionTitle>{t('Oxirgi buyurtmalar')}</SectionTitle>}
       {data.orders.slice(0, 5).map((o) => (
         <OrderCard key={o.id} o={o} />
       ))}
 
-      <SectionTitle>Qarz daftari</SectionTitle>
+      <SectionTitle>{t('Qarz daftari')}</SectionTitle>
       <Card style={{ gap: 8 }}>
         {data.ledger.length === 0 && (
           <T size="small" tone="hint">
-            Yozuv yo'q
+            {t("Yozuv yo'q")}
           </T>
         )}
         {data.ledger.map((e) => (
           <View key={e.id} style={{ gap: 2, opacity: e.status === 'REJECTED' ? 0.5 : 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-              <T size="small" tone="hint" style={{ flex: 1 }}>
+              <T size="small" tone="hint" num style={{ flex: 1 }}>
                 {formatDate(e.date)} ·{' '}
-                {e.type === 'DEBT' ? `Buyurtma №${e.orderNumber ?? '—'}` : e.type === 'PAYMENT' ? `To'lov (${CHANNEL_LABEL[e.channel ?? ''] ?? '—'})` : 'Tuzatish'}
-                {e.status === 'PENDING' ? ' · tasdiq kutilmoqda' : e.status === 'REJECTED' ? ' · rad etilgan' : ''}
+                {e.type === 'DEBT'
+                  ? t('Buyurtma №{n}', { n: e.orderNumber ?? '—' })
+                  : e.type === 'PAYMENT'
+                    ? t("To'lov ({channel})", { channel: channelLabel(e.channel) })
+                    : t('Tuzatish')}
+                {e.status === 'PENDING' ? ` · ${t('tasdiq kutilmoqda')}` : e.status === 'REJECTED' ? ` · ${t('rad etilgan')}` : ''}
               </T>
-              <T size="small" tone={e.amount < 0 ? 'ok' : 'text'}>
+              <T size="small" num tone={e.amount < 0 ? 'ok' : 'text'} style={{ fontWeight: '500' }}>
                 {formatSom(e.amount)}
               </T>
             </View>
             {e.note && (
               <T size="tiny" tone="hint">
-                {e.note}
+                {txNote(e.note)}
               </T>
             )}
             {e.receiptUrl && (
-              <T size="tiny" tone="accent" onPress={() => setReceipt(receipt === e.receiptUrl ? null : e.receiptUrl)}>
-                {receipt === e.receiptUrl ? 'Chekni yopish' : "Chekni ko'rish"}
+              <T size="tiny" tone="accent" accessibilityRole="button" onPress={() => setReceipt(receipt === e.receiptUrl ? null : e.receiptUrl)}>
+                {receipt === e.receiptUrl ? t('Chekni yopish') : t("Chekni ko'rish")}
               </T>
             )}
             {receipt === e.receiptUrl && e.receiptUrl && <AuthImage path={e.receiptUrl} style={{ width: '100%', height: 280, borderRadius: 8, backgroundColor: c.bg }} />}
@@ -156,23 +165,39 @@ function TermsForm({ data, onDone }: { data: ShopDetail; onDone: () => void }) {
     }
   }
 
+  // Bloklash do'konning ishini to'xtatadi: avval so'raladi (blokdan chiqarish so'ralmaydi)
+  async function toggleBlock() {
+    if (data.status === 'BLOCKED') return save({ status: 'ACTIVE' });
+    const ok = await confirm({
+      title: t('{name} bloklansinmi?', { name: data.shop.name }),
+      message: t("Do'kon yangi buyurtma bera olmaydi. Keyin blokdan chiqarish mumkin."),
+      action: t('Bloklash'),
+    });
+    if (ok) save({ status: 'BLOCKED' });
+  }
+
   return (
     <Card style={{ gap: 10 }}>
       <T size="small" tone="hint">
-        Narx guruhi
+        {t('Narx guruhi')}
       </T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {me?.priceGroups.map((g) => (
           <Chip key={g.id} label={g.name} active={(priceGroupId ?? me.priceGroups.find((x) => x.isDefault)?.id) === g.id} onPress={() => setPriceGroupId(g.id)} />
         ))}
       </View>
-      <Field label="Nasiya limiti, so'm (0 = nasiyasiz)" value={creditLimit} onChangeText={(v) => setCreditLimit(v.replace(/\D/g, ''))} keyboardType="number-pad" />
-      <Field label="Nasiya muddati, kun" value={creditDays} onChangeText={(v) => setCreditDays(v.replace(/\D/g, ''))} keyboardType="number-pad" />
-      <Field label="Muddat o'tgach necha kundan keyin nasiya yopiladi (bo'sh = yopilmaydi)" value={blockAfterDays} onChangeText={(v) => setBlockAfterDays(v.replace(/\D/g, ''))} keyboardType="number-pad" />
+      <Field label={t("Nasiya limiti, so'm (0 = nasiyasiz)")} value={creditLimit} onChangeText={(v) => setCreditLimit(v.replace(/\D/g, ''))} keyboardType="number-pad" />
+      <Field label={t('Nasiya muddati, kun')} value={creditDays} onChangeText={(v) => setCreditDays(v.replace(/\D/g, ''))} keyboardType="number-pad" />
+      <Field
+        label={t("Muddat o'tgach necha kundan keyin nasiya yopiladi (bo'sh = yopilmaydi)")}
+        value={blockAfterDays}
+        onChangeText={(v) => setBlockAfterDays(v.replace(/\D/g, ''))}
+        keyboardType="number-pad"
+      />
       {me && me.agents.length > 0 && (
         <>
           <T size="small" tone="hint">
-            Agent
+            {t('Agent')}
           </T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {me.agents.map((a) => (
@@ -181,17 +206,9 @@ function TermsForm({ data, onDone }: { data: ShopDetail; onDone: () => void }) {
           </View>
         </>
       )}
-      <Button title="Saqlash" onPress={() => save()} loading={busy} />
-      <Button
-        title={data.status === 'BLOCKED' ? 'Blokdan chiqarish' : "Do'konni bloklash (buyurtma bera olmaydi)"}
-        kind="danger"
-        onPress={() => save({ status: data.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED' })}
-      />
-      {err && (
-        <T size="small" tone="danger">
-          {err}
-        </T>
-      )}
+      <Button title={t('Saqlash')} onPress={() => save()} loading={busy} />
+      <Button title={data.status === 'BLOCKED' ? t('Blokdan chiqarish') : t("Do'konni bloklash (buyurtma bera olmaydi)")} kind="danger" disabled={busy} onPress={toggleBlock} />
+      {err && <Banner tone="danger">{err}</Banner>}
     </Card>
   );
 }

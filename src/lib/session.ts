@@ -1,18 +1,20 @@
 import { cookies } from "next/headers";
 import type { StaffRole } from "@prisma/client";
 import { db } from "./db";
+import { langOf, render, type Lang, type Text } from "./i18n";
 import { normalizePhone } from "./phone";
 import { verifyToken } from "./token";
 
 export const PANEL_COOKIE = "panel_session";
 export const ADMIN_COOKIE = "admin_session";
 
+// Xato matni o'zbekcha (message) va so'rov tilida (render: text): ilova ruscha bo'lsa, javob ham ruscha
 export class HttpError extends Error {
   constructor(
     public status: number,
-    message: string,
+    public text: Text,
   ) {
-    super(message);
+    super(render(text, "uz"));
   }
 }
 
@@ -21,7 +23,7 @@ function bearer(req: Request) {
   return verifyToken(header.replace(/^Bearer\s+/i, ""));
 }
 
-// Mini App va mobil ilova so'rovlari: Authorization: Bearer <token>
+// Mobil ilova so'rovlari: Authorization: Bearer <token>
 export async function requireShopUser(req: Request) {
   const payload = bearer(req);
   if (!payload || payload.kind !== "shop") throw new HttpError(401, "Kirish kerak");
@@ -86,25 +88,25 @@ export function devAuthEnabled(): boolean {
   return process.env.DEV_AUTH === "1" && process.env.NODE_ENV !== "production";
 }
 
-export function errorResponse(e: unknown): Response {
-  if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
+export function errorResponse(e: unknown, lang: Lang = "uz"): Response {
+  if (e instanceof HttpError) return Response.json({ error: render(e.text, lang) }, { status: e.status });
   console.error(e);
-  return Response.json({ error: "Serverda xato" }, { status: 500 });
+  return Response.json({ error: render("Serverda xato", lang) }, { status: 500 });
 }
 
-// Route handler'larni bir xil xato bilan o'rash
+// Route handler'larni bir xil xato bilan o'rash (xato matni so'rov tilida)
 export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response>) {
   return async (...args: A): Promise<Response> => {
     try {
       return await fn(...args);
     } catch (e) {
-      return errorResponse(e);
+      return errorResponse(e, langOf(args[0]));
     }
   };
 }
 
 // So'rov tanasini zod sxemasi bilan o'qish
-export async function readJson<T>(req: Request, schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } }, message = "Ma'lumotlar noto'g'ri"): Promise<T> {
+export async function readJson<T>(req: Request, schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } }, message: Text = "Ma'lumotlar noto'g'ri"): Promise<T> {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) throw new HttpError(400, message);
   return parsed.data;

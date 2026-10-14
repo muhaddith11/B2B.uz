@@ -2,22 +2,23 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorText, Loading, Money, Screen, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Screen, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
+import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
-import { CHANNEL_LABEL } from '@/lib/staff-types';
+import { channelLabel } from '@/lib/staff-types';
 import type { LedgerItem, LinkSummary } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
 
 export default function DebtsScreen() {
-  const { data, error, refreshing, reload } = useLoad<{ links: LinkSummary[]; entries: LedgerItem[] }>('/api/shop/debts');
+  const { data, error, refreshing, reload, retry } = useLoad<{ links: LinkSummary[]; entries: LedgerItem[] }>('/api/shop/debts');
 
-  if (error && !data) return <ErrorText>{error}</ErrorText>;
+  if (error && !data) return <ErrorState message={error} onRetry={retry} />;
   if (!data) return <Loading />;
 
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
-      {data.links.length === 0 && <Empty icon="wallet-outline">Hali distribyutorlarga qarzingiz yo'q</Empty>}
+      {data.links.length === 0 && <Empty icon="wallet-outline">{t("Hali distribyutorlarga qarzingiz yo'q")}</Empty>}
       {data.links.map((l) => (
         <DebtCard key={l.linkId} l={l} entries={data.entries.filter((e) => e.linkId === l.linkId)} />
       ))}
@@ -40,48 +41,44 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
         <Money value={l.debt} size="title" tone={late ? 'danger' : 'text'} />
         {l.nextDue && !late ? (
           <T size="small" tone="hint" num>
-            To'lov muddati: {formatDate(l.nextDue)}
+            {t("To'lov muddati: {date}", { date: formatDate(l.nextDue) })}
           </T>
         ) : null}
       </View>
 
       {l.creditLimit > 0 ? (
-        <View style={{ gap: 6 }} accessibilityLabel={`Nasiya limiti ${formatSom(l.creditLimit)}, bo'sh ${formatSom(l.creditAvailable)}`}>
+        <View style={{ gap: 6 }} accessible accessibilityLabel={t("Nasiya limiti {limit}, bo'sh {free}", { limit: formatSom(l.creditLimit), free: formatSom(l.creditAvailable) })}>
           <View style={{ height: 8, borderRadius: 4, backgroundColor: c.field, overflow: 'hidden' }}>
             <View style={{ width: `${used * 100}%`, height: 8, borderRadius: 4, backgroundColor: late ? c.danger : c.accent }} />
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <T size="tiny" tone="hint" num>
-              Bo'sh: {formatSom(l.creditAvailable)}
+              {t("Bo'sh: {sum}", { sum: formatSom(l.creditAvailable) })}
             </T>
             <T size="tiny" tone="hint" num>
-              Limit: {formatSom(l.creditLimit)}
+              {t('Limit: {sum}', { sum: formatSom(l.creditLimit) })}
             </T>
           </View>
         </View>
       ) : (
         <T size="small" tone="hint">
-          Nasiya berilmagan
+          {t('Nasiya berilmagan')}
         </T>
       )}
 
-      {late && (
-        <Banner tone="danger">
-          Muddati {l.overdueDays} kun o'tgan: {formatSom(l.overdueAmount)}
-        </Banner>
-      )}
+      {late && <Banner tone="danger">{t("Muddati {n} kun o'tgan: {sum}", { n: l.overdueDays, sum: formatSom(l.overdueAmount) })}</Banner>}
       {pending > 0 && (
         <Banner tone="accent" icon="time-outline">
-          Tasdiq kutilmoqda: {formatSom(pending)}
+          {t('Tasdiq kutilmoqda: {sum}', { sum: formatSom(pending) })}
         </Banner>
       )}
-      {l.debt > 0 && <Button title="To'lash" icon="wallet-outline" kind={late ? 'primary' : 'secondary'} onPress={() => router.push(`/pay/${l.distributor.id}`)} />}
+      {l.debt > 0 && <Button title={t("To'lash")} icon="wallet-outline" kind={late ? 'primary' : 'secondary'} onPress={() => router.push(`/pay/${l.distributor.id}`)} />}
 
       {entries.length > 0 && (
         <View style={{ gap: 10 }}>
           <Divider />
-          <T size="small" tone="hint" style={{ fontWeight: '600' }}>
-            Tarix
+          <T size="small" tone="hint" style={{ fontWeight: '600' }} accessibilityRole="header">
+            {t('Tarix')}
           </T>
           {entries.map((e) => (
             <Entry key={e.id} e={e} />
@@ -97,7 +94,12 @@ function Entry({ e }: { e: LedgerItem }) {
   const pay = e.amount < 0;
   const rejected = e.status === 'REJECTED';
   const title =
-    e.type === 'DEBT' ? `Buyurtma №${e.orderNumber ?? '—'}` : e.type === 'PAYMENT' ? `To'lov${e.channel ? ` · ${CHANNEL_LABEL[e.channel] ?? e.channel}` : ''}` : 'Tuzatish';
+    e.type === 'DEBT'
+      ? t('Buyurtma №{n}', { n: e.orderNumber ?? '—' })
+      : e.type === 'PAYMENT'
+        ? `${t("To'lov")}${e.channel ? ` · ${channelLabel(e.channel)}` : ''}`
+        : t('Tuzatish');
+  const status = e.status === 'PENDING' ? ` · ${t('tasdiq kutilmoqda')}` : rejected ? ` · ${e.note ? txNote(e.note) : t('rad etildi')}` : '';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: rejected ? 0.6 : 1 }}>
       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: pay ? c.okSoft : c.field, alignItems: 'center', justifyContent: 'center' }}>
@@ -109,7 +111,7 @@ function Entry({ e }: { e: LedgerItem }) {
         </T>
         <T size="tiny" tone={e.status === 'PENDING' ? 'accent' : rejected ? 'danger' : 'hint'} num numberOfLines={2}>
           {formatDate(e.date)}
-          {e.status === 'PENDING' ? ' · tasdiq kutilmoqda' : rejected ? ` · ${e.note ?? 'rad etildi'}` : ''}
+          {status}
         </T>
       </View>
       <T size="small" num tone={rejected ? 'hint' : pay ? 'ok' : 'text'} style={[{ fontWeight: '600' }, rejected && { textDecorationLine: 'line-through' }]}>

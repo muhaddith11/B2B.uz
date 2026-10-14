@@ -2,11 +2,13 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 
-import { Banner, Button, Chip, Empty, ErrorText, Loading, Money, QtyStepper, SearchInput, T } from '@/components/ui';
+import { Banner, Button, Chip, Empty, ErrorState, Loading, Money, QtyStepper, SearchInput, T } from '@/components/ui';
 import { R, usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
+import { haptic } from '@/lib/haptics';
+import { t, tx } from '@/lib/i18n';
 import { formatSom } from '@/lib/money';
-import { PAYMENT_LABEL, type CatalogProduct, type PaymentType } from '@/lib/types';
+import { paymentLabel, type CatalogProduct, type PaymentType } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
 
 type StaffCatalog = {
@@ -21,7 +23,7 @@ export default function StaffNewOrder() {
   const c = usePalette();
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const { api } = useSession();
-  const { data, error } = useLoad<StaffCatalog>(`/api/staff/catalog?linkId=${linkId}`);
+  const { data, error, retry } = useLoad<StaffCatalog>(`/api/staff/catalog?linkId=${linkId}`);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -35,8 +37,8 @@ export default function StaffNewOrder() {
     return (data?.products ?? []).filter((p) => (!category || p.category === category) && (!q || `${p.name} ${p.brand}`.toLowerCase().includes(q)));
   }, [data, category, query]);
 
-  if (error && !data) return <ErrorText>{error}</ErrorText>;
-  if (!data) return <Loading />;
+  if (error && !data) return <ErrorState message={error} onRetry={retry} />;
+  if (!data) return <Loading rows={5} />;
 
   const total = data.products.reduce((s, p) => s + (qty[p.id] ?? 0) * p.price, 0);
   const packs = data.products.reduce((s, p) => s + Math.floor((qty[p.id] ?? 0) / p.packSize), 0);
@@ -50,9 +52,11 @@ export default function StaffNewOrder() {
         .filter(([, q]) => q > 0)
         .map(([productId, q]) => ({ productId, qty: q }));
       const res = await api<{ id: string }>('/api/staff/orders', { method: 'POST', body: JSON.stringify({ linkId, paymentType: payment, items }) });
+      haptic.success();
       router.replace(`/staff/order/${res.id}`);
     } catch (e) {
       setErr((e as Error).message);
+      haptic.error();
       setBusy(false);
     }
   }
@@ -63,21 +67,23 @@ export default function StaffNewOrder() {
       <FlatList
         data={shown}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: total > 0 ? 250 : 24 }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: total > 0 ? 250 : 24 }}
         keyboardShouldPersistTaps="handled"
+        // Qidiruv va toifalar tepada qoladi: agent uzun ro'yxatda tez topadi
+        stickyHeaderIndices={[0]}
         ListHeaderComponent={
-          <View style={{ gap: 12, marginBottom: 4 }}>
-            <SearchInput value={query} onChangeText={setQuery} placeholder="Tovar yoki brend" />
+          <View style={{ gap: 12, backgroundColor: c.bg, marginHorizontal: -16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+            <SearchInput value={query} onChangeText={setQuery} placeholder={t('Tovar yoki brend')} />
             {categories.length > 1 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {[null, ...categories].map((cat) => (
-                  <Chip key={cat ?? 'all'} label={cat ?? 'Hammasi'} active={category === cat} onPress={() => setCategory(cat)} />
+                  <Chip key={cat ?? 'all'} label={cat ?? t('Hammasi')} active={category === cat} onPress={() => setCategory(cat)} />
                 ))}
               </ScrollView>
             )}
           </View>
         }
-        ListEmptyComponent={<Empty icon="search-outline">Hech narsa topilmadi</Empty>}
+        ListEmptyComponent={<Empty icon="search-outline">{t('Hech narsa topilmadi')}</Empty>}
         renderItem={({ item: p }) => {
           const n = Math.floor((qty[p.id] ?? 0) / p.packSize);
           return (
@@ -100,14 +106,14 @@ export default function StaffNewOrder() {
                   {p.name}
                 </T>
                 <T size="tiny" tone="hint" num numberOfLines={1}>
-                  {formatSom(p.price)} · yashikda {p.packSize} {p.unit}
+                  {t('{price} · yashikda {n} {unit}', { price: formatSom(p.price), n: p.packSize, unit: tx(p.unit) })}
                 </T>
               </View>
               {p.inStock ? (
                 <QtyStepper packs={n} onChange={(v) => setQty((q) => ({ ...q, [p.id]: Math.max(0, v) * p.packSize }))} label={false} />
               ) : (
                 <T size="tiny" tone="hint">
-                  Tugagan
+                  {t('Tugagan')}
                 </T>
               )}
             </View>
@@ -118,20 +124,20 @@ export default function StaffNewOrder() {
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, gap: 12, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <T tone="hint" num>
-              {packs} yashik
+              {t('{n} yashik', { n: packs })}
             </T>
             <Money value={total} size="h2" />
           </View>
-          {minLeft > 0 && <Banner tone="warn">Minimal buyurtmagacha yana {formatSom(minLeft)}</Banner>}
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          {minLeft > 0 && <Banner tone="warn">{t('Minimal buyurtmagacha yana {sum}', { sum: formatSom(minLeft) })}</Banner>}
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {(['CASH', 'TRANSFER', 'CREDIT'] as const)
-              .filter((t) => t !== 'CREDIT' || data.creditLimit > 0)
-              .map((t) => (
-                <Chip key={t} label={PAYMENT_LABEL[t]} active={payment === t} onPress={() => setPayment(t)} />
+              .filter((type) => type !== 'CREDIT' || data.creditLimit > 0)
+              .map((type) => (
+                <Chip key={type} label={paymentLabel(type)} active={payment === type} onPress={() => setPayment(type)} />
               ))}
           </View>
           {err && <Banner tone="danger">{err}</Banner>}
-          <Button title="Buyurtmani yuborish" icon="paper-plane-outline" onPress={submit} loading={busy} disabled={minLeft > 0} />
+          <Button title={t('Buyurtmani yuborish')} icon="paper-plane-outline" onPress={submit} loading={busy} disabled={minLeft > 0} />
         </View>
       )}
     </View>

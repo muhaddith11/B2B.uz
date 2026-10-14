@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { L } from "@/lib/i18n";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
 
 // Tovarlar: asosiy narx guruhidagi narx bilan. Ko'p tovarni Excel prays-list orqali web panelda yuklash qulay.
@@ -24,6 +25,7 @@ export const GET = handle(async (req: Request) => {
       minOrderPacks: p.minOrderPacks,
       inStock: p.inStock,
       active: p.active,
+      imageUrl: p.imageUrl,
       fromBrand: p.brandProduct?.brand.name ?? null,
       price: p.prices.find((x) => x.priceGroupId === def?.id)?.price ?? null,
       prices: p.prices.map((x) => ({ group: x.priceGroup.name, price: x.price })),
@@ -48,7 +50,7 @@ export const POST = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR"]);
   const input = await readJson(req, productInput, "Tovar ma'lumotlarini to'liq kiriting");
   if (await db.product.findUnique({ where: { distributorId_sku: { distributorId: staff.distributorId, sku: input.sku } } })) {
-    throw new HttpError(400, `Artikul ${input.sku} allaqachon bor`);
+    throw new HttpError(400, L("Artikul {sku} allaqachon bor", { sku: input.sku }));
   }
   const groups = await db.priceGroup.findMany({ where: { distributorId: staff.distributorId } });
   const { price, barcode, ...rest } = input;
@@ -59,7 +61,7 @@ export const POST = handle(async (req: Request) => {
     return Response.json({ id: product.id });
   } catch (e) {
     // Bir vaqtda shu artikul bilan boshqa tovar qo'shilgan bo'lsa (ikki marta bosish)
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(400, `Artikul ${input.sku} allaqachon bor`);
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(400, L("Artikul {sku} allaqachon bor", { sku: input.sku }));
     throw e;
   }
 });

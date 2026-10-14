@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { sendAllowed } from "./otp";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { reviewCodeFor, sendAllowed } from "./otp";
 import { normalizePhone } from "./phone";
 
 describe("normalizePhone", () => {
@@ -30,5 +30,24 @@ describe("sendAllowed", () => {
   });
   it("bir soatdan eski kodlarni hisobga olmaydi", () => {
     expect(sendAllowed([ago(4000), ago(3700), ago(120)], now)).toEqual({ ok: true });
+  });
+});
+
+describe("reviewCodeFor", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("faqat REVIEW_PHONE uchun va kod 6 xonali bo'lsa ishlaydi", () => {
+    vi.stubEnv("REVIEW_PHONE", "+998 99 000 00 01");
+    vi.stubEnv("REVIEW_CODE", "246810");
+    expect(reviewCodeFor("+998990000001")).toBe("246810");
+    expect(reviewCodeFor("+998990000002")).toBeNull();
+    vi.stubEnv("REVIEW_CODE", "12345");
+    expect(reviewCodeFor("+998990000001")).toBeNull();
+  });
+
+  it("sozlanmagan bo'lsa hech kimga ishlamaydi", () => {
+    vi.stubEnv("REVIEW_PHONE", "");
+    vi.stubEnv("REVIEW_CODE", "246810");
+    expect(reviewCodeFor("+998990000001")).toBeNull();
   });
 });

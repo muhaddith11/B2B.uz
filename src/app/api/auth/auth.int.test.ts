@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
+import { trialPeriod } from "@/lib/subscription";
 import { verifyToken } from "@/lib/token";
 import { phone, req, tokens, uid } from "@/test/factory";
 import * as otpRequest from "./otp/request/route";
@@ -50,7 +51,7 @@ describe("ro'yxatdan o'tish", () => {
 describe("SMS kod bilan kirish", () => {
   it("kod so'raladi, tekshiriladi va raqamdagi hisoblar qaytadi", async () => {
     const p = phone();
-    await db.shop.create({ data: { name: "Mening do'konim", address: "Manzil 1", district: "Chilonzor", users: { create: { name: "Ega", phone: p } } } });
+    await db.shop.create({ data: { name: "Mening do'konim", address: "Manzil 1", district: "Chilonzor", ...trialPeriod(), users: { create: { name: "Ega", phone: p } } } });
     const sent = await otpRequest.POST(req("/api/auth/otp/request", { body: { phone: p }, headers: { "x-real-ip": `10.${uid()}` } }));
     expect(sent.status).toBe(200);
     // Sinov rejimida SMS xizmati yo'q: kod javobda qaytadi
