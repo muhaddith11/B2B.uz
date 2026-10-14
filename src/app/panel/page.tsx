@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { overdue } from "@/lib/ledger";
 import { formatSom } from "@/lib/money";
+import { ledgerCalcSelect } from "@/lib/shop-summary";
 import { devAuthEnabled, getStaff } from "@/lib/session";
 import { startOfTashkentDay } from "@/lib/time";
 import { requestPanelCode, verifyPanelCode } from "./login-actions";
@@ -21,7 +22,7 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
   const [newOrders, inDelivery, links, paidToday, requests] = await Promise.all([
     db.order.aggregate({ where: { shopLink: { distributorId }, status: "SENT" }, _count: true, _sum: { total: true } }),
     db.order.count({ where: { shopLink: { distributorId }, status: "IN_DELIVERY" } }),
-    db.shopLink.findMany({ where: { distributorId, status: "ACTIVE" }, include: { ledger: true, shop: true } }),
+    db.shopLink.findMany({ where: { distributorId, status: "ACTIVE" }, select: { ledger: { select: ledgerCalcSelect }, shop: { select: { name: true } } } }),
     db.ledgerEntry.aggregate({
       where: { shopLink: { distributorId }, type: "PAYMENT", status: "CONFIRMED", date: { gte: startOfDay } },
       _sum: { amount: true },

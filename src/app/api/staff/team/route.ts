@@ -17,8 +17,13 @@ export const POST = handle(async (req: Request) => {
   const input = await readJson(req, z.object({ name: z.string().trim().min(2).max(100), phone: z.string(), role: z.enum(ROLES) }), "Ism, telefon va rolni kiriting");
   const phone = normalizePhone(input.phone);
   if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
-  if (await db.staff.findFirst({ where: { distributorId: staff.distributorId, phone, active: true } })) throw new HttpError(400, "Bu raqamli xodim allaqachon bor");
-  const created = await db.staff.create({ data: { distributorId: staff.distributorId, name: input.name, phone, role: input.role } });
-  await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "staff.created", entity: "Staff", entityId: created.id, after: { role: input.role } } });
+  const created = await db.$transaction(async (tx) => {
+    // Jamoa o'zgarishlari navbat bilan: ikki marta bosilsa bir raqamli xodim ikki marta qo'shilmaydi
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`team:${staff.distributorId}`}))`;
+    if (await tx.staff.findFirst({ where: { distributorId: staff.distributorId, phone, active: true } })) throw new HttpError(400, "Bu raqamli xodim allaqachon bor");
+    const s = await tx.staff.create({ data: { distributorId: staff.distributorId, name: input.name, phone, role: input.role } });
+    await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "staff.created", entity: "Staff", entityId: s.id, after: { role: input.role } } });
+    return s;
+  });
   return Response.json({ id: created.id });
 });

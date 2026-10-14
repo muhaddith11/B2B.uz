@@ -124,7 +124,21 @@ Kod tayyor; quyidagilar sizning hisoblaringiz va qarorlaringiz:
 
 ## Buyruqlar
 
-- `npm test`: testlar
+- `npm test`: unit testlar (bazasiz, sof funksiyalar)
+- `npm run test:int`: integratsiya testlari (haqiqiy PostgreSQL'da, pastga qarang)
 - `npm run typecheck`: TypeScript tekshiruvi
+- `npm run lint`: ESLint (ogohlantirish ham xato hisoblanadi)
 - `npm run db:studio`: bazani brauzerda ko'rish
-- `npm run db:reset`: bazani tozalab, qayta yaratish
+- `npm run db:reset`: lokal bazani tozalab, migratsiya va demo ma'lumotlarni qayta yozish
+
+## Testlar va CI
+
+Integratsiya testlari pul oqimlarini (buyurtma, qarz daftari, naqd, chek, Payme, Click), bir vaqtdagi so'rovlarni (ikki marta bosish, ikki xodimning to'qnashuvi), har rolning ruxsatlarini va ro'yxatdan o'tishni haqiqiy bazada tekshiradi. Ular **alohida test bazasida** ishlaydi: `TEST_DATABASE_URL` nomi `_test` bilan tugashi shart, aks holda testlar ishga tushmaydi. Ishchi bazaga tegmaydi va uni tozalamaydi (har test o'z ma'lumotini yaratadi).
+
+Lokal sozlash (bir marta): PostgreSQL'da `savdo_test` bazasini yarating, `.env` ga `TEST_DATABASE_URL` ni yozing (`.env.example` ga qarang) va migratsiyalarni shu bazaga qo'llang:
+
+```bash
+DATABASE_URL="$TEST_DATABASE_URL" DATABASE_URL_UNPOOLED="$TEST_DATABASE_URL" npx prisma migrate deploy
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) har push va pull request'da: server uchun typecheck, lint, unit va integratsiya testlari (vaqtinchalik PostgreSQL bilan), `npm audit`, `next build`; mobil ilova uchun typecheck va lint. Biror qadam o'tmasa, commit qizil belgi oladi.

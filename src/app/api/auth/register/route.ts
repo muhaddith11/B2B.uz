@@ -2,7 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { lockRegistration } from "@/lib/registration";
-import { devAuthEnabled } from "@/lib/session";
+import { devAuthEnabled, handle, HttpError, readJson } from "@/lib/session";
 import { verifyInitData } from "@/lib/telegram-auth";
 import { DAY_SECONDS, signToken, verifyToken } from "@/lib/token";
 
@@ -23,28 +23,27 @@ export async function GET() {
 }
 
 // Yangi do'kon o'zi ro'yxatdan o'tadi (agentsiz)
-export async function POST(req: Request) {
-  const parsed = registerInput.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Barcha maydonlarni to'ldiring" }, { status: 400 });
-  const { initData, phoneToken, shopName, address, district, ownerName } = parsed.data;
+export const POST = handle(async (req: Request) => {
+  const input = await readJson(req, registerInput, "Barcha maydonlarni to'ldiring");
+  const { initData, phoneToken, shopName, address, district, ownerName } = input;
 
   let telegramId: bigint | null = null;
   let verifiedPhone: string | null = null;
   if (phoneToken) {
     const payload = verifyToken(phoneToken);
-    if (payload?.kind !== "phone") return Response.json({ error: "Kod muddati o'tdi. Qaytadan kiring" }, { status: 401 });
+    if (payload?.kind !== "phone") throw new HttpError(401, "Kod muddati o'tdi. Qaytadan kiring");
     verifiedPhone = payload.phone;
   } else if (initData) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const tgUser = botToken ? verifyInitData(initData, botToken) : null;
-    if (!tgUser) return Response.json({ error: "Telegram imzosi noto'g'ri" }, { status: 401 });
+    if (!tgUser) throw new HttpError(401, "Telegram imzosi noto'g'ri");
     telegramId = BigInt(tgUser.id);
   } else if (!devAuthEnabled()) {
-    return Response.json({ error: "Ilovani Telegram ichida oching" }, { status: 401 });
+    throw new HttpError(401, "Ilovani Telegram ichida oching");
   }
 
-  const phone = verifiedPhone ?? normalizePhone(parsed.data.phone ?? "");
-  if (!phone) return Response.json({ error: "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin" }, { status: 400 });
+  const phone = verifiedPhone ?? normalizePhone(input.phone ?? "");
+  if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
 
   // Ikki marta bosilsa ham bitta do'kon yaratiladi: Telegram hisobi yoki tasdiqlangan raqamda shu nomli do'kon bo'lsa, o'shanga kiriladi.
   // Bir raqamda nomi boshqa ikkinchi do'kon ochish mumkin.
@@ -72,4 +71,4 @@ export async function POST(req: Request) {
   const ttl = telegramId || verifiedPhone ? 30 * DAY_SECONDS : DAY_SECONDS;
   const token = signToken({ kind: "shop", shopUserId: user.id, exp: Math.floor(Date.now() / 1000) + ttl });
   return Response.json({ token });
-}
+});

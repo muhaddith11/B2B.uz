@@ -36,20 +36,25 @@ export async function proposeAgreement(side: AgreementSide, brandId: string, dis
   const [brand, dist] = await Promise.all([db.brand.findUnique({ where: { id: brandId } }), db.distributor.findUnique({ where: { id: distributorId } })]);
   if (!brand || brand.status !== "ACTIVE") throw new HttpError(side === "BRAND" ? 403 : 404, side === "BRAND" ? "Hisobingiz hali tasdiqlanmagan" : "Tovar egasi topilmadi");
   if (!dist || dist.status !== "ACTIVE") throw new HttpError(side === "DISTRIBUTOR" ? 403 : 404, side === "DISTRIBUTOR" ? "Hisobingiz hali tasdiqlanmagan" : "Distribyutor topilmadi");
-  const open = await db.agreement.findFirst({ where: { brandId, distributorId, status: { in: [...OPEN] } } });
-  if (open) throw new HttpError(400, open.status === "ACTIVE" ? "Kelishuv allaqachon faol" : "Taklif allaqachon yuborilgan, javob kutilmoqda");
 
-  const agreement = await db.agreement.create({
-    data: {
-      brandId,
-      distributorId,
-      initiatedBy: side,
-      districts: input.districts.length ? input.districts : dist.districts,
-      discountPercent: input.discountPercent,
-      terms: input.terms || null,
-    },
+  const agreement = await db.$transaction(async (tx) => {
+    // Bir juftlik uchun takliflar navbat bilan: ikki marta bosilsa yoki ikkala tomon bir vaqtda taklif qilsa, ochiq kelishuv bitta bo'ladi
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`agreement:${brandId}:${distributorId}`}))`;
+    const open = await tx.agreement.findFirst({ where: { brandId, distributorId, status: { in: [...OPEN] } } });
+    if (open) throw new HttpError(400, open.status === "ACTIVE" ? "Kelishuv allaqachon faol" : "Taklif allaqachon yuborilgan, javob kutilmoqda");
+    const created = await tx.agreement.create({
+      data: {
+        brandId,
+        distributorId,
+        initiatedBy: side,
+        districts: input.districts.length ? input.districts : dist.districts,
+        discountPercent: input.discountPercent,
+        terms: input.terms || null,
+      },
+    });
+    await tx.auditLog.create({ data: { actor, action: "agreement.proposed", entity: "Agreement", entityId: created.id, after: { brandId, distributorId } } });
+    return created;
   });
-  await db.auditLog.create({ data: { actor, action: "agreement.proposed", entity: "Agreement", entityId: agreement.id, after: { brandId, distributorId } } });
   if (side === "BRAND") {
     notifyStaff(distributorId, ["ADMIN"], { title: "Kelishuv taklifi", body: `${brand.name} hamkorlik taklif qilmoqda`, data: { url: `/staff/brand/${brandId}` } });
   } else {
@@ -75,12 +80,15 @@ export async function respondAgreement(side: AgreementSide, sideId: string, agre
   }
 
   const updated = await db.$transaction(async (tx) => {
+    // Shart bilan: bir vaqtda biri qabul qilib, biri rad etsa, faqat birinchisining javobi yoziladi
+    const res = await tx.agreement.updateMany({ where: { id: a.id, status: a.status }, data });
+    if (res.count === 0) throw new HttpError(409, "Kelishuv holati hozirgina o'zgardi. Sahifani yangilang");
     // Kelishuv tugasa, tovar egasining tovarlari distribyutor katalogidan olinadi
     if (data.status === "ENDED") {
       await tx.product.updateMany({ where: { distributorId: a.distributorId, brandProduct: { brandId: a.brandId } }, data: { active: false } });
     }
     await tx.auditLog.create({ data: { actor, action: `agreement.${action}`, entity: "Agreement", entityId: a.id, before: { status: a.status }, after: { status: data.status } } });
-    return tx.agreement.update({ where: { id: a.id }, data });
+    return tx.agreement.findUniqueOrThrow({ where: { id: a.id } });
   });
 
   const label = { ACTIVE: "qabul qilindi", REJECTED: "rad etildi", ENDED: "tugatildi" }[data.status];
@@ -188,7 +196,13 @@ export async function moveBrandOrder(side: AgreementSide, sideId: string, orderI
   const mine = o && (side === "BRAND" ? o.brandId === sideId : o.distributorId === sideId);
   if (!o || !mine) throw new HttpError(404, "Buyurtma topilmadi");
   if (!canMoveBrandOrder(o.status, to, side)) throw new HttpError(400, "Bu holatga o'tkazib bo'lmaydi");
-  const updated = await db.brandOrder.update({ where: { id: o.id }, data: { status: to, rejectReason: to === "REJECTED" ? rejectReason || null : o.rejectReason } });
+  // Shart bilan: masalan, tovar egasi qabul qilayotgan paytda distribyutor bekor qilsa, faqat bittasi o'tadi
+  const res = await db.brandOrder.updateMany({
+    where: { id: o.id, status: o.status },
+    data: { status: to, rejectReason: to === "REJECTED" ? rejectReason || null : o.rejectReason },
+  });
+  if (res.count === 0) throw new HttpError(409, "Buyurtma holati hozirgina o'zgardi. Sahifani yangilang");
+  const updated = await db.brandOrder.findUniqueOrThrow({ where: { id: o.id } });
   const body = `Xarid buyurtmasi ${BRAND_ORDER_LABEL[to]}`;
   if (side === "BRAND") notifyStaff(o.distributorId, ["ADMIN"], { title: `${o.brand.name}, №${o.number}`, body, data: { url: `/staff/brand/${o.brandId}` } });
   else notifyBrand(o.brandId, { title: `${o.distributor.name}, №${o.number}`, body, data: { url: `/brand/order/${o.id}` } });

@@ -1,12 +1,15 @@
-import type { LedgerEntry } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { db } from "./db";
-import { balance, openDebts, overdue } from "./ledger";
+import { balance, openDebts, overdue, type LedgerLike } from "./ledger";
 
 export const PENDING_STATUSES = ["SENT", "ACCEPTED", "IN_DELIVERY"] as const;
 
+// Qarz hisobi uchun kerakli ustunlar: ko'p do'konli ro'yxatlarda butun yozuvni yuklamaslik uchun
+export const ledgerCalcSelect = { amount: true, date: true, dueDate: true, status: true, orderId: true } satisfies Prisma.LedgerEntrySelect;
+
 // Bitta ulanish bo'yicha: qarz, muddati o'tgan, eng yaqin muddat, bo'sh nasiya
 export function summarize(
-  ledger: LedgerEntry[],
+  ledger: LedgerLike[],
   pendingOrders: { total: number; paymentType: string }[],
   creditLimit: number,
   today = new Date(),
@@ -36,7 +39,7 @@ export async function linkSummaries(shopId: string) {
     where: { shopId, status: "ACTIVE" },
     include: {
       distributor: true,
-      ledger: true,
+      ledger: { select: ledgerCalcSelect },
       orders: { where: { status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } },
     },
     orderBy: { createdAt: "asc" },

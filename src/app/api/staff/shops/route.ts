@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
+import { lockRegistration } from "@/lib/registration";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
 import { shopList } from "@/lib/staff-data";
 
@@ -25,10 +26,12 @@ export const POST = handle(async (req: Request) => {
   const phone = normalizePhone(input.phone);
   if (!phone) throw new HttpError(400, "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin");
 
-  const owner = await db.shopUser.findFirst({ where: { phone, role: "OWNER" }, orderBy: { createdAt: "asc" } });
   const agentId = staff.role === "AGENT" ? staff.id : null;
 
-  const link = await db.$transaction(async (tx) => {
+  const { link, owner } = await db.$transaction(async (tx) => {
+    // Bir raqamga ikki xodim (yoki do'konning o'zi) bir vaqtda ro'yxatdan o'tkazsa ham bitta do'kon yaratiladi
+    await lockRegistration(tx, phone);
+    const owner = await tx.shopUser.findFirst({ where: { phone, role: "OWNER" }, orderBy: { createdAt: "asc" } });
     let shopId = owner?.shopId;
     if (!shopId) {
       const shop = await tx.shop.create({
@@ -38,12 +41,14 @@ export const POST = handle(async (req: Request) => {
     }
     const existing = await tx.shopLink.findUnique({ where: { shopId_distributorId: { shopId, distributorId: staff.distributorId } } });
     if (existing?.status === "ACTIVE") throw new HttpError(400, "Bu do'kon allaqachon ulangan");
+    // Admin bloklagan do'konni agent yoki operator qayta qo'shish orqali ochib yubora olmaydi
+    if (existing?.status === "BLOCKED" && staff.role !== "ADMIN") throw new HttpError(403, "Bu do'kon bloklangan. Blokdan faqat admin chiqaradi");
     const data = { status: "ACTIVE" as const, agentId: existing?.agentId ?? agentId, source: existing?.source ?? ("AGENT" as const) };
     const saved = existing
       ? await tx.shopLink.update({ where: { id: existing.id }, data })
       : await tx.shopLink.create({ data: { ...data, shopId, distributorId: staff.distributorId } });
     await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "link.created", entity: "ShopLink", entityId: saved.id, after: { shopId } } });
-    return saved;
+    return { link: saved, owner };
   });
   return Response.json({ linkId: link.id, existingShop: Boolean(owner) });
 });

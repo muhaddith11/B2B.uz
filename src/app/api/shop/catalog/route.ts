@@ -1,9 +1,8 @@
 import { db } from "@/lib/db";
 import { activeLink, priceGroupFor } from "@/lib/orders";
-import { errorResponse, requireShopUser } from "@/lib/session";
+import { handle, requireShopUser } from "@/lib/session";
 
-export async function GET(req: Request) {
-  try {
+export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
     const distributorId = new URL(req.url).searchParams.get("distributorId") ?? "";
     const link = await activeLink(user.shopId, distributorId);
@@ -33,7 +32,4 @@ export async function GET(req: Request) {
           price: p.prices[0].price,
         })),
     });
-  } catch (e) {
-    return errorResponse(e);
-  }
-}
+});

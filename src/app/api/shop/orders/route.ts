@@ -1,9 +1,8 @@
 import { db } from "@/lib/db";
 import { createOrder, createOrderInput } from "@/lib/orders";
-import { errorResponse, HttpError, requireShopUser } from "@/lib/session";
+import { handle, readJson, requireShopUser } from "@/lib/session";
 
-export async function GET(req: Request) {
-  try {
+export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
     const orders = await db.order.findMany({
       where: { shopLink: { shopId: user.shopId } },
@@ -35,21 +34,12 @@ export async function GET(req: Request) {
         })),
       })),
     });
-  } catch (e) {
-    return errorResponse(e);
-  }
-}
+});
 
 // Savatdagi har bir distribyutor uchun alohida buyurtma yaratiladi
-export async function POST(req: Request) {
-  try {
-    const user = await requireShopUser(req);
-    const body = await req.json().catch(() => null);
-    const parsed = createOrderInput.safeParse(body);
-    if (!parsed.success) throw new HttpError(400, "Buyurtma ma'lumotlari noto'g'ri");
-    const order = await createOrder(user, parsed.data);
-    return Response.json({ id: order.id, number: order.number, total: order.total });
-  } catch (e) {
-    return errorResponse(e);
-  }
-}
+export const POST = handle(async (req: Request) => {
+  const user = await requireShopUser(req);
+  const input = await readJson(req, createOrderInput, "Buyurtma ma'lumotlari noto'g'ri");
+  const order = await createOrder(user, input);
+  return Response.json({ id: order.id, number: order.number, total: order.total });
+});

@@ -7,9 +7,10 @@ import { approveLinkRequest, rejectLinkRequest } from "../actions";
 export const dynamic = "force-dynamic";
 
 // Ilova orqali o'zi topib, ulanishni so'ragan do'konlar
-export default async function PanelRequests() {
+export default async function PanelRequests({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const staff = await getStaff();
   if (!staff) redirect("/panel");
+  const { error } = await searchParams;
   const distributorId = staff.distributorId;
   const isAdmin = staff.role === "ADMIN";
 
@@ -25,6 +26,7 @@ export default async function PanelRequests() {
   return (
     <div>
       <h1 className="text-2xl font-semibold">Ulanish so'rovlari</h1>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <p className="mt-1 text-sm text-gray-500">Ilovada sizni topib, ulanishni so'ragan do'konlar. Tasdiqlasangiz, katalogingizni ko'rib buyurtma bera oladi.</p>
       {!isAdmin && <p className="mt-2 text-sm text-amber-700">So'rovlarni faqat admin tasdiqlaydi yoki rad etadi.</p>}
 

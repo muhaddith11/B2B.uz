@@ -18,10 +18,10 @@ const TABS: { status: OrderStatus; label: string }[] = [
 
 const PAYMENT: Record<string, string> = { CASH: "Naqd", TRANSFER: "O'tkazma", CREDIT: "Nasiya" };
 
-export default async function PanelOrders({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function PanelOrders({ searchParams }: { searchParams: Promise<{ status?: string; error?: string }> }) {
   const staff = await getStaff();
   if (!staff) redirect("/panel");
-  const { status: raw } = await searchParams;
+  const { status: raw, error } = await searchParams;
   const status = (TABS.find((t) => t.status === raw)?.status ?? "SENT") as OrderStatus;
 
   const orders = await db.order.findMany({
@@ -39,6 +39,7 @@ export default async function PanelOrders({ searchParams }: { searchParams: Prom
   return (
     <div>
       <h1 className="text-2xl font-semibold">Buyurtmalar</h1>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Link

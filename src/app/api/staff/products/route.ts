@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
@@ -51,8 +52,14 @@ export const POST = handle(async (req: Request) => {
   }
   const groups = await db.priceGroup.findMany({ where: { distributorId: staff.distributorId } });
   const { price, barcode, ...rest } = input;
-  const product = await db.product.create({
-    data: { ...rest, barcode: barcode || null, distributorId: staff.distributorId, prices: { create: groups.map((g) => ({ priceGroupId: g.id, price })) } },
-  });
-  return Response.json({ id: product.id });
+  try {
+    const product = await db.product.create({
+      data: { ...rest, barcode: barcode || null, distributorId: staff.distributorId, prices: { create: groups.map((g) => ({ priceGroupId: g.id, price })) } },
+    });
+    return Response.json({ id: product.id });
+  } catch (e) {
+    // Bir vaqtda shu artikul bilan boshqa tovar qo'shilgan bo'lsa (ikki marta bosish)
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(400, `Artikul ${input.sku} allaqachon bor`);
+    throw e;
+  }
 });

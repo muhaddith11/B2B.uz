@@ -40,33 +40,42 @@ export const discoverQuery = z.object({
   category: z.string().trim().max(100).default(""),
 });
 
+const DISCOVER_LIMIT = 100;
+
 // Do'kon hali ulanmagan faol distribyutorlar. Qidiruv nomi, tovar nomi va brend bo'yicha.
+// Natija cheklangan, shuning uchun avval do'kon hududiga yetkazadiganlar olinadi, qolgan joyga boshqalari.
 export async function discoverDistributors(shop: { id: string; district: string }, opts: z.infer<typeof discoverQuery>) {
   const { q, category } = opts;
-  const distributors = await db.distributor.findMany({
-    where: {
-      status: "ACTIVE",
-      links: { none: { shopId: shop.id, status: { in: ["ACTIVE", "BLOCKED"] } } },
-      ...(category ? { categories: { has: category } } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" } },
-              {
-                products: {
-                  some: {
-                    active: true,
-                    OR: [{ name: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }],
-                  },
+  const where: Prisma.DistributorWhereInput = {
+    status: "ACTIVE",
+    links: { none: { shopId: shop.id, status: { in: ["ACTIVE", "BLOCKED"] } } },
+    ...(category ? { categories: { has: category } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            {
+              products: {
+                some: {
+                  active: true,
+                  OR: [{ name: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }],
                 },
               },
-            ],
-          }
-        : {}),
-    },
-    include: { links: { where: { shopId: shop.id }, select: { status: true } } },
-    take: 100,
-  });
+            },
+          ],
+        }
+      : {}),
+  };
+  const find = (extra: Prisma.DistributorWhereInput, take: number) =>
+    db.distributor.findMany({
+      where: { AND: [where, extra] },
+      include: { links: { where: { shopId: shop.id }, select: { status: true } } },
+      orderBy: { name: "asc" },
+      take,
+    });
+  const serving = await find({ districts: { has: shop.district } }, DISCOVER_LIMIT);
+  const others = serving.length < DISCOVER_LIMIT ? await find({ NOT: { districts: { has: shop.district } } }, DISCOVER_LIMIT - serving.length) : [];
+  const distributors = [...serving, ...others];
 
   const rows = distributors.length
     ? await db.product.groupBy({
@@ -141,10 +150,13 @@ export async function approveLink(staff: { id: string; distributorId: string }, 
     if (!group) throw new HttpError(400, "Narx guruhi topilmadi");
 
     const after = { status: "ACTIVE", priceGroupId: group.id, creditLimit: input.creditLimit, creditDays: input.creditDays } as const;
+    // Shart bilan: ikki marta bosilsa yoki shu payt rad etilsa, faqat bitta qaror o'tadi
+    const res = await tx.shopLink.updateMany({ where: { id: link.id, status: "REQUESTED" }, data: after });
+    if (res.count === 0) throw new HttpError(409, "So'rov allaqachon ko'rib chiqilgan");
     await tx.auditLog.create({
       data: { actor: `staff:${staff.id}`, action: "link.approved", entity: "ShopLink", entityId: link.id, before: { status: link.status }, after },
     });
-    return tx.shopLink.update({ where: { id: link.id }, data: after });
+    return tx.shopLink.findUniqueOrThrow({ where: { id: link.id } });
   });
 }
 
@@ -154,7 +166,9 @@ export async function rejectLink(staff: { id: string; distributorId: string }, l
     const link = await tx.shopLink.findUnique({ where: { id: linkId } });
     if (!link || link.distributorId !== staff.distributorId) throw new HttpError(404, "So'rov topilmadi");
     if (link.status !== "REQUESTED") throw new HttpError(400, "So'rov allaqachon ko'rib chiqilgan");
-    await tx.shopLink.delete({ where: { id: link.id } });
+    // Faqat hali so'rov holatida bo'lsa o'chiriladi: shu payt tasdiqlangan faol ulanish o'chib ketmasin
+    const res = await tx.shopLink.deleteMany({ where: { id: link.id, status: "REQUESTED" } });
+    if (res.count === 0) throw new HttpError(409, "So'rov allaqachon ko'rib chiqilgan");
     await tx.auditLog.create({
       data: { actor: `staff:${staff.id}`, action: "link.rejected", entity: "ShopLink", entityId: link.id, before: { shopId: link.shopId, status: link.status } },
     });

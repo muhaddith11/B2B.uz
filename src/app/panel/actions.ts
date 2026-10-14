@@ -1,16 +1,32 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import type { OrderStatus } from "@prisma/client";
 import { approveInput, approveLink, rejectLink } from "@/lib/links";
 import { changeOrderStatus } from "@/lib/orders";
-import { getStaff } from "@/lib/session";
-import type { OrderStatus } from "@prisma/client";
+import { getStaff, HttpError } from "@/lib/session";
+
+// Amal bajarilmasa (masalan, buyurtmani boshqa xodim allaqachon qabul qilgan) sahifaga sababi bilan qaytamiz:
+// production'da server xatosining matni ko'rinmaydi, shuning uchun xato sahifasi o'rniga xabar ko'rsatiladi
+async function run(page: string, task: () => Promise<void>) {
+  let error: string | null = null;
+  try {
+    await task();
+  } catch (e) {
+    if (!(e instanceof HttpError)) console.error("panel:", e);
+    error = e instanceof HttpError ? e.message : "Amalni bajarib bo'lmadi. Qayta urinib ko'ring";
+  }
+  revalidatePath("/panel", "layout");
+  if (error) redirect(`${page}?${new URLSearchParams({ error })}`);
+}
 
 async function move(orderId: string, to: OrderStatus, rejectReason?: string) {
-  const staff = await getStaff();
-  if (!staff || !["ADMIN", "OPERATOR"].includes(staff.role)) throw new Error("Ruxsat yo'q");
-  await changeOrderStatus(staff, orderId, to, { rejectReason });
-  revalidatePath("/panel", "layout");
+  await run("/panel/orders", async () => {
+    const staff = await getStaff();
+    if (!staff || !["ADMIN", "OPERATOR"].includes(staff.role)) throw new HttpError(403, "Ruxsat yo'q");
+    await changeOrderStatus(staff, orderId, to, { rejectReason });
+  });
 }
 
 export async function acceptOrder(form: FormData) {
@@ -33,26 +49,28 @@ export async function deliverOrder(form: FormData) {
 // Ulanish so'rovlari: narx guruhi va nasiya shartlarini faqat admin belgilaydi
 async function requireAdmin() {
   const staff = await getStaff();
-  if (!staff || staff.role !== "ADMIN") throw new Error("Ruxsat yo'q");
+  if (!staff || staff.role !== "ADMIN") throw new HttpError(403, "Ruxsat yo'q");
   return staff;
 }
 
 export async function approveLinkRequest(form: FormData) {
-  const staff = await requireAdmin();
-  const digits = (key: string) => String(form.get(key) ?? "").replace(/\D/g, "") || "0";
-  const parsed = approveInput.safeParse({
-    linkId: form.get("linkId"),
-    priceGroupId: form.get("priceGroupId"),
-    creditLimit: digits("creditLimit"),
-    creditDays: digits("creditDays"),
+  await run("/panel/requests", async () => {
+    const staff = await requireAdmin();
+    const digits = (key: string) => String(form.get(key) ?? "").replace(/\D/g, "") || "0";
+    const parsed = approveInput.safeParse({
+      linkId: form.get("linkId"),
+      priceGroupId: form.get("priceGroupId"),
+      creditLimit: digits("creditLimit"),
+      creditDays: digits("creditDays"),
+    });
+    if (!parsed.success) throw new HttpError(400, "Nasiya limiti yoki muddati noto'g'ri");
+    await approveLink(staff, parsed.data);
   });
-  if (!parsed.success) throw new Error("Ma'lumotlar noto'g'ri");
-  await approveLink(staff, parsed.data);
-  revalidatePath("/panel", "layout");
 }
 
 export async function rejectLinkRequest(form: FormData) {
-  const staff = await requireAdmin();
-  await rejectLink(staff, String(form.get("linkId")));
-  revalidatePath("/panel", "layout");
+  await run("/panel/requests", async () => {
+    const staff = await requireAdmin();
+    await rejectLink(staff, String(form.get("linkId")));
+  });
 }

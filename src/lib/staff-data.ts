@@ -1,7 +1,7 @@
 import type { Prisma, StaffRole } from "@prisma/client";
 import { db } from "./db";
 import { HttpError } from "./session";
-import { PENDING_STATUSES, summarize } from "./shop-summary";
+import { ledgerCalcSelect, PENDING_STATUSES, summarize } from "./shop-summary";
 
 // Mobil ilovadagi xodim ekranlari uchun umumiy so'rovlar va javob shakllari
 
@@ -85,7 +85,7 @@ export async function shopList(staff: { id: string; distributorId: string; role:
     include: {
       shop: true,
       agent: { select: { name: true } },
-      ledger: true,
+      ledger: { select: ledgerCalcSelect },
       orders: { where: { status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } },
     },
     orderBy: { shop: { name: "asc" } },

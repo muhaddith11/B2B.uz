@@ -1,0 +1,70 @@
+# Har push va pull request'da: server (typecheck, lint, unit va integratsiya testlari, zaifliklar, build) va mobil ilova (typecheck, lint)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: savdo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Faqat CI ichidagi vaqtinchalik test bazasi
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
+      SESSION_SECRET: ci-only-session-secret-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:int
+      - name: Zaifliklar (ishlab chiqarish kutubxonalari)
+        run: npm audit --omit=dev
+      - run: npx next build
+
+  mobile:
+    name: Mobil ilova
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx eslint src --max-warnings=0
+      # Expo yig'ish vositalaridagi (metro, cli) zaifliklarning tuzatilgan versiyasi yo'q; kritiklari to'xtatadi
+      - name: Zaifliklar (kritik)
+        run: npm audit --omit=dev --audit-level=critical

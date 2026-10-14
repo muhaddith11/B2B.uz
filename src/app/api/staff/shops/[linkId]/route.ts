@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
-import { PENDING_STATUSES, summarize } from "@/lib/shop-summary";
+import { ledgerCalcSelect, PENDING_STATUSES, summarize } from "@/lib/shop-summary";
 import { linkScope, orderInclude, orderScope, serializeOrder } from "@/lib/staff-data";
 
 // Do'kon kartasi: qarz, nasiya shartlari, qarz daftari va oxirgi buyurtmalar
@@ -15,11 +15,12 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       shop: { include: { users: { orderBy: { createdAt: "asc" } } } },
       priceGroup: { select: { id: true, name: true } },
       agent: { select: { id: true, name: true } },
-      ledger: { include: { order: { select: { number: true } } }, orderBy: { date: "desc" } },
+      // Qarz hisobi uchun barcha yozuvlar, faqat kerakli ustunlar
+      ledger: { select: ledgerCalcSelect },
     },
   });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
-  const [pending, orders] = await Promise.all([
+  const [pending, orders, recent] = await Promise.all([
     db.order.findMany({ where: { shopLinkId: link.id, status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } }),
     db.order.findMany({
       where: { shopLinkId: link.id, ...(staff.role === "COURIER" ? orderScope(staff) : {}) },
@@ -27,6 +28,8 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    // Ekranda ko'rsatiladigan oxirgi yozuvlar
+    db.ledgerEntry.findMany({ where: { shopLinkId: link.id }, include: { order: { select: { number: true } } }, orderBy: { date: "desc" }, take: 100 }),
   ]);
   return Response.json({
     linkId: link.id,
@@ -35,7 +38,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
     users: link.shop.users.map((u) => ({ name: u.name, phone: u.phone, role: u.role })),
     terms: { priceGroup: link.priceGroup, creditLimit: link.creditLimit, creditDays: link.creditDays, blockAfterDays: link.blockAfterDays, agent: link.agent },
     summary: summarize(link.ledger, pending, link.creditLimit),
-    ledger: link.ledger.slice(0, 100).map((e) => ({
+    ledger: recent.map((e) => ({
       id: e.id,
       type: e.type,
       amount: e.amount,

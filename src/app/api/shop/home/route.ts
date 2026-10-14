@@ -1,9 +1,8 @@
 import { db } from "@/lib/db";
-import { errorResponse, requireShopUser } from "@/lib/session";
+import { handle, requireShopUser } from "@/lib/session";
 import { linkSummaries } from "@/lib/shop-summary";
 
-export async function GET(req: Request) {
-  try {
+export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
     const [links, requests] = await Promise.all([
       linkSummaries(user.shopId),
@@ -19,7 +18,4 @@ export async function GET(req: Request) {
       links,
       requests: requests.map((r) => ({ distributorId: r.distributorId, name: r.distributor.name, createdAt: r.createdAt })),
     });
-  } catch (e) {
-    return errorResponse(e);
-  }
-}
+});

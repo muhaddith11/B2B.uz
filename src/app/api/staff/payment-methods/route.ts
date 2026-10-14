@@ -2,7 +2,7 @@ import { z } from "zod";
 import { encryptSecret } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { publicUrl } from "@/lib/payments";
-import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
+import { handle, HttpError, requireStaff } from "@/lib/session";
 
 // To'lov usullari: karta, hisob raqam, Payme, Click. Kalitlar shifrlanadi va hech qachon qaytarilmaydi.
 export const GET = handle(async (req: Request) => {
