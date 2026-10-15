@@ -24,6 +24,9 @@ export async function registerForPush(send: (token: string) => Promise<unknown>)
   if (!projectId) return;
   try {
     if (Platform.OS === 'android') {
+      // SDK 58 dagi expo-notifications enum'larni yangicha kompilyatsiya qiladi va eslint-plugin-import ularni ko'rmaydi;
+      // AndroidImportance mavjud (TypeScript tekshiradi, rasmiy hujjatdagi misol aynan shunday)
+      // eslint-disable-next-line import/namespace
       await Notifications.setNotificationChannelAsync('default', { name: 'Asosiy', importance: Notifications.AndroidImportance.HIGH });
     }
     let { status } = await Notifications.getPermissionsAsync();

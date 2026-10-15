@@ -78,7 +78,7 @@ export default function FindScreen() {
           </T>
         ) : !err ? (
           <Loading rows={3} inline />
-        ) : null
+        ) : undefined
       }
       renderItem={({ item: d }) => (
         <Card style={{ gap: 4 }}>

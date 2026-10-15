@@ -65,7 +65,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npx eslint src --max-warnings=0
-      # Qolgan "high" topilmalar yig'ish vositalarida (metro > braces, expo cli > node-forge): tuzatilgan versiyasi chiqmagan.
-      # decode-uri-component (expo-router > query-string) faqat Expo SDK 58 bilan yangilanadi. Kritiklari to'xtatadi
+      # Qolgan "high" topilmalar yig'ish vositalarida (metro > braces, expo cli > node-forge): tuzatilgan versiyasi chiqmagan,
+      # ilova ichiga kirmaydi. Kritiklari to'xtatadi
       - name: Zaifliklar (kritik)
         run: npm audit --omit=dev --audit-level=critical

@@ -14,6 +14,7 @@ import {
   useColorScheme,
   View,
   type PressableProps,
+  type StyleProp,
   type TextInputProps,
   type TextProps,
   type TextStyle,
@@ -73,7 +74,8 @@ export function T({
   ...rest
 }: TextProps & { size?: Size; tone?: Tone; bold?: boolean; num?: boolean }) {
   const c = usePalette();
-  const { fontWeight, ...flat }: TextStyle = StyleSheet.flatten<TextStyle>([SIZES[size], { color: toneColor(c, tone) }, num && { fontVariant: ['tabular-nums'] }, style]) ?? {};
+  const styles: StyleProp<TextStyle> = [SIZES[size], { color: toneColor(c, tone) }, num && { fontVariant: ['tabular-nums'] }, style];
+  const { fontWeight, ...flat }: TextStyle = StyleSheet.flatten(styles) ?? {};
   return <Text style={[flat, { fontFamily: familyFor(size, bold ? '600' : fontWeight) }]} {...rest} />;
 }
 
