@@ -149,7 +149,8 @@ async function main() {
     await tx.agreement.create({
       data: { brandId: brand.id, distributorId: dist.id, status: "ACTIVE", initiatedBy: "BRAND", districts: dist.districts, discountPercent: 5, respondedAt: new Date() },
     });
-  });
+    // Vercel build serveri bazadan uzoqda (har so'rov ~100 ms): standart 5 soniya yetmaydi
+  }, { maxWait: 20_000, timeout: 60_000 });
 
   console.log(`Tayyor: ${phone} raqamiga demo do'kon, distribyutor (admin) va tovar egasi bog'landi. Kod: REVIEW_CODE.`);
 }
