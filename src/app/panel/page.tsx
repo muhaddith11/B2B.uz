@@ -120,7 +120,7 @@ async function Login({ phone, error, devCode }: { phone?: string; error?: string
         ) : (
           <form action={verifyPanelCode} className="grid gap-3">
             <input type="hidden" name="phone" value={phone} />
-            <p className="text-sm text-hint">{phone} raqamiga SMS kod yuborildi.</p>
+            <p className="text-sm text-hint">{phone} raqami panel xodimiga tegishli bo'lsa, unga SMS kod yuborildi.</p>
             {devCode && <p className="text-sm text-accent-ink">Sinov rejimi: kod {devCode}</p>}
             <input name="code" inputMode="numeric" maxLength={6} placeholder="SMS kod" className="field" />
             <button className="btn btn-primary">Kirish</button>

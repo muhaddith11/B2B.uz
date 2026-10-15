@@ -16,6 +16,7 @@ Ilova ikki tilda: o'zbek (lotin) va rus. Birinchi ochilishda telefon tili olinad
 **Do'kon egasi** (mobil ilova)
 - SMS kod bilan kiradi, agentsiz o'zi ro'yxatdan o'tadi
 - Hududi, toifa, tovar yoki brend bo'yicha distribyutor topadi va ulanish so'rovini yuboradi
+- Distribyutor agenti qo'shmoqchi bo'lsa, taklifni ilovada qabul qiladi yoki rad etadi: roziligisiz distribyutor do'konni ko'rmaydi, buyurtma va qarz yoza olmaydi
 - Bir nechta distribyutordan bitta savatda buyurtma beradi: naqd, o'tkazma yoki nasiya (limit tekshiriladi)
 - Qarzini ilovadan to'laydi: Payme yoki Click orqali onlayn, yoki karta/hisobga o'tkazib chek rasmini yuboradi
 - Buyurtmalar holatini (har bosqich vaqti bilan) kuzatadi, qabul qilinmaganini bekor qiladi, oldingi buyurtmani takrorlaydi
@@ -24,7 +25,8 @@ Ilova ikki tilda: o'zbek (lotin) va rus. Birinchi ochilishda telefon tili olinad
 - Admin: hammasi, shu jumladan nasiya shartlari, xodimlar, to'lov usullari (karta, hisob, Payme, Click), kompaniya sozlamalari, tovar egalari bilan kelishuv
 - Operator: buyurtmalarni qabul qilish, rad etish, yetkazuvchiga biriktirib yo'lga chiqarish, tovar, narx va tovar rasmlari (telefon kamerasidan)
 - Hisobchi: chek bilan kelgan to'lovlarni tasdiqlash yoki rad etish
-- Agent: yangi do'kon qo'shish, do'kon nomidan buyurtma olish (darhol qabul qilingan bo'ladi), naqd pul qabul qilish
+- Agent: yangi do'kon qo'shish (raqamda do'kon bo'lsa, egasiga taklif boradi), do'kon nomidan buyurtma olish (darhol qabul qilingan bo'ladi), naqd pul qabul qilish
+- Platforma tasdiqlamaguncha distribyutor katalog, jamoa va sozlamalarni tayyorlaydi, lekin do'kon qo'sha olmaydi va buyurtma ololmaydi
 - Yetkazuvchi: yo'ldagi buyurtmalar, qisman topshirish, naqd olish
 
 **Tovar egasi** (ishlab chiqaruvchi, mobil ilova)

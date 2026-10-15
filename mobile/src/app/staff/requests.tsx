@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { CallLink } from '@/components/staff';
-import { Banner, Button, Card, Chip, Empty, ErrorState, Field, Loading, Screen, T } from '@/components/ui';
+import { Badge, Banner, Button, Card, Chip, Empty, ErrorState, Field, Loading, Screen, SectionTitle, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { confirm } from '@/lib/confirm';
@@ -19,12 +19,17 @@ type Request = {
   servesDistrict: boolean;
 };
 
-// Ilovada topib, ulanishni so'ragan do'konlar: admin narx guruhi va nasiya bilan tasdiqlaydi
+// Taklif: agent tizimdagi do'konni qo'shgan, do'kon egasining tasdig'i kutilmoqda
+type Invited = { linkId: string; createdAt: string; phone: string | null; agent: string | null };
+
+// Ilovada topib, ulanishni so'ragan do'konlar: admin narx guruhi va nasiya bilan tasdiqlaydi.
+// Pastda: agentlar yuborgan, do'kon egasi hali javob bermagan takliflar
 export default function StaffRequests() {
   const { can } = useStaff();
-  const { data, error, refreshing, reload, retry } = useLoad<{ requests: Request[] }>('/api/staff/requests');
+  const { data, error, refreshing, reload, retry } = useLoad<{ requests: Request[]; invited?: Invited[] }>('/api/staff/requests');
   if (error && !data) return <ErrorState message={error} onRetry={retry} />;
   if (!data) return <Loading rows={2} />;
+  const invited = data.invited ?? [];
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
       {!can('ADMIN') && <Banner>{t("So'rovlarni faqat admin tasdiqlaydi yoki rad etadi.")}</Banner>}
@@ -32,6 +37,28 @@ export default function StaffRequests() {
         <RequestCard key={r.linkId} r={r} onDone={reload} />
       ))}
       {data.requests.length === 0 && <Empty icon="person-add-outline">{t("Yangi so'rov yo'q")}</Empty>}
+      {invited.length > 0 && (
+        <>
+          <SectionTitle>{t('Taklif yuborilgan')}</SectionTitle>
+          <Card style={{ gap: 12 }}>
+            {invited.map((i) => (
+              <View key={i.linkId} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T bold num>
+                    {i.phone ?? '—'}
+                  </T>
+                  {i.agent && (
+                    <T size="small" tone="hint" numberOfLines={1}>
+                      {t('Agent: {name}', { name: i.agent })}
+                    </T>
+                  )}
+                </View>
+                <Badge label={t('Javob kutilmoqda · {date}', { date: formatDate(i.createdAt) })} tone="warn" />
+              </View>
+            ))}
+          </Card>
+        </>
+      )}
     </Screen>
   );
 }

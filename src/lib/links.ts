@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
+import { notifyStaff } from "./push";
 import { HttpError } from "./session";
 
 // Do'kon va distribyutor ulanishi: yangi do'kon distribyutor topadi, so'rov yuboradi, distribyutor tasdiqlaydi.
@@ -116,6 +117,11 @@ export async function requestLink(shopId: string, distributorId: string) {
   const existing = await db.shopLink.findUnique({ where: { shopId_distributorId: { shopId, distributorId } } });
   if (existing?.status === "ACTIVE") throw new HttpError(400, "Bu distribyutorga allaqachon ulangansiz");
   if (existing?.status === "BLOCKED") throw new HttpError(403, "Bu distribyutor bilan ulanish yopilgan");
+  // Distribyutor allaqachon taklif qilgan: do'kon o'zi ham ulanmoqchi, demak taklif qabul qilinadi
+  if (existing?.status === "INVITED") {
+    await answerInvite(shopId, existing.id, "accept", `shop:${shopId}`);
+    return { ...existing, status: "ACTIVE" as const };
+  }
   if (existing) return existing;
 
   let link;
@@ -133,6 +139,36 @@ export async function requestLink(shopId: string, distributorId: string) {
     data: { actor: `shop:${shopId}`, action: "link.requested", entity: "ShopLink", entityId: link.id, after: { distributorId } },
   });
   return link;
+}
+
+// Distribyutor xodimi tizimda bor do'konni qo'shsa, ulanish taklif bo'lib turadi (INVITED): do'kon egasi ilovada
+// tasdiqlamaguncha distribyutor do'kon ma'lumotini ko'rmaydi, buyurtma ham, qarz ham yoza olmaydi.
+// Rad etilgan taklif o'chiriladi: distribyutor keyinroq yana taklif qilishi mumkin
+export async function answerInvite(shopId: string, linkId: string, action: "accept" | "reject", actor: string): Promise<void> {
+  const link = await db.$transaction(async (tx) => {
+    const found = await tx.shopLink.findFirst({ where: { id: linkId, shopId }, include: { shop: { select: { name: true } } } });
+    if (!found || found.status !== "INVITED") throw new HttpError(404, "Taklif topilmadi");
+    // Shart bilan: ikki marta bosilsa yoki bir vaqtda qabul va rad qilinsa, faqat bittasi o'tadi
+    const res =
+      action === "accept"
+        ? await tx.shopLink.updateMany({ where: { id: found.id, status: "INVITED" }, data: { status: "ACTIVE" } })
+        : await tx.shopLink.deleteMany({ where: { id: found.id, status: "INVITED" } });
+    if (res.count === 0) throw new HttpError(409, "Taklif holati hozirgina o'zgardi. Sahifani yangilang");
+    await tx.auditLog.create({
+      data: { actor, action: `link.invite.${action}`, entity: "ShopLink", entityId: found.id, before: { status: "INVITED" }, after: { status: action === "accept" ? "ACTIVE" : "DELETED" } },
+    });
+    return found;
+  });
+  notifyStaff(
+    link.distributorId,
+    ["ADMIN", "OPERATOR"],
+    {
+      title: action === "accept" ? "Do'kon ulanishni tasdiqladi" : "Do'kon ulanish taklifini rad etdi",
+      body: link.shop.name,
+      data: { url: action === "accept" ? `/staff/shop/${link.id}` : "/staff/requests" },
+    },
+    link.agentId ? [link.agentId] : [],
+  );
 }
 
 export const approveInput = z.object({

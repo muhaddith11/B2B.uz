@@ -5,11 +5,17 @@ import { linkSummaries } from "@/lib/shop-summary";
 
 export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
-    const [links, requests, active] = await Promise.all([
+    const [links, requests, invites, active] = await Promise.all([
       linkSummaries(user.shopId),
       db.shopLink.findMany({
         where: { shopId: user.shopId, status: "REQUESTED" },
         include: { distributor: { select: { name: true, logoUrl: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      // Distribyutorlar takliflari: do'kon egasi tasdiqlaguncha ular do'konni ko'rmaydi
+      db.shopLink.findMany({
+        where: { shopId: user.shopId, status: "INVITED" },
+        include: { distributor: { select: { name: true, logoUrl: true, categories: true } } },
         orderBy: { createdAt: "desc" },
       }),
       // Yo'ldagi buyurtmalar: bosh sahifada holat chizig'i bilan (eng yangilari)
@@ -27,6 +33,14 @@ export const GET = handle(async (req: Request) => {
       subscription: subscriptionInfo(user.shop),
       links,
       requests: requests.map((r) => ({ distributorId: r.distributorId, name: r.distributor.name, logoUrl: r.distributor.logoUrl, createdAt: r.createdAt })),
+      invites: invites.map((r) => ({
+        linkId: r.id,
+        distributorId: r.distributorId,
+        name: r.distributor.name,
+        logoUrl: r.distributor.logoUrl,
+        categories: r.distributor.categories,
+        createdAt: r.createdAt,
+      })),
       active: active.map((o) => ({
         id: o.id,
         number: o.number,

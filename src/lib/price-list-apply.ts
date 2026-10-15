@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { db } from "./db";
 import { diffPriceList, parsePriceList, type PriceListItem } from "./price-list";
+import { releaseImage } from "./uploads";
 
 export const TEMPLATE_HEADER = ["Artikul", "Nomi", "Brend", "Toifa", "O'lchov birligi", "Yashikda nechta", "Narx, so'm", "Shtrix-kod", "Minimal buyurtma, yashik", "Qoldiq", "Rasm havolasi"];
 
@@ -50,8 +51,15 @@ export async function applyPriceList(staff: { id: string; distributorId: string 
   if (!def) throw new Error("Asosiy narx guruhi yo'q");
   const now = new Date();
 
-  return db.$transaction(
+  const result = await db.$transaction(
     async (tx) => {
+      // Faylda rasm havolasi berilgan tovarlarning hozirgi rasmi: almashtirilgach eskisi ombordan tozalanadi
+      const linkBySku = new Map(items.filter((i) => i.imageUrl).map((i) => [i.sku, i.imageUrl]));
+      const before = linkBySku.size
+        ? await tx.product.findMany({ where: { distributorId: staff.distributorId, sku: { in: [...linkBySku.keys()] } }, select: { sku: true, imageUrl: true } })
+        : [];
+      const replaced = before.filter((p) => p.imageUrl && p.imageUrl !== linkBySku.get(p.sku)).map((p) => p.imageUrl!);
+
       for (const it of items) {
         const fields = {
           name: it.name,
@@ -62,7 +70,8 @@ export async function applyPriceList(staff: { id: string; distributorId: string 
           barcode: it.barcode,
           minOrderPacks: it.minOrderPacks,
           inStock: it.inStock,
-          imageUrl: it.imageUrl,
+          // "Rasm havolasi" bo'sh bo'lsa, tovarning hozirgi rasmi (paneldan yoki ilovadan yuklangani) o'zgarmaydi
+          ...(it.imageUrl ? { imageUrl: it.imageUrl } : {}),
           active: true,
         };
         const product = await tx.product.upsert({
@@ -86,10 +95,12 @@ export async function applyPriceList(staff: { id: string; distributorId: string 
       await tx.auditLog.create({
         data: { actor: `staff:${staff.id}`, action: "pricelist.applied", entity: "Distributor", entityId: staff.distributorId, after: { items: items.length, deactivated: removed.count } },
       });
-      return { items: items.length, deactivated: removed.count };
+      return { items: items.length, deactivated: removed.count, replaced };
     },
     { timeout: 60_000 },
   );
+  for (const url of result.replaced) await releaseImage(url);
+  return { items: result.items, deactivated: result.deactivated };
 }
 
 export async function templateWorkbook(distributorId: string): Promise<Buffer> {

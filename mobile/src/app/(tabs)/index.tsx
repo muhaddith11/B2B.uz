@@ -1,16 +1,20 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AccountLinks } from '@/components/account-links';
 import { PicEdit } from '@/components/pic-edit';
 import { ProfileCard } from '@/components/profile';
 import { SubscriptionBanner, subscriptionText } from '@/components/subscription';
-import { AbrBar, Badge, Button, Card, Empty, ErrorState, Loading, Money, Pic, PressCard, Screen, SectionTitle, ShellBand, StatusSteps, T } from '@/components/ui';
+import { AbrBar, Badge, Banner, Button, Card, Empty, ErrorState, Loading, Money, Pic, PressCard, Screen, SectionTitle, ShellBand, StatusSteps, T } from '@/components/ui';
 import { FONT, usePalette } from '@/constants/theme';
+import { useSession } from '@/context/session';
+import { confirm } from '@/lib/confirm';
+import { haptic } from '@/lib/haptics';
 import { t, tx } from '@/lib/i18n';
 import { formatAmount, formatDate, formatSom } from '@/lib/money';
-import type { ActiveOrder, HomeData, LinkSummary } from '@/lib/types';
+import type { ActiveOrder, HomeData, Invite, LinkSummary } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
 
 export default function HomeScreen() {
@@ -22,6 +26,15 @@ export default function HomeScreen() {
   return (
     <Screen band={<DebtBand data={data} onShopImage={(imageUrl) => setData({ ...data, shop: { ...data.shop, imageUrl } })} />} refreshing={refreshing} onRefresh={reload}>
       <SubscriptionBanner s={data.subscription} who="shop" />
+
+      {data.invites.length > 0 && (
+        <>
+          <SectionTitle>{t('Ulanish takliflari')}</SectionTitle>
+          {data.invites.map((inv) => (
+            <InviteCard key={inv.linkId} inv={inv} owner={data.user.role === 'OWNER'} onDone={reload} />
+          ))}
+        </>
+      )}
 
       {data.active.length > 0 && (
         <>
@@ -151,6 +164,58 @@ function DebtBand({ data, onShopImage }: { data: HomeData; onShopImage: (url: st
 
       {debt > 0 && <Button title={t("Qarzni to'lash")} icon="wallet-outline" kind="light" onPress={() => router.push('/debts')} />}
     </ShellBand>
+  );
+}
+
+// Distribyutor taklifi: agent do'konni qo'shgan, lekin egasi roziligisiz distribyutor do'konni ko'rmaydi,
+// buyurtma va qarz yoza olmaydi. Qabul qilinsa katalog ochiladi, rad etilsa taklif o'chadi
+function InviteCard({ inv, owner, onDone }: { inv: Invite; owner: boolean; onDone: () => void }) {
+  const { api } = useSession();
+  const [busy, setBusy] = useState<'accept' | 'reject' | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function answer(action: 'accept' | 'reject') {
+    if (action === 'reject') {
+      const ok = await confirm({ title: t('{name} taklifi rad etilsinmi?', { name: inv.name }), action: t('Rad etish') });
+      if (!ok) return;
+    }
+    setBusy(action);
+    setErr(null);
+    try {
+      await api(`/api/shop/invites/${inv.linkId}`, { method: 'POST', body: JSON.stringify({ action }) });
+      if (action === 'accept') haptic.success();
+      onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+      haptic.error();
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Pic uri={inv.logoUrl} name={inv.name} size={44} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <T bold numberOfLines={1}>
+            {inv.name}
+          </T>
+          <T size="small" tone="hint" numberOfLines={1}>
+            {inv.categories.join(', ')}
+          </T>
+        </View>
+      </View>
+      <T size="small">{t("Sizni o'z do'konlari ro'yxatiga qo'shmoqchi. Qabul qilsangiz, katalogi ochiladi va agenti sizdan buyurtma oladi.")}</T>
+      {owner ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button title={t('Qabul qilish')} style={{ flex: 2 }} loading={busy === 'accept'} disabled={busy !== null} onPress={() => answer('accept')} />
+          <Button title={t('Rad etish')} kind="secondary" style={{ flex: 1 }} loading={busy === 'reject'} disabled={busy !== null} onPress={() => answer('reject')} />
+        </View>
+      ) : (
+        <Badge label={t("Do'kon egasi tasdiqlaydi")} tone="warn" />
+      )}
+      {err && <Banner tone="danger">{err}</Banner>}
+    </Card>
   );
 }
 

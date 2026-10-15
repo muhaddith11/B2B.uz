@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getStaff, HttpError } from "@/lib/session";
-import { prepareImage, storeUpload } from "@/lib/uploads";
+import { prepareImage, releaseImage, storeUpload } from "@/lib/uploads";
 
 export type ImageResult = { ok: true; name: string } | { ok: false; message: string };
 
@@ -19,6 +19,8 @@ async function attach(staff: { id: string; distributorId: string }, productId: s
     const { url } = await storeUpload("products", await prepareImage(file));
     await db.product.update({ where: { id: product.id }, data: { imageUrl: url } });
     await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "product.image", entity: "Product", entityId: product.id, after: { imageUrl: url } } });
+    // Almashtirilgan eski rasm boshqa joyda ishlatilmasa ombordan tozalanadi
+    await releaseImage(product.imageUrl);
   } catch (e) {
     return { ok: false, message: e instanceof HttpError ? e.message : "Rasmni saqlab bo'lmadi" };
   }
@@ -56,6 +58,7 @@ export async function removeProductImage(form: FormData): Promise<ImageResult> {
   if (!product) return { ok: false, message: "Tovar topilmadi" };
   await db.product.update({ where: { id: product.id }, data: { imageUrl: null } });
   await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "product.image", entity: "Product", entityId: product.id, after: { imageUrl: null } } });
+  await releaseImage(product.imageUrl);
   revalidatePath("/panel/products");
   return { ok: true, name: product.name };
 }

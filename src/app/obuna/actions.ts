@@ -16,7 +16,8 @@ const message = (e: unknown, fallback: string) => (e instanceof HttpError ? e.me
 export async function requestSubscriptionCode(form: FormData) {
   const phone = normalizePhone(String(form.get("phone") ?? ""));
   if (!phone) return back({ error: "Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin" });
-  if ((await payableOrgs(phone)).length === 0) return back({ error: "Bu raqam bilan distribyutor admini yoki do'kon egasi topilmadi" });
+  // To'lanadigan tashkilot bo'lmasa SMS yuborilmaydi, lekin javob bir xil: raqam tizimda bormi, bilib bo'lmaydi
+  if ((await payableOrgs(phone)).length === 0) return back({ phone });
   let code: string;
   try {
     code = await deliverOtp(phone, clientIp(await headers()));

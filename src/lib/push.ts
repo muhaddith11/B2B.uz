@@ -2,6 +2,7 @@ import type { PushOwner, StaffRole } from "@prisma/client";
 import { after } from "next/server";
 import { db } from "./db";
 import { isLang, render, type Text } from "./i18n";
+import type { AccountRef } from "./session";
 
 // Mobil ilovaga push bildirishnoma: Expo push xizmati orqali. Token bo'lmasa, hech narsa yuborilmaydi.
 // Xabar yuborish asosiy amalni to'xtatmasligi kerak: xato logga yoziladi, xolos.
@@ -80,7 +81,16 @@ export function notifyBrand(brandId: string, msg: Message) {
   });
 }
 
-export async function registerPushToken(token: string, ownerKind: PushOwner, ownerId: string, lang: string = "uz") {
+const OWNER_KIND: Record<AccountRef["kind"], PushOwner> = { shop: "SHOP_USER", staff: "STAFF", brand: "BRAND_USER" };
+
+export async function registerPushToken(token: string, account: AccountRef, lang: string = "uz") {
+  const ownerKind = OWNER_KIND[account.kind];
   // Bitta qurilmada boshqa hisob bilan kirilsa, token yangi egaga o'tadi; til o'zgarsa yangilanadi
-  await db.pushToken.upsert({ where: { token }, create: { token, ownerKind, ownerId, lang }, update: { ownerKind, ownerId, lang } });
+  await db.pushToken.upsert({ where: { token }, create: { token, ownerKind, ownerId: account.id, lang }, update: { ownerKind, ownerId: account.id, lang } });
+}
+
+// Hisobdan chiqishda: shu qurilmaga (token berilsa) yoki hisobning barcha qurilmalariga bildirishnoma boshqa bormaydi.
+// Faqat shu hisobga yozilgan token o'chiriladi: boshqa hisobniki tegilmaydi
+export async function removePushTokens(account: AccountRef, token?: string) {
+  await db.pushToken.deleteMany({ where: { ownerKind: OWNER_KIND[account.kind], ownerId: account.id, ...(token ? { token } : {}) } });
 }

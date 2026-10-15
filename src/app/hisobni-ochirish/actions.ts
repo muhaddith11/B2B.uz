@@ -22,7 +22,8 @@ export async function requestDeletionCode(form: FormData) {
   const lang = langOf(form);
   const phone = normalizePhone(String(form.get("phone") ?? ""));
   if (!phone) return back(lang, { error: render("Telefon raqami +998 XX XXX XX XX ko'rinishida bo'lsin", lang) });
-  if ((await accountsForPhone(phone)).length === 0) return back(lang, { error: render("Bu raqam bilan hisob topilmadi", lang) });
+  // Hisob bo'lmasa SMS yuborilmaydi, lekin javob bir xil: raqam tizimda bormi, bilib bo'lmaydi
+  if ((await accountsForPhone(phone)).length === 0) return back(lang, { phone });
   let code: string;
   try {
     code = await deliverOtp(phone, clientIp(await headers()));

@@ -9,20 +9,27 @@ import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 
 // Agent do'konga borib, uni ulaydi. Egasi shu raqam bilan ilovaga SMS orqali kiradi.
+// Raqamda do'kon allaqachon bo'lsa, egasiga taklif boradi: u ilovada tasdiqlagach do'kon ro'yxatda chiqadi
 export default function StaffShopNew() {
   const { api } = useSession();
   const { me } = useStaff();
   const [form, setForm] = useState({ shopName: '', address: '', district: me?.distributor.districts[0] ?? '', ownerName: '', phone: '+998 ' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [invited, setInvited] = useState(false);
   const set = (key: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [key]: v }));
 
   async function submit() {
     setBusy(true);
     setErr(null);
     try {
-      const res = await api<{ linkId: string; existingShop: boolean }>('/api/staff/shops', { method: 'POST', body: JSON.stringify(form) });
+      const res = await api<{ linkId: string; invited: boolean }>('/api/staff/shops', { method: 'POST', body: JSON.stringify(form) });
       haptic.success();
+      if (res.invited) {
+        setInvited(true);
+        setBusy(false);
+        return;
+      }
       router.replace(`/staff/shop/${res.linkId}`);
     } catch (e) {
       setErr((e as Error).message);
@@ -34,10 +41,19 @@ export default function StaffShopNew() {
   const filled =
     form.shopName.trim().length >= 2 && form.address.trim().length >= 5 && form.district.trim().length >= 2 && form.ownerName.trim().length >= 2 && form.phone.replace(/\D/g, '').length >= 12;
 
+  if (invited) {
+    return (
+      <Screen gap={14}>
+        <Banner tone="ok">{t("Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.")}</Banner>
+        <Button title={t('Tushunarli')} onPress={() => router.back()} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen gap={14}>
       <T size="small" tone="hint">
-        {t("Egasining raqami tizimda bo'lsa, o'sha do'kon ulanadi. Nasiya shartlarini keyin admin belgilaydi.")}
+        {t("Egasining raqamida do'kon bo'lsa, unga ulanish taklifi boradi va egasi ilovada tasdiqlaydi. Nasiya shartlarini keyin admin belgilaydi.")}
       </T>
       <Field label={t("Do'kon nomi")} value={form.shopName} onChangeText={set('shopName')} />
       <Field label={t('Manzil')} value={form.address} onChangeText={set('address')} placeholder={t("Shahar, ko'cha, uy")} />

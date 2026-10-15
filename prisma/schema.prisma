@@ -32,6 +32,7 @@ enum ShopUserRole {
 
 enum LinkStatus {
   REQUESTED // do'kon ulanish so'rovini yuborgan
+  INVITED // distribyutor xodimi tizimdagi do'konni qo'shgan: do'kon egasi ilovada tasdiqlaguncha hech narsa ko'rinmaydi
   ACTIVE
   BLOCKED
 }
@@ -168,18 +169,22 @@ model Distributor {
   agreements           Agreement[]
   brandOrders          BrandOrder[]
   subscriptionPayments OnlinePayment[] @relation("DistributorSubscription")
+
+  @@index([logoUrl])
 }
 
 model Staff {
-  id            String      @id @default(cuid())
-  distributorId String
-  distributor   Distributor @relation(fields: [distributorId], references: [id])
-  name          String
-  phone         String
-  avatarUrl     String? // /api/files/avatars/...
-  role          StaffRole
-  active        Boolean     @default(true)
-  createdAt     DateTime    @default(now())
+  id                 String      @id @default(cuid())
+  distributorId      String
+  distributor        Distributor @relation(fields: [distributorId], references: [id])
+  name               String
+  phone              String
+  avatarUrl          String? // /api/files/avatars/...
+  role               StaffRole
+  active             Boolean     @default(true)
+  // "Barcha qurilmalardan chiqish": shu vaqtdan oldin berilgan tokenlar bekor
+  sessionsValidAfter DateTime?
+  createdAt          DateTime    @default(now())
 
   agentLinks    ShopLink[] @relation("LinkAgent")
   createdOrders Order[]    @relation("OrderCreatedByStaff")
@@ -187,6 +192,7 @@ model Staff {
   sentMessages  Message[]
 
   @@index([distributorId])
+  @@index([avatarUrl])
 }
 
 model Shop {
@@ -206,22 +212,27 @@ model Shop {
   users                ShopUser[]
   links                ShopLink[]
   subscriptionPayments OnlinePayment[] @relation("ShopSubscription")
+
+  @@index([imageUrl])
 }
 
 model ShopUser {
-  id        String       @id @default(cuid())
-  shopId    String
-  shop      Shop         @relation(fields: [shopId], references: [id])
-  name      String
-  phone     String
-  avatarUrl String? // /api/files/avatars/...
-  role      ShopUserRole @default(OWNER)
-  createdAt DateTime     @default(now())
+  id                 String       @id @default(cuid())
+  shopId             String
+  shop               Shop         @relation(fields: [shopId], references: [id])
+  name               String
+  phone              String
+  avatarUrl          String? // /api/files/avatars/...
+  role               ShopUserRole @default(OWNER)
+  // "Barcha qurilmalardan chiqish": shu vaqtdan oldin berilgan tokenlar bekor
+  sessionsValidAfter DateTime?
+  createdAt          DateTime     @default(now())
 
   orders       Order[]
   sentMessages Message[]
 
   @@index([shopId])
+  @@index([avatarUrl])
 }
 
 model PriceGroup {
@@ -290,6 +301,7 @@ model Product {
 
   @@unique([distributorId, sku])
   @@index([distributorId, category])
+  @@index([imageUrl])
 }
 
 model Price {
@@ -451,18 +463,23 @@ model Brand {
   products   BrandProduct[]
   agreements Agreement[]
   orders     BrandOrder[]
+
+  @@index([logoUrl])
 }
 
 model BrandUser {
-  id        String   @id @default(cuid())
-  brandId   String
-  brand     Brand    @relation(fields: [brandId], references: [id])
-  name      String
-  phone     String
-  avatarUrl String? // /api/files/avatars/...
-  createdAt DateTime @default(now())
+  id                 String    @id @default(cuid())
+  brandId            String
+  brand              Brand     @relation(fields: [brandId], references: [id])
+  name               String
+  phone              String
+  avatarUrl          String? // /api/files/avatars/...
+  // "Barcha qurilmalardan chiqish": shu vaqtdan oldin berilgan tokenlar bekor
+  sessionsValidAfter DateTime?
+  createdAt          DateTime  @default(now())
 
   @@index([brandId])
+  @@index([avatarUrl])
 }
 
 // Tovar egasining distribyutorlarga taklifi
@@ -487,6 +504,7 @@ model BrandProduct {
   orderItems BrandOrderItem[]
 
   @@index([brandId])
+  @@index([imageUrl])
 }
 
 // Kelishuv: tovar egasi va distribyutor. Faol bo'lsa distribyutor tovarni katalogiga qo'shadi va xarid buyurtmasi beradi.

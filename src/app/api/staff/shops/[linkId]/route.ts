@@ -71,6 +71,8 @@ export const PATCH = handle(async (req: Request, ctx: { params: Promise<{ linkId
   const link = await db.shopLink.findUnique({ where: { id: linkId } });
   if (!link || link.distributorId !== staff.distributorId) throw new HttpError(404, "Do'kon topilmadi");
   if (link.status === "REQUESTED") throw new HttpError(400, "Avval ulanish so'rovini tasdiqlang");
+  // Taklif qilingan do'konni faqat egasining o'zi tasdiqlaydi
+  if (link.status === "INVITED") throw new HttpError(400, "Do'kon egasi hali taklifni tasdiqlamagan");
   if (input.priceGroupId && !(await db.priceGroup.findFirst({ where: { id: input.priceGroupId, distributorId: staff.distributorId } }))) {
     throw new HttpError(400, "Narx guruhi topilmadi");
   }

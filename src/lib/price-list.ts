@@ -123,6 +123,13 @@ export function parsePriceList(
       return;
     }
 
+    // Rasm havolasi: internetdagi rasm (http/https). Bo'sh bo'lsa tovarning hozirgi rasmi saqlanadi
+    const imageUrl = text(get("imageUrl")) || null;
+    if (imageUrl && !/^(https?:\/\/\S+|\/api\/files\/products\/[a-f0-9]{32}\.[a-z]+)$/i.test(imageUrl)) {
+      errors.push({ row: rowNo, message: "Rasm havolasi http:// yoki https:// bilan boshlanadigan manzil bo'lsin" });
+      return;
+    }
+
     const extraPrices: Record<string, number> = {};
     for (const g of groupCols) {
       const p = parseAmount(r[g.idx]);
@@ -141,7 +148,7 @@ export function parsePriceList(
       barcode: text(get("barcode")) || null,
       minOrderPacks,
       inStock,
-      imageUrl: text(get("imageUrl")) || null,
+      imageUrl,
       extraPrices,
     });
   });

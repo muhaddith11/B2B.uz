@@ -2,14 +2,20 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 // Imzolangan token: mobil ilova uchun Authorization sarlavhasida, panel va admin uchun cookie'da yuradi.
 
-export type SessionPayload =
-  | { kind: "shop"; shopUserId: string; exp: number }
-  | { kind: "staff"; staffId: string; exp: number }
-  | { kind: "brand"; brandUserId: string; exp: number }
-  // Platforma admini (web /admin): distribyutor va tovar egalarini tasdiqlaydi
-  | { kind: "admin"; phone: string; exp: number }
-  // SMS kod bilan tasdiqlangan, lekin hali hisobi yo'q telefon: faqat ro'yxatdan o'tish uchun
-  | { kind: "phone"; phone: string; exp: number };
+// iat: berilgan vaqt (ms). "Barcha qurilmalardan chiqish"dan oldin berilgan token bekor bo'ladi (session.ts).
+// Eski tokenlarda iat yo'q: 0 deb olinadi
+type Issued = { exp: number; iat?: number };
+
+export type SessionPayload = Issued &
+  (
+    | { kind: "shop"; shopUserId: string }
+    | { kind: "staff"; staffId: string }
+    | { kind: "brand"; brandUserId: string }
+    // Platforma admini (web /admin): distribyutor va tovar egalarini tasdiqlaydi
+    | { kind: "admin"; phone: string }
+    // SMS kod bilan tasdiqlangan, lekin hali hisobi yo'q telefon: faqat ro'yxatdan o'tish uchun
+    | { kind: "phone"; phone: string }
+  );
 
 function secret(): string {
   const s = process.env.SESSION_SECRET;
@@ -27,7 +33,7 @@ export function keyedHash(data: string): string {
 }
 
 export function signToken(payload: SessionPayload): string {
-  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const data = Buffer.from(JSON.stringify({ ...payload, iat: payload.iat ?? Date.now() })).toString("base64url");
   return `${data}.${sign(data)}`;
 }
 

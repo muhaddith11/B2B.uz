@@ -73,6 +73,11 @@ export const RU = {
 
   // Tasdiqlash oynalari
   'Hisobdan chiqasizmi?': 'Выйти из аккаунта?',
+  'Barcha qurilmalardan chiqasizmi?': 'Выйти на всех устройствах?',
+  "Bu hisob barcha telefon va kompyuterlarda yopiladi. Qayta kirish uchun SMS kod kerak bo'ladi.":
+    'Аккаунт будет закрыт на всех телефонах и компьютерах. Для повторного входа понадобится код из SMS.',
+  'Hammasidan chiqish': 'Выйти везде',
+  '{name} taklifi rad etilsinmi?': 'Отклонить приглашение «{name}»?',
   "Qayta kirish uchun SMS kod kerak bo'ladi.": 'Для повторного входа понадобится код из SMS.',
   'Buyurtma №{n} bekor qilinsinmi?': 'Отменить заказ №{n}?',
   "Bekor qilingan buyurtmani qaytarib bo'lmaydi, lekin uni takrorlash mumkin.": 'Отменённый заказ нельзя вернуть, но его можно повторить.',
@@ -151,6 +156,7 @@ export const RU = {
   // Hisob, maxfiylik, til
   'Maxfiylik siyosati': 'Политика конфиденциальности',
   "Hisobni o'chirish": 'Удалить аккаунт',
+  'Barcha qurilmalardan chiqish': 'Выйти на всех устройствах',
   "O'chiriladi": 'Будет удалено',
   "Ismingiz, telefon raqamingiz va bildirishnomalar. Bu hisob bilan boshqa kira olmaysiz.":
     'Ваше имя, номер телефона и уведомления. Войти в этот аккаунт больше не получится.',
@@ -194,6 +200,10 @@ export const RU = {
     'Вы пока не подключены ни к одному дистрибьютору. Найдите дистрибьюторов в своём районе и отправьте запрос на подключение.',
   "Ulanish so'rovlarim": 'Мои запросы на подключение',
   'Javob kutilmoqda · {date}': 'Ожидает ответа · {date}',
+  'Ulanish takliflari': 'Приглашения к подключению',
+  "Sizni o'z do'konlari ro'yxatiga qo'shmoqchi. Qabul qilsangiz, katalogi ochiladi va agenti sizdan buyurtma oladi.":
+    'Хочет добавить вас в свои магазины. Если примете, откроется каталог, и агент сможет принимать у вас заказы.',
+  "Do'kon egasi tasdiqlaydi": 'Подтверждает владелец магазина',
   'Yetkazish: {days}': 'Доставка: {days}',
   'Faol buyurtma: {n}': 'Активных заказов: {n}',
 
@@ -382,8 +392,11 @@ export const RU = {
   "Muddat o'tgach necha kundan keyin nasiya yopiladi (bo'sh = yopilmaydi)": 'Через сколько дней просрочки закрыть отсрочку (пусто = не закрывать)',
   'Blokdan chiqarish': 'Разблокировать',
   "Do'konni bloklash (buyurtma bera olmaydi)": 'Заблокировать магазин (не сможет заказывать)',
-  "Egasining raqami tizimda bo'lsa, o'sha do'kon ulanadi. Nasiya shartlarini keyin admin belgilaydi.":
-    'Если номер владельца уже есть в системе, подключится этот магазин. Условия отсрочки потом задаст админ.',
+  "Egasining raqamida do'kon bo'lsa, unga ulanish taklifi boradi va egasi ilovada tasdiqlaydi. Nasiya shartlarini keyin admin belgilaydi.":
+    'Если на номер владельца уже есть магазин, ему придёт приглашение, и владелец подтвердит его в приложении. Условия отсрочки потом задаст админ.',
+  "Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.":
+    'На этот номер уже есть магазин. Владельцу отправлено приглашение: после подтверждения в приложении магазин появится в вашем списке.',
+  Tushunarli: 'Понятно',
   'Egasining ismi': 'Имя владельца',
   'Egasining telefoni': 'Телефон владельца',
   "Do'konni qo'shish": 'Добавить магазин',
@@ -391,6 +404,7 @@ export const RU = {
   // Xodim: so'rovlar va to'lovlar
   "So'rovlarni faqat admin tasdiqlaydi yoki rad etadi.": 'Одобрять или отклонять запросы может только админ.',
   "Yangi so'rov yo'q": 'Новых запросов нет',
+  'Taklif yuborilgan': 'Отправленные приглашения',
   'hududingizdan tashqarida': 'вне вашего района',
   "Nasiya limiti, so'm": 'Лимит отсрочки, сум',
   'Muddat, kun': 'Срок, дней',

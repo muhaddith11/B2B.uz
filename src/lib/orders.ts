@@ -3,12 +3,13 @@ import type { OrderStatus, PaymentType, Prisma, ShopLink, Distributor } from "@p
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
 import { addDays, checkCredit } from "./ledger";
+import { MAX_LINE_QTY, MAX_ORDER_TOTAL } from "./money";
 import { notifyShop, notifyStaff } from "./push";
-import { HttpError } from "./session";
+import { assertApproved, HttpError } from "./session";
 import { assertTrading, DISTRIBUTOR_PAUSED, EXPIRED_DISTRIBUTOR, EXPIRED_SHOP } from "./subscription";
 
 const itemsSchema = z
-  .array(z.object({ productId: z.string().min(1), qty: z.number().int().positive() }))
+  .array(z.object({ productId: z.string().min(1), qty: z.number().int().positive().max(MAX_LINE_QTY) }))
   .min(1)
   .max(200);
 
@@ -35,6 +36,11 @@ const STATUS_TEXT = {
   DELIVERED: "Buyurtmangiz topshirildi",
   CANCELLED: "Buyurtmangiz bekor qilindi",
 } as const satisfies Record<OrderStatus, TextKey>;
+
+// Bitta buyurtma summasi bazaga sig'ishi kerak (money.ts): oshsa, aniq xato (server xatosi emas)
+export function assertOrderTotal(total: number) {
+  if (total > MAX_ORDER_TOTAL) throw new HttpError(400, L("Bitta buyurtma {sum} dan oshmasin. Buyurtmani bir necha qismga bo'ling", { sum: som(MAX_ORDER_TOTAL) }));
+}
 
 // Do'kon uchun narx: ulanishdagi narx guruhi, bo'lmasa distribyutorning asosiy guruhi
 export async function priceGroupFor(link: { priceGroupId: string | null; distributorId: string }) {
@@ -66,11 +72,14 @@ export async function createOrderForLink(
   input: { paymentType: PaymentType; items: { productId: string; qty: number }[] },
 ) {
   if (link.status !== "ACTIVE") throw new HttpError(403, "Bu do'kon bilan ulanish faol emas");
-  // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi
+  // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi.
+  // Platforma tasdig'i olib qo'yilgan (yoki hali berilmagan) distribyutor ham savdo qilmaydi
   if ("staffId" in creator) {
+    assertApproved(link.distributor);
     assertTrading(link.distributor, EXPIRED_DISTRIBUTOR);
   } else {
     assertTrading(await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true } }), EXPIRED_SHOP);
+    if (link.distributor.status !== "ACTIVE") throw new HttpError(403, DISTRIBUTOR_PAUSED);
     assertTrading(link.distributor, DISTRIBUTOR_PAUSED);
   }
   const groupId = await priceGroupFor(link);
@@ -93,6 +102,7 @@ export async function createOrderForLink(
   });
 
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
+  assertOrderTotal(total);
   if (total < link.distributor.minOrder) {
     throw new HttpError(400, L("Minimal buyurtma {sum}", { sum: som(link.distributor.minOrder) }));
   }
@@ -191,12 +201,15 @@ export async function changeOrderStatus(staff: { id: string; distributorId: stri
   const updated = await db.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
-      include: { shopLink: { include: { distributor: { select: { paidUntil: true } } } }, items: true },
+      include: { shopLink: { include: { distributor: { select: { paidUntil: true, status: true } } } }, items: true },
     });
     if (!order || order.shopLink.distributorId !== staff.distributorId) throw new HttpError(404, "Buyurtma topilmadi");
     if (!canTransition(order.status, to)) throw new HttpError(400, "Bu holatga o'tkazib bo'lmaydi");
     // Obuna tugagan distribyutor yangi buyurtmani qabul qilmaydi; boshlangan yetkazish va topshirish ishlayveradi
-    if (to === "ACCEPTED") assertTrading(order.shopLink.distributor, EXPIRED_DISTRIBUTOR);
+    if (to === "ACCEPTED") {
+      assertApproved(order.shopLink.distributor);
+      assertTrading(order.shopLink.distributor, EXPIRED_DISTRIBUTOR);
+    }
 
     // Holat shart bilan o'zgartiriladi: bir vaqtdagi ikki so'rovdan (ikki marta bosish, operator va yetkazuvchi,
     // do'kon bekor qilishi) faqat bittasi o'tadi, shuning uchun qarz daftariga yozuv ikki marta tushmaydi

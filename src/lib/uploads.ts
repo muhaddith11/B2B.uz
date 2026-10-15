@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { get, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 import { db } from "./db";
 import { HttpError } from "./session";
 
@@ -18,6 +18,7 @@ const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png",
 // Rasmlar barcha telefonlarda ko'rinishi kerak: HEIC va PDF emas
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export type UploadFolder = "receipts" | "products" | "logos" | "avatars";
+export type ImageFolder = Exclude<UploadFolder, "receipts">;
 
 function backend(): "blob" | "db" | "disk" {
   if (process.env.BLOB_READ_WRITE_TOKEN) return "blob";
@@ -74,5 +75,40 @@ export async function readUpload(folder: string, name: string): Promise<{ data: 
     return { data: await readFile(path.join(ROOT, folder, name)), type };
   } catch {
     return null;
+  }
+}
+
+// ---- Rasmlar: kimga biriktirilgani va eskisini tozalash ----
+
+function imagePath(url: string): { folder: ImageFolder; name: string } | null {
+  const m = /^\/api\/files\/(products|logos|avatars)\/([a-f0-9]{32}\.[a-z]+)$/.exec(url);
+  return m ? { folder: m[1] as ImageFolder, name: m[2] } : null;
+}
+
+// Rasm biror tovar, tashkilot yoki foydalanuvchiga biriktirilganmi (ustunlar indeksli: har so'rovda tez)
+export async function imageInUse(folder: ImageFolder, url: string): Promise<boolean> {
+  const counts =
+    folder === "products"
+      ? [db.product.count({ where: { imageUrl: url } }), db.brandProduct.count({ where: { imageUrl: url } })]
+      : folder === "logos"
+        ? [db.distributor.count({ where: { logoUrl: url } }), db.brand.count({ where: { logoUrl: url } }), db.shop.count({ where: { imageUrl: url } })]
+        : [db.staff.count({ where: { avatarUrl: url } }), db.shopUser.count({ where: { avatarUrl: url } }), db.brandUser.count({ where: { avatarUrl: url } })];
+  return (await Promise.all(counts)).some((n) => n > 0);
+}
+
+// Almashtirilgan yoki olib tashlangan rasm hech kimga biriktirilmagan bo'lsa, ombordan o'chiriladi (baza to'lib ketmasin).
+// Bitta rasm bir nechta joyda bo'lishi mumkin (tovar egasi rasmi distribyutor katalogida ham): unda qoladi.
+// Tozalash asosiy amalni to'xtatmaydi: xato logga yoziladi, xolos
+export async function releaseImage(url: string | null | undefined): Promise<void> {
+  const file = url ? imagePath(url) : null;
+  if (!file || (await imageInUse(file.folder, url!))) return;
+  const key = `${file.folder}/${file.name}`;
+  try {
+    const where = backend();
+    if (where === "blob") await del(key);
+    else if (where === "db") await db.storedFile.deleteMany({ where: { path: key } });
+    else await unlink(path.join(ROOT, file.folder, file.name));
+  } catch (e) {
+    console.error("rasm o'chirilmadi:", key, e);
   }
 }

@@ -46,6 +46,21 @@ describe("parsePriceList", () => {
     expect(errors.map((e) => e.row)).toEqual([3, 4, 5]);
   });
 
+  it("rasm havolasi faqat internet manzili bo'ladi; bo'sh bo'lsa null (tovar rasmi o'zgarmaydi)", () => {
+    const withImage = ["Artikul", "Nomi", "Brend", "Toifa", "O'lchov birligi", "Yashikda nechta", "Narx, so'm", "Rasm havolasi"];
+    const { items, errors } = parsePriceList(
+      withImage,
+      [
+        ["R-1", "Tovar", "B", "T", "dona", "6", "1000", "https://example.com/r.jpg"],
+        ["R-2", "Tovar", "B", "T", "dona", "6", "1000", ""],
+        ["R-3", "Tovar", "B", "T", "dona", "6", "1000", "javascript:alert(1)"],
+      ],
+      ["Oddiy"],
+    );
+    expect(items.map((i) => i.imageUrl)).toEqual(["https://example.com/r.jpg", null]);
+    expect(errors).toEqual([{ row: 4, message: expect.stringContaining("Rasm havolasi") }]);
+  });
+
   it("majburiy ustun bo'lmasa butun faylni rad etadi", () => {
     const { errors } = parsePriceList(["Artikul", "Nomi"], [["A", "B"]], []);
     expect(errors[0].message).toContain("Majburiy ustun yo'q");

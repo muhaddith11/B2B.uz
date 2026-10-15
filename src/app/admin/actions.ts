@@ -26,25 +26,28 @@ async function setSession(phone: string) {
 
 export async function requestAdminCode(form: FormData) {
   const phone = normalizePhone(String(form.get("phone") ?? ""));
-  if (!phone || !platformAdminPhones().includes(phone)) back({ error: "Bu raqam platforma adminlari ro'yxatida yo'q" });
+  if (!phone) return back({ error: "Telefon raqami noto'g'ri" });
+  // Adminlar ro'yxatida bo'lmasa SMS yuborilmaydi, lekin javob bir xil: qaysi raqam admin ekanini bilib bo'lmaydi
+  if (!platformAdminPhones().includes(phone)) return back({ phone });
   let code: string;
   try {
-    code = await deliverOtp(phone!, clientIp(await headers()));
+    code = await deliverOtp(phone, clientIp(await headers()));
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }
-  back({ phone: phone!, ...(exposeCode() ? { dev: code } : {}) });
+  back({ phone, ...(exposeCode() ? { dev: code } : {}) });
 }
 
 export async function verifyAdminCode(form: FormData) {
   const phone = normalizePhone(String(form.get("phone") ?? ""));
-  if (!phone || !platformAdminPhones().includes(phone)) back({ error: "Ruxsat yo'q" });
+  if (!phone) return back({ error: "Telefon raqami noto'g'ri" });
   try {
-    await verifyOtp(phone!, String(form.get("code") ?? ""));
+    await verifyOtp(phone, String(form.get("code") ?? ""));
   } catch (e) {
-    return back({ error: e instanceof HttpError ? e.message : "Kod noto'g'ri", phone: phone! });
+    return back({ error: e instanceof HttpError ? e.message : "Kod noto'g'ri", phone });
   }
-  await setSession(phone!);
+  if (!platformAdminPhones().includes(phone)) return back({ error: "Ruxsat yo'q" });
+  await setSession(phone);
   redirect("/admin");
 }
 

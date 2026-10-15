@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Chip, T } from '@/components/ui';
+import { Banner, Chip, T } from '@/components/ui';
 import { useLanguage } from '@/context/language';
+import { useSession, type SignOutOptions } from '@/context/session';
 import { API_URL } from '@/lib/api';
 import { confirm } from '@/lib/confirm';
 import { getLang, t, type Lang } from '@/lib/i18n';
@@ -14,7 +16,7 @@ export function openPrivacyPolicy() {
 }
 
 // Chiqishdan oldin so'raladi: qayta kirish uchun SMS kod kerak bo'ladi
-export async function askSignOut(signOut: () => Promise<void>) {
+export async function askSignOut(signOut: (opts?: SignOutOptions) => Promise<void>) {
   const ok = await confirm({ title: t('Hisobdan chiqasizmi?'), message: t("Qayta kirish uchun SMS kod kerak bo'ladi."), action: t('Chiqish') });
   if (ok) await signOut();
 }
@@ -36,8 +38,27 @@ export function LanguageSwitch() {
   );
 }
 
-// Profil pastidagi havolalar: til, maxfiylik siyosati va hisobni o'chirish (App Store, Google Play talabi)
+// Profil pastidagi havolalar: til, maxfiylik siyosati, hisobni o'chirish (App Store, Google Play talabi)
+// va barcha qurilmalardan chiqish (telefon yo'qolsa yoki boshqa qurilmada kirib qolgan bo'lsa: hisob hamma joyda yopiladi)
 export function AccountLinks() {
+  const { signOut } = useSession();
+  const [err, setErr] = useState<string | null>(null);
+
+  async function signOutEverywhere() {
+    const ok = await confirm({
+      title: t('Barcha qurilmalardan chiqasizmi?'),
+      message: t("Bu hisob barcha telefon va kompyuterlarda yopiladi. Qayta kirish uchun SMS kod kerak bo'ladi."),
+      action: t('Hammasidan chiqish'),
+    });
+    if (!ok) return;
+    setErr(null);
+    try {
+      await signOut({ everywhere: true });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
   return (
     <View style={{ gap: 16, marginTop: 16 }}>
       <LanguageSwitch />
@@ -53,6 +74,12 @@ export function AccountLinks() {
           </T>
         </Pressable>
       </View>
+      <Pressable accessibilityRole="button" onPress={signOutEverywhere} hitSlop={8} style={{ alignSelf: 'center' }}>
+        <T size="small" tone="hint">
+          {t('Barcha qurilmalardan chiqish')}
+        </T>
+      </Pressable>
+      {err && <Banner tone="danger">{err}</Banner>}
     </View>
   );
 }

@@ -23,6 +23,7 @@ export const RU = {
   "Urinishlar ko'p bo'ldi. Yangi kod so'rang": "Слишком много попыток. Запросите новый код",
   "Kod noto'g'ri": "Неверный код",
   "Kod allaqachon ishlatilgan": "Код уже использован",
+  "Sessiya yopilgan. Qaytadan kiring": "Сеанс завершён. Войдите заново",
   "STIR 9 xonali bo'lsin": "ИНН должен состоять из 9 цифр",
   "Telefon raqami noto'g'ri": "Неверный номер телефона",
   "Bu raqam bilan hisob topilmadi": "Аккаунт с этим номером не найден",
@@ -72,6 +73,11 @@ export const RU = {
   "O'zingizni o'zgartira olmaysiz": "Нельзя изменить самого себя",
   "Kamida bitta faol admin qolishi kerak": "Должен остаться хотя бы один активный админ",
   "Push token noto'g'ri": "Неверный push-токен",
+  "Taklif allaqachon yuborilgan: do'kon egasi tasdiqlashini kuting": "Приглашение уже отправлено: дождитесь подтверждения владельца магазина",
+  "Do'kon egasi hali taklifni tasdiqlamagan": "Владелец магазина ещё не подтвердил приглашение",
+  "Taklifga do'kon egasi javob beradi": "На приглашение отвечает владелец магазина",
+  "Taklif topilmadi": "Приглашение не найдено",
+  "Taklif holati hozirgina o'zgardi. Sahifani yangilang": "Статус приглашения только что изменился. Обновите страницу",
 
   // Tovarlar
   "Artikul {sku} allaqachon bor": "Артикул {sku} уже существует",
@@ -91,6 +97,7 @@ export const RU = {
   '"{name}" uchun minimal buyurtma {packs} yashik': "Минимальный заказ «{name}»: {packs} кор.",
   '"{name}" uchun narx yo\'q': "Для «{name}» нет цены",
   "Minimal buyurtma {sum}": "Минимальный заказ {sum}",
+  "Bitta buyurtma {sum} dan oshmasin. Buyurtmani bir necha qismga bo'ling": "Один заказ не может превышать {sum}. Разделите заказ на несколько частей",
   "Bu distribyutor nasiya bermagan": "Этот дистрибьютор не предоставляет отсрочку",
   "Muddati {days} kun o'tgan qarz bor, nasiya vaqtincha yopiq": "Есть долг, просроченный на {days} дн., отсрочка временно закрыта",
   "Nasiya limiti {sum}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring":
@@ -141,6 +148,10 @@ export const RU = {
   "Ulanish tasdiqlandi": "Подключение одобрено",
   "{name} katalogi ochildi": "Каталог «{name}» открыт",
   "Ulanish so'rovi rad etildi": "Запрос на подключение отклонён",
+  "Ulanish taklifi": "Приглашение к подключению",
+  "{name} sizni o'z do'konlari ro'yxatiga qo'shmoqchi. Tasdiqlang yoki rad eting": "«{name}» хочет добавить вас в свои магазины. Подтвердите или отклоните",
+  "Do'kon ulanishni tasdiqladi": "Магазин подтвердил подключение",
+  "Do'kon ulanish taklifini rad etdi": "Магазин отклонил приглашение",
   "Kelishuv taklifi": "Предложение о сотрудничестве",
   "{name} hamkorlik taklif qilmoqda": "{name} предлагает сотрудничество",
   "Kelishuv qabul qilindi": "Соглашение принято",

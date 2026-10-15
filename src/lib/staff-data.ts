@@ -64,9 +64,10 @@ export function orderScope(staff: { id: string; distributorId: string; role: Sta
 }
 
 // Qaysi do'konlarni (qarz daftari bilan) ko'radi: agent o'ziga biriktirilganlarini,
-// yetkazuvchi o'zi yetkazgan yoki hozir yetkazishi mumkin bo'lgan do'konlarni, qolganlar hammasini
+// yetkazuvchi o'zi yetkazgan yoki hozir yetkazishi mumkin bo'lgan do'konlarni, qolganlar hammasini.
+// Taklif qilingan (do'kon egasi hali tasdiqlamagan) do'kon hech kimga ko'rinmaydi
 export function linkScope(staff: { id: string; distributorId: string; role: StaffRole }): Prisma.ShopLinkWhereInput {
-  const base: Prisma.ShopLinkWhereInput = { distributorId: staff.distributorId };
+  const base: Prisma.ShopLinkWhereInput = { distributorId: staff.distributorId, status: { not: "INVITED" } };
   if (staff.role === "AGENT") return { ...base, agentId: staff.id };
   if (staff.role === "COURIER") return { ...base, orders: { some: { OR: [{ courierId: staff.id }, { courierId: null, status: "IN_DELIVERY" }] } } };
   return base;

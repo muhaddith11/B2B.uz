@@ -18,8 +18,8 @@ export default function DeleteAccount() {
     setErr(null);
     try {
       await api('/api/account/delete', { method: 'POST' });
-      // Sessiya o'chgach, ilova o'zi kirish sahifasiga o'tadi
-      await signOut();
+      // Hisob serverda o'chdi (push tokenlari ham): telefondan tozalanadi, ilova o'zi kirish sahifasiga o'tadi
+      await signOut({ localOnly: true });
     } catch (e) {
       setErr(e instanceof Error ? e.message : t('Xato'));
       setBusy(false);

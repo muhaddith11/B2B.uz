@@ -46,7 +46,7 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
         ) : (
           <form action={verifySubscriptionCode} className="grid gap-3">
             <input type="hidden" name="phone" value={phone} />
-            <p className="text-sm text-hint">{phone} raqamiga SMS kod yuborildi.</p>
+            <p className="text-sm text-hint">{phone} raqami distribyutor admini yoki do'kon egasiga tegishli bo'lsa, unga SMS kod yuborildi.</p>
             {dev && <p className="text-sm text-accent-ink">Sinov rejimi: kod {dev}</p>}
             <input name="code" inputMode="numeric" maxLength={6} placeholder="SMS kod" className="field" />
             <button className="btn btn-primary">Kirish</button>
@@ -54,6 +54,7 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
         )
       ) : (
         <>
+          {orgs.length === 0 && <p className="text-sm text-hint">Bu raqam bilan distribyutor admini yoki do&apos;kon egasi hisobi topilmadi.</p>}
           {orgs.map((o) => (
             <section key={`${o.kind}:${o.id}`} className={`grid gap-3 rounded-xl border bg-card p-4 ${STATE_STYLE[o.state]}`}>
               <div>

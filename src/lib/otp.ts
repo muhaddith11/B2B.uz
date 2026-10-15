@@ -98,18 +98,19 @@ export async function deliverOtp(phone: string, ip: string | null): Promise<stri
   return code;
 }
 
-// Faqat eng oxirgi kod amal qiladi; har bir noto'g'ri urinish sanaladi
+// Faqat eng oxirgi kod amal qiladi; har bir urinish (to'g'risi ham) sanaladi
 export async function verifyOtp(phone: string, code: string, now = new Date()): Promise<void> {
   const otp = await db.otpCode.findFirst({ where: { phone }, orderBy: { createdAt: "desc" } });
   if (!otp || otp.usedAt || otp.expiresAt < now) throw new HttpError(400, "Kod eskirgan. Yangi kod so'rang");
-  if (otp.attempts >= MAX_ATTEMPTS) throw new HttpError(429, "Urinishlar ko'p bo'ldi. Yangi kod so'rang");
+
+  // Urinish kod solishtirilishidan OLDIN, shart bilan band qilinadi: bir vaqtda yuborilgan yuzlab so'rov ham
+  // MAX_ATTEMPTS tadan ortiq kodni sinab ko'ra olmaydi (avval o'qib, keyin oshirilsa, hammasi 0 ni ko'rib o'tib ketardi)
+  const slot = await db.otpCode.updateMany({ where: { id: otp.id, usedAt: null, attempts: { lt: MAX_ATTEMPTS } }, data: { attempts: { increment: 1 } } });
+  if (slot.count === 0) throw new HttpError(429, "Urinishlar ko'p bo'ldi. Yangi kod so'rang");
 
   const a = Buffer.from(hashOf(phone, code));
   const b = Buffer.from(otp.codeHash);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    await db.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
-    throw new HttpError(400, "Kod noto'g'ri");
-  }
+  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new HttpError(400, "Kod noto'g'ri");
   // Bir kod faqat bir marta ishlatiladi (bir vaqtdagi ikki so'rovda ham)
   const used = await db.otpCode.updateMany({ where: { id: otp.id, usedAt: null }, data: { usedAt: now } });
   if (used.count === 0) throw new HttpError(400, "Kod allaqachon ishlatilgan");

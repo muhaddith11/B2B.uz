@@ -2,6 +2,8 @@ import type { AgreementSide, BrandOrderStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
+import { MAX_LINE_QTY } from "./money";
+import { assertOrderTotal } from "./orders";
 import { notifyBrand, notifyStaff } from "./push";
 import { HttpError } from "./session";
 
@@ -142,7 +144,7 @@ export const brandOrderInput = z.object({
   agreementId: z.string().min(1),
   note: z.string().trim().max(500).optional(),
   items: z
-    .array(z.object({ brandProductId: z.string().min(1), qty: z.number().int().positive() }))
+    .array(z.object({ brandProductId: z.string().min(1), qty: z.number().int().positive().max(MAX_LINE_QTY) }))
     .min(1)
     .max(200),
 });
@@ -158,6 +160,7 @@ export async function createBrandOrder(staff: { id: string; distributorId: strin
     return { brandProductId: p.id, qty: i.qty, price: purchasePrice(p.price, a.discountPercent) };
   });
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
+  assertOrderTotal(total);
   const order = await db.brandOrder.create({
     data: { agreementId: a.id, brandId: a.brandId, distributorId: staff.distributorId, total, note: input.note || null, items: { create: lines } },
     include: { distributor: true },

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { saveProductImage } from "@/lib/product-image";
 import { handle, HttpError, requireStaff } from "@/lib/session";
+import { releaseImage } from "@/lib/uploads";
 
 async function ownProduct(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR"]);
@@ -10,12 +11,13 @@ async function ownProduct(req: Request, ctx: { params: Promise<{ id: string }> }
   return { staff, product };
 }
 
-// Distribyutor tovariga rasm qo'yadi (katalogda do'konlarga ko'rinadi)
+// Distribyutor tovariga rasm qo'yadi (katalogda do'konlarga ko'rinadi). Eski rasm boshqa joyda ishlatilmasa tozalanadi
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { staff, product } = await ownProduct(req, ctx);
   const imageUrl = await saveProductImage(req);
   await db.product.update({ where: { id: product.id }, data: { imageUrl } });
   await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "product.image", entity: "Product", entityId: product.id, after: { imageUrl } } });
+  await releaseImage(product.imageUrl);
   return Response.json({ imageUrl });
 });
 
@@ -23,5 +25,6 @@ export const DELETE = handle(async (req: Request, ctx: { params: Promise<{ id: s
   const { staff, product } = await ownProduct(req, ctx);
   await db.product.update({ where: { id: product.id }, data: { imageUrl: null } });
   await db.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "product.image", entity: "Product", entityId: product.id, after: { imageUrl: null } } });
+  await releaseImage(product.imageUrl);
   return Response.json({ ok: true });
 });

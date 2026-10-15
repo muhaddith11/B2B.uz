@@ -1,5 +1,11 @@
 import { TASHKENT_OFFSET_MS } from "./time";
 
+// Summalar bazada butun so'm, 32 bitli son (eng ko'pi 2 147 483 647): bitta buyurtma shundan oshmasligi kerak,
+// aks holda yozib bo'lmaydi. Kattaroq xarid bir necha buyurtmaga bo'linadi
+export const MAX_ORDER_TOTAL = 2_000_000_000;
+// Bitta qatordagi miqdor (dona): yozishdagi xato (masalan, ortiqcha nollar) summani chegaradan oshirib yubormasin
+export const MAX_LINE_QTY = 1_000_000;
+
 // 1234500 -> "1 234 500"
 export function formatAmount(n: number): string {
   const sign = n < 0 ? "−" : "";

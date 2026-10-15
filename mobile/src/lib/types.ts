@@ -22,8 +22,12 @@ export type HomeData = {
   subscription: Subscription;
   links: LinkSummary[];
   requests: { distributorId: string; name: string; logoUrl: string | null; createdAt: string }[];
+  invites: Invite[];
   active: ActiveOrder[];
 };
+
+// Distribyutorning ulanish taklifi: do'kon egasi tasdiqlaguncha distribyutor do'konni ko'rmaydi
+export type Invite = { linkId: string; distributorId: string; name: string; logoUrl: string | null; categories: string[]; createdAt: string };
 
 // Bosh sahifadagi yo'ldagi buyurtma
 export type ActiveOrder = StepTimes & {

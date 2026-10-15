@@ -3,7 +3,7 @@ import type { StaffRole } from "@prisma/client";
 import { db } from "./db";
 import { langOf, render, type Lang, type Text } from "./i18n";
 import { normalizePhone } from "./phone";
-import { verifyToken } from "./token";
+import { verifyToken, type SessionPayload } from "./token";
 
 export const PANEL_COOKIE = "panel_session";
 export const ADMIN_COOKIE = "admin_session";
@@ -23,12 +23,20 @@ function bearer(req: Request) {
   return verifyToken(header.replace(/^Bearer\s+/i, ""));
 }
 
+// Hisob egasi "Barcha qurilmalardan chiqish" qilgan bo'lsa, undan oldin berilgan tokenlar ishlamaydi
+export function issuedAfter(payload: SessionPayload, account: { sessionsValidAfter: Date | null }): boolean {
+  return !account.sessionsValidAfter || (payload.iat ?? 0) >= account.sessionsValidAfter.getTime();
+}
+
+const closedMsg = "Sessiya yopilgan. Qaytadan kiring";
+
 // Mobil ilova so'rovlari: Authorization: Bearer <token>
 export async function requireShopUser(req: Request) {
   const payload = bearer(req);
   if (!payload || payload.kind !== "shop") throw new HttpError(401, "Kirish kerak");
   const user = await db.shopUser.findUnique({ where: { id: payload.shopUserId }, include: { shop: true } });
   if (!user) throw new HttpError(401, "Foydalanuvchi topilmadi");
+  if (!issuedAfter(payload, user)) throw new HttpError(401, closedMsg);
   return user;
 }
 
@@ -38,8 +46,15 @@ export async function requireStaff(req: Request, roles?: StaffRole[]) {
   if (!payload || payload.kind !== "staff") throw new HttpError(401, "Kirish kerak");
   const staff = await db.staff.findFirst({ where: { id: payload.staffId, active: true }, include: { distributor: true } });
   if (!staff) throw new HttpError(401, "Xodim topilmadi yoki o'chirilgan");
+  if (!issuedAfter(payload, staff)) throw new HttpError(401, closedMsg);
   if (roles && !roles.includes(staff.role)) throw new HttpError(403, "Bu amal sizning rolingiz uchun emas");
   return staff;
+}
+
+// Savdo amallari (do'kon qo'shish, buyurtma olish va qabul qilish) faqat platforma tasdiqlagan distribyutorda.
+// Tasdiqlanmagan distribyutor katalog, jamoa va sozlamalarni tayyorlab turadi
+export function assertApproved(distributor: { status: string }) {
+  if (distributor.status !== "ACTIVE") throw new HttpError(403, "Hisobingiz hali tasdiqlanmagan");
 }
 
 // Mobil ilova: tovar egasi
@@ -48,7 +63,19 @@ export async function requireBrandUser(req: Request) {
   if (!payload || payload.kind !== "brand") throw new HttpError(401, "Kirish kerak");
   const user = await db.brandUser.findUnique({ where: { id: payload.brandUserId }, include: { brand: true } });
   if (!user) throw new HttpError(401, "Foydalanuvchi topilmadi");
+  if (!issuedAfter(payload, user)) throw new HttpError(401, closedMsg);
   return user;
+}
+
+// Kim kirgani (turidan qat'i nazar): avatar, push token, chiqish va hisobni o'chirish uchun
+export type AccountRef = { kind: "shop"; id: string } | { kind: "staff"; id: string } | { kind: "brand"; id: string };
+
+export async function requireAccount(req: Request): Promise<AccountRef> {
+  const kind = bearer(req)?.kind;
+  if (kind === "shop") return { kind, id: (await requireShopUser(req)).id };
+  if (kind === "staff") return { kind, id: (await requireStaff(req)).id };
+  if (kind === "brand") return { kind, id: (await requireBrandUser(req)).id };
+  throw new HttpError(401, "Kirish kerak");
 }
 
 // So'rov kimdan kelgani (push token ro'yxatga olish va fayllarga ruxsat uchun)
@@ -61,10 +88,11 @@ export async function getStaff() {
   const store = await cookies();
   const payload = verifyToken(store.get(PANEL_COOKIE)?.value);
   if (!payload || payload.kind !== "staff") return null;
-  return db.staff.findFirst({
+  const staff = await db.staff.findFirst({
     where: { id: payload.staffId, active: true },
     include: { distributor: true },
   });
+  return staff && issuedAfter(payload, staff) ? staff : null;
 }
 
 // Platforma adminlari: PLATFORM_ADMIN_PHONES (vergul bilan) ro'yxatidagi raqamlar

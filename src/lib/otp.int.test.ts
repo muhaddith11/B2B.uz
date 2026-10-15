@@ -25,6 +25,17 @@ describe("SMS kod", () => {
     await expect(verifyOtp(p, code)).rejects.toMatchObject({ status: 429 });
   });
 
+  it("bir vaqtda yuborilgan ko'p noto'g'ri urinish ham chegaradan oshmaydi", async () => {
+    const p = phone();
+    const code = await issueOtp(p, ip());
+    const wrong = code === "000000" ? "111111" : "000000";
+    const r = await settle(Array.from({ length: 40 }, () => verifyOtp(p, wrong)));
+    // Faqat MAX_ATTEMPTS ta urinish kodni tekshira oldi, qolgani darhol 429
+    expect(r.errors.filter((e) => e.status === 400)).toHaveLength(MAX_ATTEMPTS);
+    expect(r.errors.filter((e) => e.status === 429)).toHaveLength(40 - MAX_ATTEMPTS);
+    await expect(verifyOtp(p, code)).rejects.toMatchObject({ status: 429 });
+  });
+
   it("muddati o'tgan kod ishlamaydi", async () => {
     const p = phone();
     const code = await issueOtp(p, ip(), new Date(Date.now() - 10 * 60 * 1000));

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, request } from '@/lib/api';
+import { savedPushToken } from '@/lib/push';
 import { kv, secure } from '@/lib/storage';
 
 // Kim kirgan: do'kon, distribyutor xodimi (rol bilan) yoki tovar egasi
@@ -11,11 +12,15 @@ export type Session = { token: string; kind: AccountKind; role?: StaffRole };
 // Savat (faqat do'kon): distribyutor -> tovar -> miqdor (dona)
 export type Cart = Record<string, Record<string, number>>;
 
+// everywhere: shu hisobning barcha qurilmalardagi sessiyasi yopiladi (telefon yo'qolsa yoki begona qo'lga tushsa).
+// localOnly: server bilan bog'lanmasdan (hisob allaqachon o'chirilgan)
+export type SignOutOptions = { everywhere?: boolean; localOnly?: boolean };
+
 type Ctx = {
   ready: boolean;
   session: Session | null;
   signIn: (s: Session) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (opts?: SignOutOptions) => Promise<void>;
   // SMS kod bilan tasdiqlangan, hali hisobi yo'q raqam: ro'yxatdan o'tish uchun
   phoneToken: string | null;
   setPhoneToken: (t: string | null) => void;
@@ -60,23 +65,48 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(s);
   }, []);
 
-  const signOut = useCallback(async () => {
+  // Telefondagi sessiya va savatni tozalash
+  const clearLocal = useCallback(async () => {
     await Promise.all([secure.remove(SESSION_KEY), kv.remove(CART_KEY)]);
     setCart({});
     setSession(null);
   }, []);
 
   const token = session?.token ?? null;
+
+  // Chiqish: avval serverga aytiladi (bu telefonga hisob bildirishnomalari boshqa kelmasin; everywhere bo'lsa
+  // hamma qurilmadagi sessiya yopilsin), keyin telefondan tozalanadi. Internet bo'lmasa ham chiqish to'xtab qolmaydi
+  const signOut = useCallback(
+    async (opts: SignOutOptions = {}) => {
+      if (token && !opts.localOnly) {
+        const pushToken = await savedPushToken();
+        const call = request('/api/auth/logout', { method: 'POST', token, body: JSON.stringify({ pushToken: pushToken ?? undefined, everywhere: opts.everywhere ?? false }) });
+        if (opts.everywhere) {
+          // Barcha qurilmalardan chiqish xavfsizlik uchun: server tasdiqlamasa, telefonda ham sessiya qoladi va xato ko'rsatiladi
+          // (sessiya serverda allaqachon yopilgan bo'lsa, 401: telefondan tozalash kifoya)
+          await call.catch((e) => {
+            if (!(e instanceof ApiError && e.status === 401)) throw e;
+          });
+        } else {
+          await Promise.race([call.catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 5000))]);
+        }
+      }
+      await clearLocal();
+    },
+    [token, clearLocal],
+  );
+
   const api = useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
       try {
         return await request<T>(path, { ...init, token });
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) await signOut();
+        // Sessiya serverda yopilgan (o'chirilgan hisob, "barcha qurilmalardan chiqish"): faqat telefondan tozalanadi
+        if (e instanceof ApiError && e.status === 401) await clearLocal();
         throw e;
       }
     },
-    [token, signOut],
+    [token, clearLocal],
   );
 
   const updateCart = useCallback((fn: (prev: Cart) => Cart) => {

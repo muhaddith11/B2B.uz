@@ -3,6 +3,12 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { kv } from './storage';
+
+// Shu qurilmaning push tokeni: chiqishda serverga aytiladi, bu telefonga hisob bildirishnomalari boshqa kelmaydi
+const PUSH_TOKEN_KEY = 'push_token';
+export const savedPushToken = () => kv.get(PUSH_TOKEN_KEY);
+
 // Push bildirishnomalar: faqat haqiqiy qurilmada va EAS loyihasi ulangan (eas init) development/production build'da.
 // Expo Go (Android) va web'da push yo'q: jim o'tkazib yuboriladi, ilova odatdagidek ishlaydi.
 
@@ -24,6 +30,7 @@ export async function registerForPush(send: (token: string) => Promise<unknown>)
     if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
     if (status !== 'granted') return;
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await kv.set(PUSH_TOKEN_KEY, data);
     await send(data);
   } catch (e) {
     console.warn('push:', e);
