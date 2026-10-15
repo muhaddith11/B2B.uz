@@ -1,13 +1,16 @@
 // App Store va Google Play tekshiruvchilari uchun demo hisoblar: bitta raqam (REVIEW_PHONE) uchta hisobga bog'lanadi,
 // kirishda ilova qaysi biri bilan kirishni so'raydi: do'kon, distribyutor (admin) va tovar egasi.
-// Kod SMS'siz, har doim REVIEW_CODE (src/lib/otp.ts). Ishlatish: REVIEW_PHONE va REVIEW_CODE ni .env (yoki Vercel) ga yozib, keyin
+// Kod SMS'siz, har doim REVIEW_CODE (src/lib/otp.ts). Ishlatish: REVIEW_PHONE va REVIEW_CODE ni .env ga yozib, keyin
 //   npm run db:review
-// Qayta ishga tushirilsa hech narsa o'zgarmaydi (bu raqamda do'kon bo'lsa to'xtaydi). Boshqa ma'lumotlarga tegmaydi.
+// Vercel'da har deployda `--if-configured` bilan ishlaydi (vercel-build): ikkalasi yozilmagan bo'lsa jim o'tadi,
+// xato bo'lsa deployni to'xtatmaydi. Qayta ishga tushirilsa hech narsa o'zgarmaydi (bu raqamda biror hisob bo'lsa to'xtaydi).
+// Boshqa ma'lumotlarga tegmaydi.
 import { PrismaClient } from "@prisma/client";
 import { normalizePhone } from "../src/lib/phone";
 import { trialPeriod } from "../src/lib/subscription";
 
 const db = new PrismaClient();
+const ifConfigured = process.argv.includes("--if-configured");
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 
@@ -24,11 +27,20 @@ const PRODUCTS: [sku: string, name: string, brand: string, category: string, pac
 
 async function main() {
   const phone = normalizePhone(process.env.REVIEW_PHONE ?? "");
+  const codeOk = /^\d{6}$/.test(process.env.REVIEW_CODE ?? "");
+  if (ifConfigured && (!phone || !codeOk)) {
+    console.log("Demo hisoblar: REVIEW_PHONE yoki REVIEW_CODE yozilmagan, o'tkazib yuborildi.");
+    return;
+  }
   if (!phone) throw new Error("REVIEW_PHONE yozilmagan yoki noto'g'ri (+998XXXXXXXXX)");
-  if (!/^\d{6}$/.test(process.env.REVIEW_CODE ?? "")) throw new Error("REVIEW_CODE 6 xonali raqam bo'lsin");
+  if (!codeOk) throw new Error("REVIEW_CODE 6 xonali raqam bo'lsin");
 
-  if (await db.shopUser.findFirst({ where: { phone } })) {
-    console.log(`${phone} raqamida demo hisoblar allaqachon bor. Hech narsa o'zgartirilmadi.`);
+  const existing =
+    (await db.shopUser.findFirst({ where: { phone } })) ??
+    (await db.staff.findFirst({ where: { phone } })) ??
+    (await db.brandUser.findFirst({ where: { phone } }));
+  if (existing) {
+    console.log(`${phone} raqamida hisob allaqachon bor. Demo hisoblar o'zgartirilmadi.`);
     return;
   }
 
@@ -144,7 +156,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e);
-    process.exit(1);
+    console.error("Demo hisoblar yaratilmadi:", e);
+    process.exit(ifConfigured ? 0 : 1);
   })
   .finally(() => db.$disconnect());

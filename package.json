@@ -13,7 +13,7 @@
     "db:review": "node --env-file-if-exists=.env --import tsx prisma/review.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "vercel-build": "prisma generate && prisma migrate deploy && node --import tsx prisma/review.ts --if-configured && next build",
     "lint": "eslint . --max-warnings=0",
     "test:int": "vitest run --project integration"
   },
