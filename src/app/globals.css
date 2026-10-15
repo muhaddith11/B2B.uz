@@ -1,48 +1,57 @@
 @import "tailwindcss";
 
-/* Captar ranglari: mobil ilova bilan bir xil (mobile/src/constants/theme.ts, DESIGN.md).
-   Yorug' sxema asosiy, qorong'i sxema tizim sozlamasiga qarab. Ko'k faqat amal va tanlov uchun. */
+/* Captar "Atlas" ranglari: mobil ilova bilan bir xil (mobile/src/constants/theme.ts, DESIGN.md).
+   Yorug' sxema asosiy, qorong'i sxema tizim sozlamasiga qarab. Indigo amal va tasma uchun, malina faqat
+   "hozirgi" narsa (tanlangan, faol), za'faron faqat indigo tasma ustidagi bo'yoq. */
 :root {
-  --c-bg: #f4f5f7;
+  --c-bg: #f6f5fa;
   --c-card: #ffffff;
-  --c-field: #f1f3f6;
-  --c-ink: #0f172a;
-  --c-hint: #586579;
-  --c-line: #e3e7ed;
-  --c-accent: #1a64d6;
-  --c-accent-ink: #1a64d6;
-  --c-accent-soft: #e8f0fd;
-  --c-danger: #c4261a;
-  --c-danger-soft: #fdecea;
-  --c-ok: #0e7a51;
-  --c-ok-soft: #e5f5ee;
-  --c-warn: #b54708;
-  --c-warn-soft: #fef2e4;
-  --c-info: #6941c6;
-  --c-info-soft: #f1ecfb;
-  --c-shadow: 0 4px 12px rgb(15 23 42 / 0.06);
+  --c-field: #efeef6;
+  --c-ink: #17152e;
+  --c-hint: #625f80;
+  --c-line: #e4e2ef;
+  --c-accent: #23205c;
+  --c-accent-ink: #3b34a6;
+  --c-accent-soft: #ecebf8;
+  --c-current: #d11f5e;
+  --c-current-soft: #fce8f0;
+  --c-shell: #23205c;
+  --c-dye: #f2b705;
+  --c-danger: #c42b1c;
+  --c-danger-soft: #fcebe9;
+  --c-ok: #1b7f50;
+  --c-ok-soft: #e4f4ec;
+  --c-warn: #a85208;
+  --c-warn-soft: #fdf0e1;
+  --c-info: #6b3fa0;
+  --c-info-soft: #f2ecfa;
+  --c-shadow: 0 4px 14px rgb(35 32 92 / 0.07);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --c-bg: #0d1117;
-    --c-card: #161b22;
-    --c-field: #1f252e;
-    --c-ink: #e6eaf0;
-    --c-hint: #94a0b2;
-    --c-line: #262d38;
-    --c-accent: #2f6fdb;
-    --c-accent-ink: #6fa5fa;
-    --c-accent-soft: #16263f;
-    --c-danger: #f97066;
-    --c-danger-soft: #3a1c1a;
+    --c-bg: #0e0d1a;
+    --c-card: #171628;
+    --c-field: #211f36;
+    --c-ink: #ecebf7;
+    --c-hint: #a29fc2;
+    --c-line: #2a2843;
+    --c-accent: #4c45c9;
+    --c-accent-ink: #a9a4ff;
+    --c-accent-soft: #23214a;
+    --c-current: #ff4f8b;
+    --c-current-soft: #3a1426;
+    --c-shell: #1e1b4f;
+    --c-dye: #f5c431;
+    --c-danger: #ff6b5e;
+    --c-danger-soft: #3a1916;
     --c-ok: #3ccb8b;
-    --c-ok-soft: #12291f;
+    --c-ok-soft: #11291e;
     --c-warn: #f5a54a;
-    --c-warn-soft: #33240f;
-    --c-info: #a48afb;
-    --c-info-soft: #241d3b;
+    --c-warn-soft: #33230f;
+    --c-info: #b596f5;
+    --c-info-soft: #2a1f44;
     /* Qorong'ida chuqurlik soya bilan emas, chegara bilan */
     --c-shadow: none;
     color-scheme: dark;
@@ -59,6 +68,10 @@
   --color-accent: var(--c-accent);
   --color-accent-ink: var(--c-accent-ink);
   --color-accent-soft: var(--c-accent-soft);
+  --color-current: var(--c-current);
+  --color-current-soft: var(--c-current-soft);
+  --color-shell: var(--c-shell);
+  --color-dye: var(--c-dye);
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);
   --color-ok: var(--c-ok);
@@ -68,6 +81,8 @@
   --color-info: var(--c-info);
   --color-info-soft: var(--c-info-soft);
   --shadow-card: var(--c-shadow);
+  --font-display: var(--font-unbounded), system-ui, sans-serif;
+  --font-sans: var(--font-golos), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Burchaklar: tugma va maydon 14 px, kartochka 18 px (mobil ilova bilan bir xil) */
@@ -80,8 +95,21 @@ body {
   margin: 0;
   background: var(--c-bg);
   color: var(--c-ink);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-golos), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Sarlavha va summa: Unbounded (mobil ilova bilan bir xil ovoz) */
+h1,
+h2,
+.font-display {
+  font-family: var(--font-unbounded), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--c-current-soft);
+  color: var(--c-ink);
 }
 
 /* Summa, miqdor va sanalar ustunlarda bir chiziqda turadi */
@@ -92,20 +120,21 @@ table,
 
 /* Klaviatura bilan yurganda fokus aniq ko'rinadi */
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--c-accent);
+  outline: 2px solid var(--c-accent-ink);
   outline-offset: 2px;
 }
 
-/* Kiritish maydonlari: yumshoq fon, fokusda ko'k chegara */
+/* Kiritish maydonlari: yumshoq fon, fokusda indigo chegara */
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]), select, textarea) {
   background: var(--c-field);
   color: var(--c-ink);
+  caret-color: var(--c-accent-ink);
 }
 :where(input, select, textarea)::placeholder {
   color: var(--c-hint);
 }
 
-/* Mobil ilovadagi Field va Button bilan bir xil: 48 px balandlik, 14 px burchak, bitta ko'k asosiy amal */
+/* Mobil ilovadagi Field va Button bilan bir xil: 48 px balandlik, 14 px burchak, bitta indigo asosiy amal */
 @layer components {
   .field {
     min-height: 3rem;
@@ -118,7 +147,7 @@ table,
     padding-block: 0.75rem;
   }
   .field:focus {
-    border-color: var(--c-accent);
+    border-color: var(--c-accent-ink);
     outline: none;
   }
   .btn {

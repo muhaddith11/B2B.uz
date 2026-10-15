@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Switch, View } from 'react-native';
 
 import { CallLink } from '@/components/staff';
-import { Banner, Button, Card, Chip, ErrorState, Field, Loading, Screen, SectionTitle, T } from '@/components/ui';
+import { Banner, Button, Card, Chip, ErrorState, Field, Loading, Pic, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
@@ -61,7 +61,8 @@ export default function StaffTeam() {
   return (
     <Screen refreshing={refreshing} onRefresh={reload} gap={8}>
       {data.team.map((m) => (
-        <Card key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, opacity: m.active ? 1 : 0.5 }}>
+        <Card key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: m.active ? 1 : 0.5 }}>
+          <Pic uri={m.avatarUrl} name={m.name} size={44} shape="circle" />
           <View style={{ flex: 1, gap: 2 }}>
             <T bold>
               {m.name}

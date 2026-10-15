@@ -32,6 +32,7 @@ export const GET = handle(async (req: Request) => {
       return {
         id: d.id,
         name: d.name,
+        logoUrl: d.logoUrl,
         districts: d.districts,
         categories: d.categories,
         deliveryDays: d.deliveryDays,

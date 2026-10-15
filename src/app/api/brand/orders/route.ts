@@ -11,7 +11,7 @@ export const GET = handle(async (req: Request) => {
   const status = STATUSES.includes(raw as BrandOrderStatus) ? (raw as BrandOrderStatus) : null;
   const orders = await db.brandOrder.findMany({
     where: { brandId: user.brandId, ...(status ? { status } : {}) },
-    include: { distributor: { select: { name: true } }, items: { include: { brandProduct: { select: { name: true, packSize: true, unit: true } } } } },
+    include: { distributor: { select: { name: true, logoUrl: true } }, items: { include: { brandProduct: { select: { name: true, packSize: true, unit: true } } } } },
     orderBy: { createdAt: status === "SENT" ? "asc" : "desc" },
     take: 100,
   });
@@ -25,6 +25,7 @@ export const GET = handle(async (req: Request) => {
       rejectReason: o.rejectReason,
       createdAt: o.createdAt,
       distributor: o.distributor.name,
+      distributorLogoUrl: o.distributor.logoUrl,
       items: o.items.map((i) => ({ name: i.brandProduct.name, packSize: i.brandProduct.packSize, unit: i.brandProduct.unit, qty: i.qty, price: i.price })),
     })),
   });

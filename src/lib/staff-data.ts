@@ -35,6 +35,7 @@ export function serializeOrder(o: OrderRow) {
     shop: {
       linkId: o.shopLinkId,
       name: o.shopLink.shop.name,
+      imageUrl: o.shopLink.shop.imageUrl,
       address: o.shopLink.shop.address,
       district: o.shopLink.shop.district,
       phone: owner?.phone ?? null,
@@ -97,7 +98,7 @@ export async function shopList(staff: { id: string; distributorId: string; role:
   return links.map((l) => ({
     linkId: l.id,
     status: l.status,
-    shop: { id: l.shop.id, name: l.shop.name, address: l.shop.address, district: l.shop.district },
+    shop: { id: l.shop.id, name: l.shop.name, imageUrl: l.shop.imageUrl, address: l.shop.address, district: l.shop.district },
     agent: l.agent?.name ?? null,
     ...summarize(l.ledger, l.orders, l.creditLimit),
   }));

@@ -8,7 +8,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const { id } = await ctx.params;
   const o = await db.brandOrder.findUnique({
     where: { id },
-    include: { distributor: { select: { name: true } }, items: { include: { brandProduct: { select: { name: true, packSize: true, unit: true } } } } },
+    include: { distributor: { select: { name: true, logoUrl: true } }, items: { include: { brandProduct: { select: { name: true, packSize: true, unit: true } } } } },
   });
   if (!o || o.brandId !== user.brandId) throw new HttpError(404, "Buyurtma topilmadi");
   return Response.json({
@@ -22,6 +22,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
       createdAt: o.createdAt,
       agreementId: o.agreementId,
       distributor: o.distributor.name,
+      distributorLogoUrl: o.distributor.logoUrl,
       items: o.items.map((i) => ({ name: i.brandProduct.name, packSize: i.brandProduct.packSize, unit: i.brandProduct.unit, qty: i.qty, price: i.price })),
     },
   });

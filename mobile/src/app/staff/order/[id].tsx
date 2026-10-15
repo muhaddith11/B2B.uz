@@ -1,10 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
-import { Banner, Button, Card, Chip, Divider, ErrorState, Field, IconButton, Loading, Money, QtyStepper, Row, Screen, SectionTitle, StatusBadge, StatusSteps, T } from '@/components/ui';
-import { R, usePalette } from '@/constants/theme';
+import { Banner, Button, Card, Chip, Divider, ErrorState, Field, IconButton, Loading, Money, Pic, QtyStepper, Row, Screen, SectionTitle, StatusBadge, StatusSteps, T } from '@/components/ui';
+import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { confirm } from '@/lib/confirm';
@@ -103,9 +102,7 @@ export default function StaffOrderScreen() {
             accessibilityRole="button"
             onPress={() => router.push(`/staff/shop/${order.shop.linkId}`)}
             style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.8 : 1 })}>
-            <View style={{ width: 44, height: 44, borderRadius: R.md, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="storefront-outline" size={22} color={c.accentInk} />
-            </View>
+            <Pic uri={order.shop.imageUrl} name={order.shop.name} size={44} />
             <View style={{ flex: 1, gap: 2 }}>
               <T bold numberOfLines={1}>
                 {order.shop.name}

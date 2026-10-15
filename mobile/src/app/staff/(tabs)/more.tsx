@@ -2,10 +2,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AccountLinks, askSignOut } from '@/components/account-links';
+import { AccountLinks } from '@/components/account-links';
+import { PicEdit } from '@/components/pic-edit';
+import { ProfileCard } from '@/components/profile';
 import { subscriptionText } from '@/components/subscription';
-import { Badge, Card, Divider, ListRow, Screen, T } from '@/components/ui';
-import { useSession } from '@/context/session';
+import { Badge, Card, Divider, ListRow, Pic, Screen, T } from '@/components/ui';
 import { useStaff } from '@/context/staff';
 import { t, type Key } from '@/lib/i18n';
 import { roleLabel } from '@/lib/staff-types';
@@ -24,25 +25,30 @@ const ITEMS: Item[] = [
 ];
 
 export default function StaffMore() {
-  const { signOut } = useSession();
-  const { me, can } = useStaff();
+  const { me, can, reload } = useStaff();
   const items = ITEMS.filter((i) => can(...i.roles));
 
   return (
     <Screen>
+      {me && <ProfileCard name={me.staff.name} sub={`${roleLabel(me.staff.role)} · ${me.staff.phone}`} avatarUrl={me.staff.avatarUrl} onAvatar={() => reload()} />}
       {me && (
-        <Card style={{ gap: 6 }}>
-          <T size="h2">{me.staff.name}</T>
-          <T size="small" tone="hint" num>
-            {roleLabel(me.staff.role)} · {me.staff.phone}
-          </T>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <T size="small">{me.distributor.name}</T>
-            {me.distributor.status === 'PENDING' && <Badge label={t('tekshiruvda')} tone="warn" />}
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          {can('ADMIN') ? (
+            <PicEdit uri={me.distributor.logoUrl} name={me.distributor.name} size={52} label={t('Kompaniya logosi')} path="/api/staff/logo" field="logoUrl" onChange={() => reload()} />
+          ) : (
+            <Pic uri={me.distributor.logoUrl} name={me.distributor.name} size={52} />
+          )}
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <T bold numberOfLines={2} style={{ flexShrink: 1 }}>
+                {me.distributor.name}
+              </T>
+              {me.distributor.status === 'PENDING' && <Badge label={t('tekshiruvda')} tone="warn" />}
+            </View>
+            <T size="small" tone={me.subscription.state === 'ACTIVE' ? 'hint' : me.subscription.state === 'GRACE' ? 'warn' : 'danger'}>
+              {t('Obuna · {status}', { status: subscriptionText(me.subscription) })}
+            </T>
           </View>
-          <T size="small" tone={me.subscription.state === 'ACTIVE' ? 'hint' : me.subscription.state === 'GRACE' ? 'warn' : 'danger'}>
-            {t('Obuna · {status}', { status: subscriptionText(me.subscription) })}
-          </T>
         </Card>
       )}
       {items.length > 0 && (
@@ -55,9 +61,6 @@ export default function StaffMore() {
           ))}
         </Card>
       )}
-      <Card style={{ paddingVertical: 8 }}>
-        <ListRow icon="log-out-outline" tone="danger" title={t('Chiqish')} onPress={() => askSignOut(signOut)} />
-      </Card>
       <AccountLinks />
     </Screen>
   );

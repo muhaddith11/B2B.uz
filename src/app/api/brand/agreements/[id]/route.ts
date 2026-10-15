@@ -28,7 +28,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
       respondedAt: a.respondedAt,
       endedAt: a.endedAt,
     },
-    distributor: { id: a.distributor.id, name: a.distributor.name, districts: a.distributor.districts, categories: a.distributor.categories, shops: a.distributor._count.links },
+    distributor: { id: a.distributor.id, name: a.distributor.name, logoUrl: a.distributor.logoUrl, districts: a.distributor.districts, categories: a.distributor.categories, shops: a.distributor._count.links },
     listed: listed.map((p) => ({ name: p.name, active: p.active, inStock: p.inStock, price: p.prices.find((x) => x.priceGroup.isDefault)?.price ?? null })),
     orders: a.orders.map((o) => ({ id: o.id, number: o.number, status: o.status, total: o.total, createdAt: o.createdAt })),
   });

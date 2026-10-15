@@ -90,6 +90,7 @@ export async function discoverDistributors(shop: { id: string; district: string 
     distributors.map((d) => ({
       id: d.id,
       name: d.name,
+      logoUrl: d.logoUrl,
       categories: d.categories,
       districts: d.districts,
       minOrder: d.minOrder,

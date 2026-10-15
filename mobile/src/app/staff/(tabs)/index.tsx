@@ -2,9 +2,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { PicEdit } from '@/components/pic-edit';
 import { OrderCard, ShopList } from '@/components/staff';
 import { SubscriptionBanner } from '@/components/subscription';
-import { Banner, Card, Count, Divider, Empty, ErrorState, IconButton, ListRow, Loading, Money, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { AbrBar, Banner, Button, Card, Count, Divider, Empty, ErrorState, ListRow, Loading, Money, Pic, Row, Screen, SectionTitle, ShellBand, T } from '@/components/ui';
+import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { haptic } from '@/lib/haptics';
@@ -35,21 +37,58 @@ function Notices() {
   );
 }
 
-function Header({ right }: { right?: React.ReactNode }) {
-  const { me } = useStaff();
+// Indigo tasma: distribyutor logosi (admin almashtiradi), nomi, xodim va roli; ostida rolning asosiy ko'rsatkichi
+function Band({ label, value, progress, children }: { label: string; value: number; progress?: { value: number; caption: string; right: string }; children?: React.ReactNode }) {
+  const c = usePalette();
+  const { me, can, reload } = useStaff();
+  if (!me) return null;
+  const d = me.distributor;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <View style={{ flex: 1 }}>
-        <T size="title" numberOfLines={1} accessibilityRole="header">
-          {me?.distributor.name ?? ''}
-        </T>
-        <T size="small" tone="hint" numberOfLines={1}>
-          {me ? `${me.staff.name} · ${roleLabel(me.staff.role)}` : ''}
-        </T>
+    <ShellBand>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        {can('ADMIN') ? (
+          <PicEdit uri={d.logoUrl} name={d.name} size={52} ring={c.shell} label={t('Kompaniya logosi')} path="/api/staff/logo" field="logoUrl" onChange={() => reload()} />
+        ) : (
+          <Pic uri={d.logoUrl} name={d.name} size={52} />
+        )}
+        <View style={{ flex: 1, gap: 2 }}>
+          <T bold numberOfLines={1} accessibilityRole="header" style={{ color: c.shellText, fontSize: 17 }}>
+            {d.name}
+          </T>
+          <T size="small" numberOfLines={1} style={{ color: c.shellHint }}>
+            {`${me.staff.name} · ${roleLabel(me.staff.role)}`}
+          </T>
+        </View>
       </View>
-      {right}
-    </View>
+      <View style={{ gap: 4 }}>
+        <T size="small" style={{ color: c.shellHint }}>
+          {label}
+        </T>
+        <Money value={value} size="display" color={c.shellText} />
+      </View>
+      {progress && (
+        <View style={{ gap: 8 }}>
+          <AbrBar value={progress.value} dye={c.dye} track="rgba(255,255,255,0.14)" label={progress.caption} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+            <T size="small" num style={{ color: c.shellHint }}>
+              {progress.caption}
+            </T>
+            <T size="small" num style={{ color: c.shellText, fontWeight: '600' }}>
+              {progress.right}
+            </T>
+          </View>
+        </View>
+      )}
+      {children}
+    </ShellBand>
   );
+}
+
+// Bugungi yetkazish: topshirilgani yo'ldagilar bilan birga qanchasi
+function deliveryProgress(delivered: number, onRoad: number) {
+  const all = delivered + onRoad;
+  if (all === 0) return undefined;
+  return { value: delivered / all, caption: t('Bugungi yetkazish'), right: t('{done} / {all} topshirildi', { done: delivered, all }) };
 }
 
 function ManagerHome() {
@@ -93,13 +132,12 @@ function ManagerHome() {
 
   return (
     <Screen
+      band={<Band label={t("Bugun tushgan to'lov")} value={data.paidToday} progress={deliveryProgress(data.deliveredToday.count, data.inDelivery)} />}
       refreshing={refreshing}
       onRefresh={() => {
         reload();
         sent.reload();
-      }}
-      safeTop>
-      <Header />
+      }}>
       <Notices />
 
       {inline.length > 0 && (
@@ -130,13 +168,6 @@ function ManagerHome() {
 
       <SectionTitle>{t('Bugun')}</SectionTitle>
       <Card style={{ gap: 10 }}>
-        <View style={{ gap: 2 }}>
-          <T size="small" tone="hint">
-            {t("Tushgan to'lov")}
-          </T>
-          <Money value={data.paidToday} size="title" />
-        </View>
-        <Divider />
         <Row label={t('qator|Topshirildi')} value={t('{n} ta · {sum}', { n: data.deliveredToday.count, sum: formatSom(data.deliveredToday.sum) })} />
         <Row label={t("Yo'lda")} value={t('{n} ta', { n: data.inDelivery })} />
         <Row label={t("Faol do'konlar")} value={t('{n} ta', { n: data.shops })} />
@@ -160,22 +191,15 @@ function ManagerHome() {
 function AgentHome() {
   const { data, refreshing, reload } = useLoad<Dashboard>('/api/staff/dashboard');
   return (
-    <Screen refreshing={refreshing} onRefresh={reload} safeTop>
-      <ShopList
-        orderAction
-        hideAgent
-        header={
-          <View style={{ gap: 12 }}>
-            <Header right={<IconButton icon="add-circle-outline" label={t("Yangi do'kon qo'shish")} tone="accent" onPress={() => router.push('/staff/shop-new')} />} />
-            {data && (
-              <T size="small" tone="hint" num>
-                {t("Bugun yig'ilgan: {sum}", { sum: formatSom(data.paidToday) })}
-              </T>
-            )}
-            <Notices />
-          </View>
-        }
-      />
+    <Screen
+      band={
+        <Band label={t("Bugun yig'ilgan")} value={data?.paidToday ?? 0}>
+          <Button title={t("Yangi do'kon qo'shish")} icon="add-circle-outline" kind="light" onPress={() => router.push('/staff/shop-new')} />
+        </Band>
+      }
+      refreshing={refreshing}
+      onRefresh={reload}>
+      <ShopList orderAction hideAgent header={<Notices />} />
     </Screen>
   );
 }
@@ -188,28 +212,24 @@ function CourierHome() {
   const total = data.orders.reduce((s, o) => s + o.total, 0);
   return (
     <Screen
-      safeTop
+      band={
+        <Band
+          label={t('Yetkazish kerak · {n} ta', { n: data.orders.length })}
+          value={total}
+          progress={today.data ? deliveryProgress(today.data.deliveredToday.count, data.orders.length) : undefined}
+        />
+      }
       refreshing={refreshing}
       onRefresh={() => {
         reload();
         today.reload();
       }}>
-      <Header />
-      <Card style={{ gap: 10 }}>
-        <View style={{ gap: 2 }}>
-          <T size="small" tone="hint">
-            {t('Yetkazish kerak · {n} ta', { n: data.orders.length })}
-          </T>
-          <Money value={total} size="title" />
-        </View>
-        {today.data && (
-          <>
-            <Divider />
-            <Row label={t('Bugun topshirildi')} value={t('{n} ta', { n: today.data.deliveredToday.count })} />
-            <Row label={t("Yig'ilgan naqd")} value={formatSom(today.data.paidToday)} />
-          </>
-        )}
-      </Card>
+      {today.data && (
+        <Card style={{ gap: 10 }}>
+          <Row label={t('Bugun topshirildi')} value={t('{n} ta', { n: today.data.deliveredToday.count })} />
+          <Row label={t("Yig'ilgan naqd")} value={formatSom(today.data.paidToday)} />
+        </Card>
+      )}
       <SectionTitle>{t("Yo'ldagi buyurtmalar")}</SectionTitle>
       {data.orders.map((o) => (
         <OrderCard key={o.id} o={o} />

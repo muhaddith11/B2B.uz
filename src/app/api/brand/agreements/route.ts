@@ -7,7 +7,7 @@ export const GET = handle(async (req: Request) => {
   const user = await requireBrandUser(req);
   const agreements = await db.agreement.findMany({
     where: { brandId: user.brandId },
-    include: { distributor: { select: { id: true, name: true, districts: true } } },
+    include: { distributor: { select: { id: true, name: true, logoUrl: true, districts: true } } },
     orderBy: [{ createdAt: "desc" }],
   });
   return Response.json({

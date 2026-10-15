@@ -3,7 +3,7 @@ import { t } from './i18n';
 
 export type LinkSummary = {
   linkId: string;
-  distributor: { id: string; name: string; categories: string[]; minOrder: number; deliveryDays: string[] };
+  distributor: { id: string; name: string; logoUrl: string | null; categories: string[]; minOrder: number; deliveryDays: string[] };
   debt: number;
   overdueAmount: number;
   overdueDays: number;
@@ -17,11 +17,22 @@ export type LinkSummary = {
 export type Subscription = { state: 'ACTIVE' | 'GRACE' | 'EXPIRED'; paidUntil: string; trial: boolean; daysLeft: number; blocksAt: string };
 
 export type HomeData = {
-  user: { name: string; role: string };
-  shop: { name: string; address: string };
+  user: { name: string; role: string; avatarUrl: string | null };
+  shop: { name: string; address: string; imageUrl: string | null };
   subscription: Subscription;
   links: LinkSummary[];
-  requests: { distributorId: string; name: string; createdAt: string }[];
+  requests: { distributorId: string; name: string; logoUrl: string | null; createdAt: string }[];
+  active: ActiveOrder[];
+};
+
+// Bosh sahifadagi yo'ldagi buyurtma
+export type ActiveOrder = StepTimes & {
+  id: string;
+  number: number;
+  status: OrderStatus;
+  total: number;
+  packs: number;
+  distributor: { id: string; name: string; logoUrl: string | null };
 };
 
 export type CatalogProduct = {
@@ -39,13 +50,14 @@ export type CatalogProduct = {
 };
 
 export type CatalogData = {
-  distributor: { id: string; name: string; minOrder: number; deliveryDays?: string[] };
+  distributor: { id: string; name: string; logoUrl: string | null; minOrder: number; deliveryDays?: string[] };
   products: CatalogProduct[];
 };
 
 export type DiscoverDistributor = {
   id: string;
   name: string;
+  logoUrl: string | null;
   categories: string[];
   districts: string[];
   minOrder: number;
@@ -73,7 +85,7 @@ export type ShopOrder = {
   dispatchedAt: string | null;
   deliveredAt: string | null;
   rejectReason: string | null;
-  distributor: { id: string; name: string };
+  distributor: { id: string; name: string; logoUrl: string | null };
   items: { productId: string; name: string; packSize: number; qty: number; deliveredQty: number | null; price: number }[];
 };
 
@@ -92,7 +104,7 @@ export type LedgerItem = {
 
 export type StaffRole = 'ADMIN' | 'OPERATOR' | 'ACCOUNTANT' | 'AGENT' | 'COURIER';
 
-export type Account = { kind: 'shop' | 'staff' | 'brand'; role?: StaffRole; title: string; subtitle: string; token: string };
+export type Account = { kind: 'shop' | 'staff' | 'brand'; role?: StaffRole; title: string; subtitle: string; imageUrl: string | null; token: string };
 
 export type PaymentOptions = {
   distributor: { id: string; name: string };

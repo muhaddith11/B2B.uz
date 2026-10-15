@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, QtyStepper, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, QtyStepper, T } from '@/components/ui';
 import { R, usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
@@ -161,6 +161,7 @@ export default function CartScreen() {
           return (
             <Card key={id} style={{ gap: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <Pic uri={catalog.distributor.logoUrl} name={catalog.distributor.name} size={36} />
                 <T size="h2" numberOfLines={1} style={{ flex: 1 }}>
                   {catalog.distributor.name}
                 </T>

@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
-import { Badge, Button, Card, Empty, Field, Loading, Money, ORDER_TONE, SearchInput, StatusBadge, T } from '@/components/ui';
+import { Badge, Button, Card, Empty, Field, Loading, Money, ORDER_TONE, Pic, SearchInput, StatusBadge, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
@@ -25,13 +25,16 @@ export function OrderCard({ o, onAccept, accepting }: { o: StaffOrder; onAccept?
           </T>
           <StatusBadge status={o.status} />
         </View>
-        <View style={{ gap: 2 }}>
-          <T bold numberOfLines={1}>
-            {o.shop.name}
-          </T>
-          <T size="small" tone="hint" numberOfLines={1}>
-            {o.shop.address}
-          </T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pic uri={o.shop.imageUrl} name={o.shop.name} size={40} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <T bold numberOfLines={1}>
+              {o.shop.name}
+            </T>
+            <T size="small" tone="hint" numberOfLines={1}>
+              {o.shop.address}
+            </T>
+          </View>
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <T size="small" tone="hint" num numberOfLines={1} style={{ flexShrink: 1 }}>
@@ -52,7 +55,8 @@ export function ShopCard({ s, orderAction, hideAgent }: { s: StaffShop; orderAct
   return (
     <Card style={{ gap: 10 }}>
       <Pressable accessibilityRole="button" onPress={() => router.push(`/staff/shop/${s.linkId}`)} style={({ pressed }) => ({ gap: 8, opacity: pressed ? 0.8 : 1 })}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <Pic uri={s.shop.imageUrl} name={s.shop.name} size={44} />
           <View style={{ flex: 1, gap: 2 }}>
             <T bold numberOfLines={1}>
               {s.shop.name}

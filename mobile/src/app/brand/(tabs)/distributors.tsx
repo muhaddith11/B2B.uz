@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Badge, Chip, Empty, Loading, PressCard, Screen, SearchInput, StickyBar, T } from '@/components/ui';
+import { Badge, Chip, Empty, Loading, Pic, PressCard, Screen, SearchInput, StickyBar, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { t } from '@/lib/i18n';
 import { agreementLabel, type DistributorForBrand } from '@/lib/staff-types';
@@ -59,7 +59,8 @@ export default function BrandDistributors() {
         <PressCard
           key={d.id}
           onPress={() => router.push(d.agreement && (d.agreement.status === 'ACTIVE' || d.agreement.status === 'PROPOSED') ? `/brand/agreement/${d.agreement.id}` : `/brand/distributor/${d.id}`)}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <Pic uri={d.logoUrl} name={d.name} size={40} />
             <T bold style={{ flex: 1 }}>
               {d.name}
             </T>

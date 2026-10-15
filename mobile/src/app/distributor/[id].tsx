@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 
-import { CartBar, Chip, Empty, ErrorState, Loading, Money, QtyStepper, SearchInput, T, Thumb } from '@/components/ui';
+import { CartBar, Chip, Empty, ErrorState, Loading, Money, Pic, QtyStepper, SearchInput, T, Thumb } from '@/components/ui';
 import { R, usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { t, tx } from '@/lib/i18n';
@@ -38,15 +38,18 @@ export default function CatalogScreen() {
         options={{
           title: data.distributor.name,
           headerTitle: () => (
-            <View style={{ maxWidth: 260 }}>
-              <T bold numberOfLines={1}>
-                {data.distributor.name}
-              </T>
-              {data.distributor.deliveryDays?.length ? (
-                <T size="tiny" tone="hint" numberOfLines={1}>
-                  {t('Yetkazish: {days}', { days: data.distributor.deliveryDays.map(tx).join(', ') })}
+            <View style={{ maxWidth: 260, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pic uri={data.distributor.logoUrl} name={data.distributor.name} size={32} />
+              <View style={{ flexShrink: 1 }}>
+                <T bold numberOfLines={1}>
+                  {data.distributor.name}
                 </T>
-              ) : null}
+                {data.distributor.deliveryDays?.length ? (
+                  <T size="tiny" tone="hint" numberOfLines={1}>
+                    {t('Yetkazish: {days}', { days: data.distributor.deliveryDays.map(tx).join(', ') })}
+                  </T>
+                ) : null}
+              </View>
             </View>
           ),
         }}

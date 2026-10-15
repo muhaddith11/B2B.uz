@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, StatusBadge, StatusSteps, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, StatusBadge, StatusSteps, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { confirm } from '@/lib/confirm';
@@ -75,9 +75,12 @@ export default function OrdersScreen() {
                 </T>
                 <StatusBadge status={o.status} />
               </View>
-              <T tone="hint" numberOfLines={1}>
-                {o.distributor.name}
-              </T>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Pic uri={o.distributor.logoUrl} name={o.distributor.name} size={28} />
+                <T tone="hint" numberOfLines={1} style={{ flex: 1 }}>
+                  {o.distributor.name}
+                </T>
+              </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <T size="small" tone="hint" num>
                   {formatDate(o.createdAt)} · {paymentLabel(o.paymentType)}

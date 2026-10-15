@@ -1,9 +1,18 @@
+import { GolosText_400Regular } from '@expo-google-fonts/golos-text/400Regular';
+import { GolosText_500Medium } from '@expo-google-fonts/golos-text/500Medium';
+import { GolosText_600SemiBold } from '@expo-google-fonts/golos-text/600SemiBold';
+import { GolosText_700Bold } from '@expo-google-fonts/golos-text/700Bold';
+import { Unbounded_500Medium } from '@expo-google-fonts/unbounded/500Medium';
+import { Unbounded_600SemiBold } from '@expo-google-fonts/unbounded/600SemiBold';
+import { Unbounded_700Bold } from '@expo-google-fonts/unbounded/700Bold';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { usePalette } from '@/constants/theme';
+import { useStackOptions } from '@/components/nav';
+import { FONT, usePalette } from '@/constants/theme';
 import { LanguageKeyed, LanguageProvider, useLanguage } from '@/context/language';
 import { SessionProvider, useSession } from '@/context/session';
 import { t } from '@/lib/i18n';
@@ -15,8 +24,13 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const c = usePalette();
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
-  // Sarlavha, tab bar va fon ranglari Captar palitrasidan
-  const theme = { ...base, colors: { ...base.colors, primary: c.accent, background: c.bg, card: c.card, text: c.text, border: c.border, notification: c.danger } };
+  // Sarlavha, tab bar va fon ranglari Captar palitrasidan; navigatsiya matni Golos Text
+  const font = (fontFamily: string) => ({ fontFamily, fontWeight: 'normal' as const });
+  const theme = {
+    ...base,
+    colors: { ...base.colors, primary: c.accent, background: c.bg, card: c.card, text: c.text, border: c.border, notification: c.danger },
+    fonts: { regular: font(FONT.text), medium: font(FONT.textMedium), bold: font(FONT.textSemi), heavy: font(FONT.textBold) },
+  };
   return (
     <ThemeProvider value={theme}>
       <LanguageProvider>
@@ -34,11 +48,23 @@ export default function RootLayout() {
 function RootStack() {
   const { ready, session, api } = useSession();
   const { lang } = useLanguage();
+  const options = useStackOptions();
   const token = session?.token;
+  // Shriftlar ilova ichida (internet kerak emas); yuklanmasa ham ilova tizim shrifti bilan ochiladi
+  const [fontsLoaded, fontError] = useFonts({
+    Unbounded_500Medium,
+    Unbounded_600SemiBold,
+    Unbounded_700Bold,
+    GolosText_400Regular,
+    GolosText_500Medium,
+    GolosText_600SemiBold,
+    GolosText_700Bold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
 
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
+    if (ready && fontsReady) SplashScreen.hideAsync();
+  }, [ready, fontsReady]);
 
   // Til almashsa ham qayta yuboriladi: bildirishnomalar yangi tilda keladi
   useEffect(() => {
@@ -49,11 +75,11 @@ function RootStack() {
 
   // Sessiya xotiradan o'qilguncha navigator chizilmaydi (splash ko'rinib turadi): aks holda himoyalangan
   // sahifaga to'g'ridan-to'g'ri havola (masalan, bildirishnomadan) kirish sahifasiga, keyin bosh sahifaga burilib ketadi
-  if (!ready) return null;
+  if (!ready || !fontsReady) return null;
   const kind = session?.kind;
 
   return (
-    <Stack screenOptions={{ headerBackTitle: t('Orqaga'), headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
+    <Stack screenOptions={options}>
       <Stack.Protected guard={kind === 'shop'}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="distributor/[id]" options={{ title: t('Katalog') }} />

@@ -15,8 +15,8 @@ export const GET = handle(async (req: Request) => {
   ]);
   const b = user.brand;
   return Response.json({
-    user: { name: user.name, phone: user.phone },
-    brand: { id: b.id, name: b.name, status: b.status, categories: b.categories, description: b.description, inn: b.inn },
+    user: { name: user.name, phone: user.phone, avatarUrl: user.avatarUrl },
+    brand: { id: b.id, name: b.name, logoUrl: b.logoUrl, status: b.status, categories: b.categories, description: b.description, inn: b.inn },
     counts: { products, activeAgreements: active, incomingProposals: incoming, newOrders },
     sales,
   });

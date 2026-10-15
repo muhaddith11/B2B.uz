@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Screen, T } from '@/components/ui';
+import { AbrBar, Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, Screen, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
@@ -35,9 +35,12 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
   return (
     <Card style={{ gap: 14 }}>
       <View style={{ gap: 2 }}>
-        <T tone="hint" numberOfLines={1}>
-          {l.distributor.name}
-        </T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <Pic uri={l.distributor.logoUrl} name={l.distributor.name} size={32} />
+          <T tone="hint" numberOfLines={1} style={{ flex: 1 }}>
+            {l.distributor.name}
+          </T>
+        </View>
         <Money value={l.debt} size="title" tone={late ? 'danger' : 'text'} />
         {l.nextDue && !late ? (
           <T size="small" tone="hint" num>
@@ -48,9 +51,7 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
 
       {l.creditLimit > 0 ? (
         <View style={{ gap: 6 }} accessible accessibilityLabel={t("Nasiya limiti {limit}, bo'sh {free}", { limit: formatSom(l.creditLimit), free: formatSom(l.creditAvailable) })}>
-          <View style={{ height: 8, borderRadius: 4, backgroundColor: c.field, overflow: 'hidden' }}>
-            <View style={{ width: `${used * 100}%`, height: 8, borderRadius: 4, backgroundColor: late ? c.danger : c.accent }} />
-          </View>
+          <AbrBar value={used} dye={late ? c.danger : c.accent} track={c.field} height={10} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <T size="tiny" tone="hint" num>
               {t("Bo'sh: {sum}", { sum: formatSom(l.creditAvailable) })}

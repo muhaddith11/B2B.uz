@@ -49,14 +49,15 @@ Bitta ilovada uch tomon: do'konchi bir savatda bir nechta distribyutordan buyurt
 - Stek: Expo SDK 57, Expo Router, TypeScript (`mobile/`); server Next.js (`/api/*`).
 - **Tillar: o'zbek (lotin) va rus**, foydalanuvchi tanlaydi (foydalanuvchi qarori, 2026-10-13). Ilova, server xato matnlari, push bildirishnomalar, sayt va maxfiylik siyosati ikki tilda (2026-10-14). Distribyutor paneli va admin hozircha faqat o'zbekcha.
 - Do'konlarga chiqish uchun majburiy: maxfiylik siyosati (`/maxfiylik`), ilova ichida va saytda hisobni o'chirish (bajarilgan).
-- App Store ko'rib chiqishi uchun demo hisob: `REVIEW_PHONE` / `REVIEW_CODE` va `npm run db:review` tayyor; production'da yaratish va App Store Connect'ga yozish qoldi.
+- App Store ko'rib chiqishi uchun demo hisob: `REVIEW_PHONE` / `REVIEW_CODE`; production'da har deployda avtomatik yaratiladi (2026-10-15 yaratilgan), App Store Connect'ga yozish qoldi.
 - Ilova identifikatori `uz.captar.app`; EAS loyihasi `@muhaddith/captar`.
 
 ## Brand Commitments
 
 - Nom: **Captar** (foydalanuvchi tanlagan). O'zbekcha "kaptar" deb o'qiladi.
 - Hozirgi logo vaqtinchalik (ko'k fonda oq "C"): haqiqiy logo keyin dizayner tomonidan chiziladi, majburiy emas.
-- **Vizual yo'nalish: sohaning odatiy, tanish ko'rinishi, eng yuqori sifatda** (foydalanuvchi qaror sahifasida ataylab tanlagan, 2026-10-13). O'yinchoq yoki ataylab "g'alati" bezak yo'q.
+- **Vizual yo'nalish: "Atlas (abr)", Captar'ning o'z dunyosi** (2026-10-15 foydalanuvchi qarori: "dizaynni unikal qilish kerak", qaror sahifasida oltita yo'nalish yonma-yon ko'rilib, Atlas tanlandi). Avvalgi (2026-10-13) tanlov, sohaning odatiy ko'rinishi, shu bilan almashtirildi. Marg'ilon atlasidan faqat cheklangan bo'yoq: to'q indigo, bitta malina, za'faron; naqsh va o'yinchoq bezak yo'q.
+- **Rasmlar** (2026-10-15 foydalanuvchi qarori): do'kon surati, distribyutor logosi, tovar egasi logosi, har bir shaxsning avatari; tovarga bitta rasm, ilovadan va web paneldan (ko'plab yuklash ham).
 - **Sifat o'lchovi** (foydalanuvchi tanlagan): Click / Payme (pul, qarz va summalarning aniqligi) va Yandex Go / Lavka (tez buyurtma, holat kuzatuvi). Captar ular bilan yonma-yon turganda kam ko'rinmasligi kerak.
 - Yoqmaydigan natijalar (foydalanuvchi aytgan): rasmiy va sovuq (bank yoki davlat xizmati kabi); ortiqcha rang-barang (o'yinchoq kabi).
 

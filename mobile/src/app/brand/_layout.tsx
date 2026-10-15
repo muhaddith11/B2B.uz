@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
 
+import { useStackOptions } from '@/components/nav';
 import { t } from '@/lib/i18n';
 
 // Tovar egasi ekranlari
 export default function BrandLayout() {
+  const options = useStackOptions();
   return (
-    <Stack screenOptions={{ headerBackTitle: t('Orqaga'), headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
+    <Stack screenOptions={options}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="product/[id]" options={{ title: t('Tovar') }} />
       <Stack.Screen name="distributor/[id]" options={{ title: t('Distribyutor') }} />

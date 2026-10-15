@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,6 +8,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   useColorScheme,
@@ -14,12 +16,13 @@ import {
   type PressableProps,
   type TextInputProps,
   type TextProps,
+  type TextStyle,
   type ViewProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
-import { R, softOf, TOUCH, usePalette, type Palette, type Tone } from '@/constants/theme';
+import { dyeOf, FONT, R, softOf, TOUCH, usePalette, type Palette, type Tone } from '@/constants/theme';
 import { fileUrl } from '@/lib/api';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
@@ -30,14 +33,27 @@ export type { Tone };
 type IconName = keyof typeof Ionicons.glyphMap;
 type Size = 'display' | 'title' | 'h2' | 'body' | 'small' | 'tiny';
 
-const SIZES: Record<Size, { fontSize: number; lineHeight: number; fontWeight: '400' | '500' | '600' | '700' }> = {
-  display: { fontSize: 30, lineHeight: 36, fontWeight: '700' },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  h2: { fontSize: 17, lineHeight: 24, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 22, fontWeight: '400' },
-  small: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  tiny: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+// Sarlavha va summa: Unbounded, faqat to'rt o'lchamda (34, 24, 18 va kartochkadagi summa 15). Matn: Golos Text
+const SIZES: Record<Size, { fontSize: number; lineHeight: number }> = {
+  display: { fontSize: 34, lineHeight: 42 },
+  title: { fontSize: 24, lineHeight: 30 },
+  h2: { fontSize: 18, lineHeight: 24 },
+  body: { fontSize: 16, lineHeight: 22 },
+  small: { fontSize: 14, lineHeight: 20 },
+  tiny: { fontSize: 12, lineHeight: 16 },
 };
+const DISPLAY: Size[] = ['display', 'title', 'h2'];
+
+// Maxsus shriftda og'irlik shrift nomida: style dagi fontWeight shu yerda mos shriftga aylanadi (Android'da
+// fontWeight bilan maxsus shrift tizim shriftiga qaytib qolmasin)
+function familyFor(size: Size, weight: TextStyle['fontWeight']): string {
+  const w = String(weight ?? '400');
+  if (DISPLAY.includes(size)) return size === 'display' || w === '700' || w === 'bold' ? FONT.displayBold : w === '500' ? FONT.displayMedium : FONT.display;
+  if (w === '700' || w === 'bold' || w === '800' || w === '900') return FONT.textBold;
+  if (w === '600') return FONT.textSemi;
+  if (w === '500') return FONT.textMedium;
+  return FONT.text;
+}
 
 // Android'da bosilganda tizimning to'lqin effekti (ripple), iOS va web'da shaffoflik
 const ANDROID = Platform.OS === 'android';
@@ -57,29 +73,38 @@ export function T({
   ...rest
 }: TextProps & { size?: Size; tone?: Tone; bold?: boolean; num?: boolean }) {
   const c = usePalette();
-  return (
-    <Text
-      style={[SIZES[size], { color: toneColor(c, tone) }, bold && { fontWeight: size === 'display' || size === 'title' ? '700' : '600' }, num && { fontVariant: ['tabular-nums'] }, style]}
-      {...rest}
-    />
-  );
+  const { fontWeight, ...flat }: TextStyle = StyleSheet.flatten<TextStyle>([SIZES[size], { color: toneColor(c, tone) }, num && { fontVariant: ['tabular-nums'] }, style]) ?? {};
+  return <Text style={[flat, { fontFamily: familyFor(size, bold ? '600' : fontWeight) }]} {...rest} />;
 }
 
-// Summa: raqam katta, "so'm" kichikroq
-export function Money({ value, size = 'body', tone = 'text', bold = true }: { value: number; size?: Size; tone?: Tone; bold?: boolean }) {
-  const small: Size = size === 'display' || size === 'title' ? 'body' : size === 'h2' || size === 'body' ? 'small' : 'tiny';
+// Summa: raqam Unbounded (kichik o'lchamda Golos), "so'm" bir pog'ona kichik va yengil
+export function Money({ value, size = 'body', tone = 'text', color, bold = true }: { value: number; size?: Size; tone?: Tone; color?: string; bold?: boolean }) {
+  const c = usePalette();
+  const col = color ?? toneColor(c, tone);
+  const display = size === 'display' || size === 'title' || size === 'h2' || size === 'body';
+  const num: TextStyle =
+    size === 'display'
+      ? { fontFamily: FONT.displayBold, fontSize: 34, lineHeight: 42 }
+      : size === 'title'
+        ? { fontFamily: FONT.display, fontSize: 24, lineHeight: 30 }
+        : size === 'h2'
+          ? { fontFamily: FONT.display, fontSize: 18, lineHeight: 24 }
+          : size === 'body'
+            ? { fontFamily: bold ? FONT.display : FONT.displayMedium, fontSize: 15, lineHeight: 20 }
+            : { fontFamily: bold ? FONT.textSemi : FONT.text, ...SIZES[size] };
+  const unit = size === 'display' ? 17 : size === 'title' ? 15 : size === 'h2' || size === 'body' ? 13 : size === 'small' ? 12 : 11;
   return (
-    <T size={size} tone={tone} bold={bold} num style={{ flexShrink: 0 }}>
+    <Text style={[num, { color: col, fontVariant: ['tabular-nums'], flexShrink: 0 }]} numberOfLines={display ? 1 : undefined} adjustsFontSizeToFit={size === 'display'}>
       {formatAmount(value)}
-      <T size={small} tone={tone} style={{ fontWeight: '500' }}>
-        {' '}
+      <Text style={{ fontFamily: FONT.textMedium, fontSize: unit, color: col, opacity: 0.8 }}>
+        {' '}
         {t("so'm")}
-      </T>
-    </T>
+      </Text>
+    </Text>
   );
 }
 
-// Oq yuza: yorug' sxemada yumshoq soya, qorong'ida chegara
+// Oq yuza: yorug' sxemada yumshoq indigo soya, qorong'ida chegara
 export function Card({ style, ...rest }: ViewProps) {
   const c = usePalette();
   const dark = useColorScheme() === 'dark';
@@ -89,7 +114,7 @@ export function Card({ style, ...rest }: ViewProps) {
         { backgroundColor: c.card, borderRadius: R.lg, padding: 16 },
         dark
           ? { borderWidth: 1, borderColor: c.border }
-          : { shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+          : { shadowColor: '#23205C', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
         style,
       ]}
       {...rest}
@@ -97,12 +122,15 @@ export function Card({ style, ...rest }: ViewProps) {
   );
 }
 
-type ButtonKind = 'primary' | 'secondary' | 'danger' | 'ghost';
+// light / shell: faqat indigo tasma ustida (oq tugma va tasmaning ikkinchi darajali yuzasi)
+type ButtonKind = 'primary' | 'secondary' | 'danger' | 'ghost' | 'light' | 'shell';
 
 function buttonColors(c: Palette, kind: ButtonKind) {
   if (kind === 'primary') return { bg: c.accent, fg: c.accentText };
   if (kind === 'danger') return { bg: c.dangerSoft, fg: c.danger };
   if (kind === 'ghost') return { bg: 'transparent', fg: c.accentInk };
+  if (kind === 'light') return { bg: c.card, fg: c.accentInk };
+  if (kind === 'shell') return { bg: c.shell2, fg: c.shellText };
   return { bg: c.accentSoft, fg: c.accentInk };
 }
 
@@ -124,7 +152,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: !!off, busy: !!loading }}
       disabled={off}
-      android_ripple={{ color: rippleColor(c, kind === 'primary') }}
+      android_ripple={{ color: rippleColor(c, kind === 'primary' || kind === 'shell') }}
       style={({ pressed }) => [
         {
           backgroundColor: col.bg,
@@ -146,7 +174,7 @@ export function Button({
       ) : (
         <>
           {icon && <Ionicons name={icon} size={compact ? 18 : 20} color={col.fg} />}
-          <Text style={{ color: col.fg, fontSize: compact ? 14 : 16, fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
+          <Text style={{ color: col.fg, fontSize: compact ? 14 : 16, fontFamily: FONT.textSemi, flexShrink: 1 }} numberOfLines={1}>
             {title}
           </Text>
         </>
@@ -155,7 +183,7 @@ export function Button({
   );
 }
 
-export function IconButton({ icon, label, onPress, tone = 'text' }: { icon: IconName; label: string; onPress: () => void; tone?: Tone }) {
+export function IconButton({ icon, label, onPress, tone = 'text', color, background }: { icon: IconName; label: string; onPress: () => void; tone?: Tone; color?: string; background?: string }) {
   const c = usePalette();
   return (
     <Pressable
@@ -163,9 +191,17 @@ export function IconButton({ icon, label, onPress, tone = 'text' }: { icon: Icon
       accessibilityLabel={label}
       onPress={onPress}
       hitSlop={4}
-      android_ripple={{ color: rippleColor(c), borderless: true, radius: 22 }}
-      style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed && !ANDROID ? c.field : 'transparent' })}>
-      <Ionicons name={icon} size={22} color={toneColor(c, tone)} />
+      android_ripple={{ color: rippleColor(c, !!background), borderless: true, radius: 22 }}
+      style={({ pressed }) => ({
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: background ?? (pressed && !ANDROID ? c.field : 'transparent'),
+        opacity: background && pressed && !ANDROID ? 0.8 : 1,
+      })}>
+      <Ionicons name={icon} size={22} color={color ?? toneColor(c, tone)} />
     </Pressable>
   );
 }
@@ -180,7 +216,8 @@ export function Field({ label, error, style, onFocus, onBlur, ...rest }: TextInp
       </T>
       <TextInput
         placeholderTextColor={c.hint}
-        selectionColor={c.accent}
+        selectionColor={c.accentInk}
+        cursorColor={c.accentInk}
         onFocus={(e) => {
           setFocus(true);
           onFocus?.(e);
@@ -198,8 +235,9 @@ export function Field({ label, error, style, onFocus, onBlur, ...rest }: TextInp
             paddingVertical: 14,
             minHeight: 52,
             fontSize: 16,
+            fontFamily: FONT.text,
             borderWidth: 1.5,
-            borderColor: error ? c.danger : focus ? c.accent : 'transparent',
+            borderColor: error ? c.danger : focus ? c.accentInk : 'transparent',
           },
           style,
         ]}
@@ -221,10 +259,11 @@ export function SearchInput(props: TextInputProps) {
       <Ionicons name="search" size={18} color={c.hint} />
       <TextInput
         placeholderTextColor={c.hint}
-        selectionColor={c.accent}
+        selectionColor={c.accentInk}
+        cursorColor={c.accentInk}
         autoCorrect={false}
         returnKeyType="search"
-        style={{ flex: 1, color: c.text, paddingHorizontal: 8, paddingVertical: 10, fontSize: 16 }}
+        style={{ flex: 1, color: c.text, paddingHorizontal: 8, paddingVertical: 10, fontSize: 16, fontFamily: FONT.text }}
         {...props}
       />
       {props.value ? (
@@ -236,6 +275,7 @@ export function SearchInput(props: TextInputProps) {
   );
 }
 
+// Tanlangan chip malina: "hozirgi" tanlov
 export function Chip({ label, active, onPress, count }: { label: string; active: boolean; onPress: () => void; count?: number }) {
   const c = usePalette();
   return (
@@ -248,8 +288,8 @@ export function Chip({ label, active, onPress, count }: { label: string; active:
       }}
       android_ripple={{ color: rippleColor(c, active) }}
       style={({ pressed }) => ({
-        backgroundColor: active ? c.accent : c.card,
-        borderColor: active ? c.accent : c.border,
+        backgroundColor: active ? c.current : c.card,
+        borderColor: active ? c.current : c.border,
         borderWidth: 1,
         borderRadius: R.pill,
         overflow: 'hidden',
@@ -260,8 +300,8 @@ export function Chip({ label, active, onPress, count }: { label: string; active:
         alignItems: 'center',
         opacity: pressed && !ANDROID ? 0.85 : 1,
       })}>
-      <Text style={{ color: active ? c.accentText : c.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
-      {count !== undefined && <Text style={{ color: active ? c.accentText : c.hint, fontSize: 13, fontVariant: ['tabular-nums'] }}>{count}</Text>}
+      <Text style={{ color: active ? '#FFFFFF' : c.text, fontSize: 14, fontFamily: active ? FONT.textSemi : FONT.textMedium }}>{label}</Text>
+      {count !== undefined && <Text style={{ color: active ? '#FFFFFF' : c.hint, fontSize: 13, fontFamily: FONT.textMedium, fontVariant: ['tabular-nums'] }}>{count}</Text>}
     </Pressable>
   );
 }
@@ -280,7 +320,7 @@ function useBump(value: unknown) {
   return useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 }
 
-// Yashik soni. 0 bo'lsa dumaloq "+", bosilganda o'z joyida "− 2 +" ga aylanadi (savatda dona saqlanadi)
+// Yashik soni. 0 bo'lsa dumaloq indigo "+", bosilganda o'z joyida "− 2 +" ga aylanadi (savatda dona saqlanadi)
 export function QtyStepper({ packs, onChange, label = true, full }: { packs: number; onChange: (packs: number) => void; label?: boolean; full?: boolean }) {
   const c = usePalette();
   const bump = useBump(packs);
@@ -324,19 +364,112 @@ export function QtyStepper({ packs, onChange, label = true, full }: { packs: num
   );
 }
 
-// Tovar rasmi; rasm bo'lmasa nomning bosh harfi yumshoq fonda
-export function Thumb({ uri, name, size = 56 }: { uri?: string | null; name: string; size?: number | '100%' }) {
-  const c = usePalette();
-  const box = { width: size, height: size === '100%' ? undefined : size, aspectRatio: size === '100%' ? 1.25 : undefined, borderRadius: R.md, backgroundColor: c.accentSoft } as const;
-  if (uri) return <Image source={{ uri: fileUrl(uri) }} style={box} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />;
+function initials(name: string, two: boolean): string {
+  const words = name.replace(/["«»'"]/g, '').trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.charAt(0) ?? '?';
+  const second = two && words.length > 1 ? words[words.length - 1].charAt(0) : '';
+  return (first + second).toUpperCase();
+}
+
+// Rasm: tashkilot (do'kon, distribyutor, tovar egasi) yumaloq kvadrat plitkada, odam doirada.
+// Rasm bo'lmasa nomidan doim bir xil chiqadigan bo'yoq plitkasida oq bosh harf. ring: tasma ustida oq halqa
+export function Pic({ uri, name, size = 44, shape = 'tile', ring }: { uri?: string | null; name: string; size?: number; shape?: 'tile' | 'circle'; ring?: string }) {
+  const radius = shape === 'circle' ? size / 2 : Math.round(size * 0.28);
+  const box = { width: size, height: size, borderRadius: radius, overflow: 'hidden' as const };
+  const edge = ring ? { borderWidth: 2, borderColor: ring } : null;
+  if (uri) {
+    return <Image source={{ uri: fileUrl(uri) }} style={[box, edge]} contentFit="cover" transition={150} accessibilityIgnoresInvertColors accessibilityLabel={name} />;
+  }
   return (
-    <View style={[box, { alignItems: 'center', justifyContent: 'center' }]}>
-      <Text style={{ color: c.accentInk, fontSize: typeof size === 'number' ? size * 0.4 : 30, fontWeight: '700', opacity: 0.75 }}>{name.trim().charAt(0).toUpperCase()}</Text>
+    <View style={[box, edge, { backgroundColor: dyeOf(name), alignItems: 'center', justifyContent: 'center' }]} accessibilityLabel={name}>
+      <Text style={{ color: '#FFFFFF', fontFamily: FONT.textBold, fontSize: Math.round(size * (shape === 'circle' ? 0.36 : 0.42)) }}>{initials(name, shape === 'circle')}</Text>
     </View>
   );
 }
 
-// Yuklanish: ma'lumot o'rnida kartochka shakllari yumshoq miltillaydi (aylanuvchi belgi o'rniga)
+// Tovar rasmi; rasm bo'lmasa nomning bosh harfi bo'yoq plitkasida
+export function Thumb({ uri, name, size = 56 }: { uri?: string | null; name: string; size?: number | '100%' }) {
+  const c = usePalette();
+  const box = { width: size, height: size === '100%' ? undefined : size, aspectRatio: size === '100%' ? 1.25 : undefined, borderRadius: R.md, backgroundColor: c.field } as const;
+  if (uri) return <Image source={{ uri: fileUrl(uri) }} style={box} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />;
+  return (
+    <View style={[box, { alignItems: 'center', justifyContent: 'center', backgroundColor: dyeOf(name) }]}>
+      <Text style={{ color: '#FFFFFF', fontSize: typeof size === 'number' ? Math.round(size * 0.4) : 30, fontFamily: FONT.textBold }}>{name.trim().charAt(0).toUpperCase()}</Text>
+    </View>
+  );
+}
+
+// ---- Abr chizig'i (Captar'ning imzo elementi) ----
+// Atlas iplari to'qishdan oldin bo'yaladi va rang chegarasi bulutdek (abr) yoyiladi. Chiziq ingichka iplardan iborat,
+// har ipning bo'yog'i biroz boshqa joyda tugaydi: chet pog'onali. Qiymat o'zgarganda bo'yoq iplar bo'ylab birin-ketin
+// yoyiladi (tizimda harakat kamaytirilgan bo'lsa Reanimated sakrashsiz qo'yadi)
+const OFFSETS = [-3, 4, -6, 5, -1, -5, 3, -2];
+
+function AbrThread({ top, height, width, color, delay, animateIn }: { top: number; height: number; width: number; color: string; delay: number; animateIn: boolean }) {
+  const w = useSharedValue(animateIn ? 0 : width);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current && !animateIn) {
+      first.current = false;
+      return;
+    }
+    first.current = false;
+    w.value = withDelay(delay, withTiming(width, { duration: 560, easing: Easing.out(Easing.exp) }));
+  }, [width, delay, animateIn, w]);
+  const st = useAnimatedStyle(() => ({ width: w.value }));
+  return <Animated.View style={[{ position: 'absolute', left: 0, top, height, backgroundColor: color, borderTopRightRadius: height / 2, borderBottomRightRadius: height / 2 }, st]} />;
+}
+
+export function AbrBar({
+  value,
+  dye,
+  track,
+  height = 14,
+  animateIn = false,
+  label,
+}: {
+  value: number;
+  dye: string;
+  track: string;
+  height?: number;
+  animateIn?: boolean;
+  label?: string;
+}) {
+  const [w, setW] = useState(0);
+  const v = Math.max(0, Math.min(1, value));
+  const rows = Math.max(3, Math.round(height / 2));
+  const rowH = height / rows;
+  return (
+    <View
+      onLayout={(e) => setW(e.nativeEvent.layout.width)}
+      accessible={!!label}
+      accessibilityRole={label ? 'progressbar' : undefined}
+      accessibilityLabel={label}
+      accessibilityValue={label ? { min: 0, max: 100, now: Math.round(v * 100) } : undefined}
+      style={{ height, borderRadius: height / 2, backgroundColor: track, overflow: 'hidden' }}>
+      {w > 0 &&
+        Array.from({ length: rows }, (_, i) => {
+          // To'liq yoki bo'sh bo'lsa chet tekis; oraliqda har ip o'z joyida tugaydi
+          const width = v <= 0 ? 0 : v >= 1 ? w : Math.max(2, Math.min(w, v * w + OFFSETS[i % OFFSETS.length]));
+          return <AbrThread key={i} top={i * rowH} height={rowH} width={width} color={dye} delay={i * 35} animateIn={animateIn} />;
+        })}
+    </View>
+  );
+}
+
+// Indigo tasma: bosh sahifalar tepasida, pastki burchaklari yumaloq; tizim paneli matni oq
+export function ShellBand({ children, gap = 16 }: { children: React.ReactNode; gap?: number }) {
+  const c = usePalette();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ backgroundColor: c.shell, borderBottomLeftRadius: R.shell, borderBottomRightRadius: R.shell, paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 22, gap }}>
+      <StatusBar style="light" />
+      {children}
+    </View>
+  );
+}
+
+// Skeleton: ma'lumot o'rnida kartochka shakllari yumshoq miltillaydi (aylanuvchi belgi o'rniga)
 function SkeletonBlock({ width, height = 14 }: { width: number | `${number}%`; height?: number }) {
   const c = usePalette();
   return <View style={{ width, height, borderRadius: height / 2, backgroundColor: c.field }} />;
@@ -391,7 +524,8 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
   );
 }
 
-// Pastga tortib yangilanadigan ekran. sticky: birinchi bola (qidiruv, filtr) tepada yopishib turadi
+// Pastga tortib yangilanadigan ekran. sticky: birinchi bola (qidiruv, filtr) tepada yopishib turadi.
+// band: bosh sahifaning indigo tasmasi (ekran chekkasigacha, tepadan tizim paneli ostidan boshlanadi)
 export function Screen({
   children,
   refreshing,
@@ -400,6 +534,7 @@ export function Screen({
   bottom = 32,
   safeTop,
   sticky,
+  band,
 }: {
   children: React.ReactNode;
   refreshing?: boolean;
@@ -409,16 +544,28 @@ export function Screen({
   // Sarlavhasiz ekran (bosh sahifa): yuqoridan tizim paneli uchun joy
   safeTop?: boolean;
   sticky?: boolean;
+  band?: React.ReactNode;
 }) {
   const c = usePalette();
   const insets = useSafeAreaInsets();
+  const refresh = onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={band ? c.shellText : c.accentInk} colors={[c.accent]} /> : undefined;
+  if (band) {
+    return (
+      <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={{ paddingBottom: bottom }} keyboardShouldPersistTaps="handled" refreshControl={refresh}>
+        {/* iOS'da pastga tortilganda tasma ustida oq bo'shliq ko'rinmasin */}
+        <View style={{ position: 'absolute', top: -1000, left: 0, right: 0, height: 1000, backgroundColor: c.shell }} />
+        {band}
+        <View style={{ padding: 16, paddingTop: 20, gap }}>{children}</View>
+      </ScrollView>
+    );
+  }
   return (
     <ScrollView
       style={{ backgroundColor: c.bg }}
       contentContainerStyle={{ padding: 16, paddingTop: safeTop ? insets.top + 8 : 16, gap, paddingBottom: bottom }}
       keyboardShouldPersistTaps="handled"
       stickyHeaderIndices={sticky ? [0] : undefined}
-      refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.accent} colors={[c.accent]} /> : undefined}>
+      refreshControl={refresh}>
       {children}
     </ScrollView>
   );
@@ -432,8 +579,8 @@ export function StickyBar({ children, gap = 8 }: { children: React.ReactNode; ga
 
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, minHeight: 28 }}>
-      <T size="h2" accessibilityRole="header">
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, minHeight: 28, gap: 12 }}>
+      <T size="h2" accessibilityRole="header" style={{ flexShrink: 1 }}>
         {children}
       </T>
       {right}
@@ -446,7 +593,7 @@ export function Badge({ label, tone = 'hint' }: { label: string; tone?: Tone }) 
   const c = usePalette();
   return (
     <View style={{ borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 3, backgroundColor: softOf(c, tone), alignSelf: 'flex-start' }}>
-      <Text style={{ color: toneColor(c, tone), fontSize: 12, lineHeight: 16, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color: toneColor(c, tone), fontSize: 12, lineHeight: 16, fontFamily: FONT.textSemi }}>{label}</Text>
     </View>
   );
 }
@@ -464,31 +611,50 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
   return <Badge label={statusLabel(status)} tone={ORDER_TONE[status]} />;
 }
 
-// Buyurtma yo'li: to'rt bosqich har doim bir joyda va bir o'lchamda; vaqt ma'lum bo'lsa har bosqich ostida
+// Buyurtma yo'li: to'rt bo'lakli abr chizig'i, har doim bir joyda va bir o'lchamda. O'tilgan bo'laklar indigo,
+// joriy bo'lak malina bo'yoq bilan yarim bo'yalgan (abr cheti); vaqt ma'lum bo'lsa har bosqich ostida.
+// Holat ekran ochiq turganda o'zgarsa, yangi joriy bo'lak bo'yog'i yoyilib keladi
 const STEPS: OrderStatus[] = ['SENT', 'ACCEPTED', 'IN_DELIVERY', 'DELIVERED'];
 const stepTime = (s: OrderStatus, times: StepTimes) =>
   s === 'SENT' ? times.createdAt : s === 'ACCEPTED' ? times.acceptedAt : s === 'IN_DELIVERY' ? times.dispatchedAt : times.deliveredAt;
 
 export function StatusSteps({ status, times }: { status: OrderStatus; times?: StepTimes }) {
   const c = usePalette();
+  // Oldingi holat (React'ning "oldingi render qiymati" usuli): o'zgarsa, yangi joriy bo'lak bo'yog'i yoyilib keladi
+  const [seen, setSeen] = useState(status);
+  const [changed, setChanged] = useState(false);
+  if (seen !== status) {
+    setSeen(status);
+    setChanged(true);
+  }
   if (status === 'REJECTED' || status === 'CANCELLED') return <StatusBadge status={status} />;
   const at = STEPS.indexOf(status);
+  const done = status === 'DELIVERED';
   return (
     <View style={{ gap: 8 }} accessible accessibilityLabel={t('Holat: {status}', { status: statusLabel(status) })}>
       <View style={{ flexDirection: 'row', gap: 4 }}>
-        {STEPS.map((s, i) => (
-          <View key={s} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= at ? toneColor(c, ORDER_TONE[status]) : c.border }} />
-        ))}
+        {STEPS.map((s, i) =>
+          i < at || done ? (
+            <View key={s} style={{ flex: 1, height: 10, borderRadius: 5, backgroundColor: c.accent }} />
+          ) : i === at ? (
+            <View key={s} style={{ flex: 1 }}>
+              <AbrBar key={status} value={0.6} dye={c.current} track={c.border} height={10} animateIn={changed} />
+            </View>
+          ) : (
+            <View key={s} style={{ flex: 1, height: 10, borderRadius: 5, backgroundColor: c.border }} />
+          ),
+        )}
       </View>
       <View style={{ flexDirection: 'row', gap: 4 }}>
         {STEPS.map((s, i) => {
           const time = times && i <= at ? stepTime(s, times) : null;
+          const now = i === at;
           return (
             <View key={s} style={{ flex: 1, gap: 1 }}>
-              <Text numberOfLines={1} style={{ fontSize: 12, lineHeight: 16, fontWeight: i === at ? '700' : '500', color: i === at ? toneColor(c, ORDER_TONE[status]) : c.hint }}>
+              <Text numberOfLines={1} style={{ fontSize: 12, lineHeight: 16, fontFamily: now ? FONT.textBold : FONT.textMedium, color: now ? (done ? c.ok : c.current) : c.hint }}>
                 {statusLabel(s)}
               </Text>
-              {time ? <Text style={{ fontSize: 11, lineHeight: 14, color: c.hint, fontVariant: ['tabular-nums'] }}>{formatStepTime(time)}</Text> : null}
+              {time ? <Text style={{ fontSize: 11, lineHeight: 14, fontFamily: FONT.text, color: c.hint, fontVariant: ['tabular-nums'] }}>{formatStepTime(time)}</Text> : null}
             </View>
           );
         })}
@@ -503,7 +669,7 @@ export function Banner({ children, tone = 'warn', icon }: { children: React.Reac
   return (
     <View style={{ borderRadius: R.md, padding: 12, backgroundColor: softOf(c, tone), flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
       <Ionicons name={name} size={20} color={toneColor(c, tone)} />
-      <Text style={{ flex: 1, color: toneColor(c, tone), fontSize: 14, lineHeight: 20, fontWeight: '500' }}>{children}</Text>
+      <Text style={{ flex: 1, color: toneColor(c, tone), fontSize: 14, lineHeight: 20, fontFamily: FONT.textMedium }}>{children}</Text>
     </View>
   );
 }
@@ -532,17 +698,18 @@ export function Row({ label, value, tone }: { label: string; value: React.ReactN
   );
 }
 
+// Bitta chiziq qalinligi: ajratgichlar hammasi bir xil ingichka
 export function Divider() {
   const c = usePalette();
-  return <View style={{ height: 1, backgroundColor: c.border }} />;
+  return <View style={{ height: StyleSheet.hairlineWidth * 2, backgroundColor: c.border }} />;
 }
 
 export function Empty({ children, icon = 'file-tray-outline', action }: { children: React.ReactNode; icon?: IconName; action?: React.ReactNode }) {
   const c = usePalette();
   return (
     <View style={{ alignItems: 'center', padding: 32, gap: 12 }}>
-      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.field, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={icon} size={26} color={c.hint} />
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={26} color={c.accentInk} />
       </View>
       <T size="small" tone="hint" style={{ textAlign: 'center', maxWidth: 280 }}>
         {children}
@@ -561,7 +728,7 @@ export function PressCard({ onPress, children, style }: { onPress: () => void; c
   );
 }
 
-// Suzuvchi savat tugmasi: soni o'zgarganda yumshoq sakraydi
+// Suzuvchi savat tugmasi (indigo): soni o'zgarganda yumshoq sakraydi
 export function CartBar({ label, sub, total, onPress, disabled }: { label: string; sub?: string | null; total: number; onPress: () => void; disabled?: boolean }) {
   const c = usePalette();
   const anim = useBump(label);
@@ -573,7 +740,7 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
         onPress={onPress}
         android_ripple={{ color: rippleColor(c, true) }}
         style={({ pressed }) => ({
-          minHeight: 56,
+          minHeight: 60,
           borderRadius: R.lg,
           backgroundColor: c.accent,
           paddingHorizontal: 18,
@@ -590,15 +757,15 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, paddingVertical: 8 }}>
           <Ionicons name="cart-outline" size={22} color={c.accentText} />
           <View style={{ flexShrink: 1 }}>
-            <Text style={{ color: c.accentText, fontSize: 16, fontWeight: '600' }}>{label}</Text>
+            <Text style={{ color: c.accentText, fontSize: 16, fontFamily: FONT.textSemi }}>{label}</Text>
             {sub ? (
-              <Text style={{ color: c.accentText, fontSize: 12, opacity: 0.9, fontVariant: ['tabular-nums'] }} numberOfLines={1}>
+              <Text style={{ color: c.shellHint, fontSize: 12, fontFamily: FONT.text, fontVariant: ['tabular-nums'] }} numberOfLines={1}>
                 {sub}
               </Text>
             ) : null}
           </View>
         </View>
-        <Text style={{ color: c.accentText, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], flexShrink: 0, marginLeft: 12 }} numberOfLines={1}>
+        <Text style={{ color: c.accentText, fontSize: 15, fontFamily: FONT.display, fontVariant: ['tabular-nums'], flexShrink: 0, marginLeft: 12 }} numberOfLines={1}>
           {formatSom(total)}
         </Text>
       </Pressable>
@@ -609,6 +776,7 @@ export function CartBar({ label, sub, total, onPress, disabled }: { label: strin
 // Ro'yxat qatori: belgi, matn, o'ng tomonda son yoki qiymat, strelka
 export function ListRow({
   icon,
+  pic,
   title,
   sub,
   right,
@@ -617,6 +785,8 @@ export function ListRow({
   muted,
 }: {
   icon: IconName;
+  // Tashkilot yoki odam rasmi: berilsa belgi o'rnida turadi (rasm bo'lmasa bo'yoq plitkasi)
+  pic?: { uri: string | null; name: string; shape?: 'tile' | 'circle' };
   title: string;
   sub?: string;
   right?: React.ReactNode;
@@ -627,9 +797,13 @@ export function ListRow({
   const c = usePalette();
   const body = (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: TOUCH, opacity: muted ? 0.6 : 1 }}>
-      <View style={{ width: 40, height: 40, borderRadius: R.sm, backgroundColor: softOf(c, muted ? 'hint' : tone), alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={icon} size={20} color={muted ? c.hint : toneColor(c, tone)} />
-      </View>
+      {pic ? (
+        <Pic uri={pic.uri} name={pic.name} size={40} shape={pic.shape} />
+      ) : (
+        <View style={{ width: 40, height: 40, borderRadius: R.sm, backgroundColor: softOf(c, muted ? 'hint' : tone), alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name={icon} size={20} color={muted ? c.hint : toneColor(c, tone)} />
+        </View>
+      )}
       <View style={{ flex: 1, gap: 1 }}>
         <T style={{ fontWeight: '500' }} numberOfLines={2}>
           {title}
@@ -658,7 +832,7 @@ export function Count({ n, tone = 'accent' }: { n: number; tone?: Tone }) {
   if (n <= 0) return null;
   return (
     <View style={{ minWidth: 28, height: 28, borderRadius: 14, paddingHorizontal: 8, backgroundColor: tone === 'danger' ? c.danger : c.accent, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: c.accentText, fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{n}</Text>
+      <Text style={{ color: c.accentText, fontSize: 14, fontFamily: FONT.textBold, fontVariant: ['tabular-nums'] }}>{n}</Text>
     </View>
   );
 }

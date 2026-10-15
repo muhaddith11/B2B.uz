@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 
-import { Button, Card, Chip, Loading, SearchInput, T } from '@/components/ui';
+import { Button, Card, Chip, Loading, Pic, SearchInput, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
@@ -82,7 +82,8 @@ export default function FindScreen() {
       }
       renderItem={({ item: d }) => (
         <Card style={{ gap: 4 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <Pic uri={d.logoUrl} name={d.name} size={40} />
             <T bold style={{ flex: 1 }}>
               {d.name}
             </T>

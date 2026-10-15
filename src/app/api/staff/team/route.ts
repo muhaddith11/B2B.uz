@@ -7,7 +7,7 @@ import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN"]);
   const team = await db.staff.findMany({ where: { distributorId: staff.distributorId }, orderBy: [{ active: "desc" }, { role: "asc" }, { name: "asc" }] });
-  return Response.json({ team: team.map((s) => ({ id: s.id, name: s.name, phone: s.phone, role: s.role, active: s.active, me: s.id === staff.id })) });
+  return Response.json({ team: team.map((s) => ({ id: s.id, name: s.name, avatarUrl: s.avatarUrl, phone: s.phone, role: s.role, active: s.active, me: s.id === staff.id })) });
 });
 
 const ROLES = ["ADMIN", "OPERATOR", "ACCOUNTANT", "AGENT", "COURIER"] as const;

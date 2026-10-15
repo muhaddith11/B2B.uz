@@ -12,8 +12,8 @@ export const GET = handle(async (req: Request) => {
   ]);
   const d = staff.distributor;
   return Response.json({
-    staff: { id: staff.id, name: staff.name, phone: staff.phone, role: staff.role },
-    distributor: { id: d.id, name: d.name, status: d.status, districts: d.districts, categories: d.categories, minOrder: d.minOrder, deliveryDays: d.deliveryDays, inn: d.inn },
+    staff: { id: staff.id, name: staff.name, phone: staff.phone, role: staff.role, avatarUrl: staff.avatarUrl },
+    distributor: { id: d.id, name: d.name, logoUrl: d.logoUrl, status: d.status, districts: d.districts, categories: d.categories, minOrder: d.minOrder, deliveryDays: d.deliveryDays, inn: d.inn },
     // Obuna holati (ilovada faqat ko'rsatiladi, to'lov saytda)
     subscription: subscriptionInfo(d),
     couriers,

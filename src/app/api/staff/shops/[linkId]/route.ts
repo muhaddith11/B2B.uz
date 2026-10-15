@@ -34,8 +34,8 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
   return Response.json({
     linkId: link.id,
     status: link.status,
-    shop: { id: link.shop.id, name: link.shop.name, address: link.shop.address, district: link.shop.district, inn: link.shop.inn },
-    users: link.shop.users.map((u) => ({ name: u.name, phone: u.phone, role: u.role })),
+    shop: { id: link.shop.id, name: link.shop.name, imageUrl: link.shop.imageUrl, address: link.shop.address, district: link.shop.district, inn: link.shop.inn },
+    users: link.shop.users.map((u) => ({ name: u.name, phone: u.phone, role: u.role, avatarUrl: u.avatarUrl })),
     terms: { priceGroup: link.priceGroup, creditLimit: link.creditLimit, creditDays: link.creditDays, blockAfterDays: link.blockAfterDays, agent: link.agent },
     summary: summarize(link.ledger, pending, link.creditLimit),
     ledger: recent.map((e) => ({

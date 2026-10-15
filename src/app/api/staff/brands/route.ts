@@ -28,6 +28,7 @@ export const GET = handle(async (req: Request) => {
       return {
         id: b.id,
         name: b.name,
+        logoUrl: b.logoUrl,
         description: b.description,
         categories: b.categories,
         productCount: b._count.products,

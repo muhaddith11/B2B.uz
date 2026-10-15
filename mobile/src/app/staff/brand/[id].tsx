@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Banner, Button, Card, ErrorState, Field, Loading, QtyStepper, Row, Screen, SectionTitle, T, Thumb } from '@/components/ui';
+import { Badge, Banner, Button, Card, ErrorState, Field, Loading, Pic, QtyStepper, Row, Screen, SectionTitle, T, Thumb } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { confirm } from '@/lib/confirm';
@@ -62,7 +62,12 @@ export default function StaffBrand() {
     <Screen refreshing={refreshing} onRefresh={reload}>
       <Stack.Screen options={{ title: data.brand.name }} />
       <Card style={{ gap: 4 }}>
-        <T size="h2">{data.brand.name}</T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+          <Pic uri={data.brand.logoUrl} name={data.brand.name} size={52} />
+          <T size="h2" style={{ flex: 1 }}>
+            {data.brand.name}
+          </T>
+        </View>
         <T size="small" tone="hint">
           {data.brand.categories.join(', ')}
           {data.brand.inn ? ` · ${t('STIR {inn}', { inn: data.brand.inn })}` : ''}

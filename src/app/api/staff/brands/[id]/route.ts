@@ -19,7 +19,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const discount = agreement?.status === "ACTIVE" ? agreement.discountPercent : 0;
 
   return Response.json({
-    brand: { id: brand.id, name: brand.name, description: brand.description, categories: brand.categories, inn: brand.inn },
+    brand: { id: brand.id, name: brand.name, logoUrl: brand.logoUrl, description: brand.description, categories: brand.categories, inn: brand.inn },
     agreement: agreement && {
       id: agreement.id,
       status: agreement.status,

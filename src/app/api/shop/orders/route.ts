@@ -7,7 +7,7 @@ export const GET = handle(async (req: Request) => {
     const orders = await db.order.findMany({
       where: { shopLink: { shopId: user.shopId } },
       include: {
-        shopLink: { include: { distributor: { select: { name: true } } } },
+        shopLink: { include: { distributor: { select: { name: true, logoUrl: true } } } },
         items: { include: { product: { select: { name: true, packSize: true } } } },
       },
       orderBy: { createdAt: "desc" },
@@ -26,7 +26,7 @@ export const GET = handle(async (req: Request) => {
         dispatchedAt: o.dispatchedAt,
         deliveredAt: o.deliveredAt,
         rejectReason: o.rejectReason,
-        distributor: { id: o.shopLink.distributorId, name: o.shopLink.distributor.name },
+        distributor: { id: o.shopLink.distributorId, name: o.shopLink.distributor.name, logoUrl: o.shopLink.distributor.logoUrl },
         items: o.items.map((i) => ({
           productId: i.productId,
           name: i.product.name,

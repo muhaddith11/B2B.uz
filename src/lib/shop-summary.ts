@@ -50,6 +50,7 @@ export async function linkSummaries(shopId: string) {
     distributor: {
       id: l.distributor.id,
       name: l.distributor.name,
+      logoUrl: l.distributor.logoUrl,
       categories: l.distributor.categories,
       minOrder: l.distributor.minOrder,
       deliveryDays: l.distributor.deliveryDays,

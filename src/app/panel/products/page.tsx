@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatSom } from "@/lib/money";
 import { getStaff } from "@/lib/session";
+import { BulkImages } from "./bulk-images";
+import { ImageCell } from "./image-cell";
 import { UploadForm } from "./upload-form";
 
 export const dynamic = "force-dynamic";
 
-// Tovarlar va Excel prays-list yuklash
+// Tovarlar, Excel prays-list va tovar rasmlari
 export default async function PanelProducts() {
   const staff = await getStaff();
   if (!staff) redirect("/panel");
@@ -17,13 +19,17 @@ export default async function PanelProducts() {
     orderBy: [{ active: "desc" }, { category: "asc" }, { name: "asc" }],
   });
 
+  const canEdit = ["ADMIN", "OPERATOR"].includes(staff.role);
+
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold">Tovarlar</h1>
-      {["ADMIN", "OPERATOR"].includes(staff.role) && <UploadForm />}
+      {canEdit && <UploadForm />}
+      {canEdit && <BulkImages />}
       <table className="w-full overflow-hidden rounded-xl border border-line bg-card text-sm">
         <thead className="bg-bg text-left text-hint">
           <tr>
+            <th className="px-3 py-2 font-medium">Rasm</th>
             <th className="px-3 py-2 font-medium">Artikul</th>
             <th className="px-3 py-2 font-medium">Tovar</th>
             <th className="px-3 py-2 font-medium">Toifa</th>
@@ -35,6 +41,16 @@ export default async function PanelProducts() {
         <tbody>
           {products.map((p) => (
             <tr key={p.id} className={`border-t border-line ${p.active ? "" : "text-hint"}`}>
+              <td className="px-3 py-2">
+                {canEdit ? (
+                  <ImageCell productId={p.id} imageUrl={p.imageUrl} name={p.name} />
+                ) : (
+                  p.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- rasm /api/files dan, o'lchami kichik
+                    <img src={p.imageUrl} alt="" className="size-11 rounded-lg border border-line object-cover" />
+                  )
+                )}
+              </td>
               <td className="px-3 py-2 text-hint">{p.sku}</td>
               <td className="px-3 py-2">
                 {p.name}

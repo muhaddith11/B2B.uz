@@ -1,8 +1,9 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
 
 import { TagInput } from '@/components/tag-input';
-import { Banner, Button, Card, ErrorState, Field, Loading, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { Banner, Button, Card, ErrorState, Field, Loading, Pic, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t, tx } from '@/lib/i18n';
@@ -65,7 +66,12 @@ export default function BrandDistributor() {
     <Screen gap={12}>
       <Stack.Screen options={{ title: d.name }} />
       <Card style={{ gap: 4 }}>
-        <T size="h2">{d.name}</T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+          <Pic uri={d.logoUrl} name={d.name} size={52} />
+          <T size="h2" style={{ flex: 1 }}>
+            {d.name}
+          </T>
+        </View>
         <Row label={t('Hududlar')} value={d.districts.join(', ')} />
         <Row label={t('Toifalar')} value={d.categories.join(', ')} />
         <Row label={t("Do'konlar")} value={t('{n} ta', { n: d.shops })} />

@@ -148,6 +148,7 @@ model Distributor {
   id           String            @id @default(cuid())
   name         String
   inn          String? // STIR
+  logoUrl      String? // logo: /api/files/logos/...
   districts    String[] // tumanlar
   categories   String[]
   minOrder     Int               @default(0) // minimal buyurtma, so'm
@@ -175,6 +176,7 @@ model Staff {
   distributor   Distributor @relation(fields: [distributorId], references: [id])
   name          String
   phone         String
+  avatarUrl     String? // /api/files/avatars/...
   role          StaffRole
   active        Boolean     @default(true)
   createdAt     DateTime    @default(now())
@@ -195,6 +197,7 @@ model Shop {
   lat         Float?
   lng         Float?
   inn         String?
+  imageUrl    String? // do'kon surati yoki logosi: /api/files/logos/...
   // Obuna: do'kon (barcha sotuvchilari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
   trialEndsAt DateTime
   paidUntil   DateTime
@@ -206,13 +209,14 @@ model Shop {
 }
 
 model ShopUser {
-  id         String       @id @default(cuid())
-  shopId     String
-  shop       Shop         @relation(fields: [shopId], references: [id])
-  name       String
-  phone      String
-  role       ShopUserRole @default(OWNER)
-  createdAt  DateTime     @default(now())
+  id        String       @id @default(cuid())
+  shopId    String
+  shop      Shop         @relation(fields: [shopId], references: [id])
+  name      String
+  phone     String
+  avatarUrl String? // /api/files/avatars/...
+  role      ShopUserRole @default(OWNER)
+  createdAt DateTime     @default(now())
 
   orders       Order[]
   sentMessages Message[]
@@ -437,6 +441,7 @@ model Brand {
   id          String      @id @default(cuid())
   name        String
   inn         String?
+  logoUrl     String? // /api/files/logos/...
   description String?
   categories  String[]
   status      BrandStatus @default(PENDING)
@@ -454,6 +459,7 @@ model BrandUser {
   brand     Brand    @relation(fields: [brandId], references: [id])
   name      String
   phone     String
+  avatarUrl String? // /api/files/avatars/...
   createdAt DateTime @default(now())
 
   @@index([brandId])

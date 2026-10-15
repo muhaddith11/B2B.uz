@@ -1,7 +1,8 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { usePalette } from '@/constants/theme';
+import { FONT, usePalette } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 import { Chip, SearchInput, T } from './ui';
@@ -42,9 +43,9 @@ export function TagInput({
               onPress={() => onChange(value.filter((x) => x !== v))}
               accessibilityRole="button"
               accessibilityLabel={t('{v}ni olib tashlash', { v })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.accent, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-              <Text style={{ color: c.accentText, fontSize: 14 }}>{v}</Text>
-              <Text style={{ color: c.accentText, fontSize: 14 }}>×</Text>
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.current, borderRadius: 999, paddingHorizontal: 12, minHeight: 32 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontFamily: FONT.textSemi }}>{v}</Text>
+              <Ionicons name="close" size={14} color="#FFFFFF" />
             </Pressable>
           ))}
         </View>

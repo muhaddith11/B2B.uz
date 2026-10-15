@@ -3,8 +3,8 @@ import { t } from './i18n';
 import type { OrderStatus, PaymentType, StaffRole, Subscription } from './types';
 
 export type StaffMe = {
-  staff: { id: string; name: string; phone: string; role: StaffRole };
-  distributor: { id: string; name: string; status: 'PENDING' | 'ACTIVE'; districts: string[]; categories: string[]; minOrder: number; deliveryDays: string[]; inn: string | null };
+  staff: { id: string; name: string; phone: string; role: StaffRole; avatarUrl: string | null };
+  distributor: { id: string; name: string; logoUrl: string | null; status: 'PENDING' | 'ACTIVE'; districts: string[]; categories: string[]; minOrder: number; deliveryDays: string[]; inn: string | null };
   subscription: Subscription;
   couriers: { id: string; name: string }[];
   agents: { id: string; name: string }[];
@@ -41,7 +41,7 @@ export type StaffOrder = {
   rejectReason: string | null;
   createdBy: string | null;
   courier: { id: string; name: string } | null;
-  shop: { linkId: string; name: string; address: string; district: string; phone: string | null; owner: string | null };
+  shop: { linkId: string; name: string; imageUrl: string | null; address: string; district: string; phone: string | null; owner: string | null };
   items: { id: string; productId: string; name: string; sku: string; packSize: number; unit: string; qty: number; deliveredQty: number | null; price: number }[];
 };
 
@@ -59,7 +59,7 @@ export type Summary = {
 export type StaffShop = Summary & {
   linkId: string;
   status: 'ACTIVE' | 'BLOCKED';
-  shop: { id: string; name: string; address: string; district: string };
+  shop: { id: string; name: string; imageUrl: string | null; address: string; district: string };
   agent: string | null;
 };
 
@@ -79,8 +79,8 @@ export type StaffLedger = {
 export type ShopDetail = {
   linkId: string;
   status: 'ACTIVE' | 'BLOCKED';
-  shop: { id: string; name: string; address: string; district: string; inn: string | null };
-  users: { name: string; phone: string; role: string }[];
+  shop: { id: string; name: string; imageUrl: string | null; address: string; district: string; inn: string | null };
+  users: { name: string; phone: string; role: string; avatarUrl: string | null }[];
   terms: { priceGroup: { id: string; name: string } | null; creditLimit: number; creditDays: number; blockAfterDays: number | null; agent: { id: string; name: string } | null };
   summary: Summary;
   ledger: StaffLedger[];
@@ -125,6 +125,7 @@ export type Side = 'BRAND' | 'DISTRIBUTOR';
 export type BrandCard = {
   id: string;
   name: string;
+  logoUrl: string | null;
   description: string | null;
   categories: string[];
   productCount: number;
@@ -142,7 +143,7 @@ export type Agreement = {
 };
 
 export type BrandForStaff = {
-  brand: { id: string; name: string; description: string | null; categories: string[]; inn: string | null };
+  brand: { id: string; name: string; logoUrl: string | null; description: string | null; categories: string[]; inn: string | null };
   agreement: Agreement | null;
   products: {
     id: string;
@@ -160,7 +161,7 @@ export type BrandForStaff = {
   orders: { id: string; number: number; status: BrandOrderStatus; total: number; createdAt: string; rejectReason: string | null; items: { name: string; qty: number; price: number }[] }[];
 };
 
-export type TeamMember = { id: string; name: string; phone: string; role: StaffRole; active: boolean; me: boolean };
+export type TeamMember = { id: string; name: string; avatarUrl: string | null; phone: string; role: StaffRole; active: boolean; me: boolean };
 
 export type PaymentMethodRow = {
   id: string;
@@ -204,8 +205,8 @@ export function channelLabel(channel: string | null): string {
 // ---- Tovar egasi ----
 
 export type BrandMe = {
-  user: { name: string; phone: string };
-  brand: { id: string; name: string; status: 'PENDING' | 'ACTIVE'; categories: string[]; description: string | null; inn: string | null };
+  user: { name: string; phone: string; avatarUrl: string | null };
+  brand: { id: string; name: string; logoUrl: string | null; status: 'PENDING' | 'ACTIVE'; categories: string[]; description: string | null; inn: string | null };
   counts: { products: number; activeAgreements: number; incomingProposals: number; newOrders: number };
   sales: {
     days: number;
@@ -233,6 +234,7 @@ export type BrandProductRow = {
 export type DistributorForBrand = {
   id: string;
   name: string;
+  logoUrl: string | null;
   districts: string[];
   categories: string[];
   deliveryDays: string[];
@@ -241,11 +243,11 @@ export type DistributorForBrand = {
   agreement: { id: string; status: AgreementStatus; initiatedBy: Side } | null;
 };
 
-export type BrandAgreementRow = Agreement & { distributor: { id: string; name: string; districts: string[] } };
+export type BrandAgreementRow = Agreement & { distributor: { id: string; name: string; logoUrl: string | null; districts: string[] } };
 
 export type BrandAgreementDetail = {
   agreement: Agreement & { respondedAt: string | null; endedAt: string | null };
-  distributor: { id: string; name: string; districts: string[]; categories: string[]; shops: number };
+  distributor: { id: string; name: string; logoUrl: string | null; districts: string[]; categories: string[]; shops: number };
   listed: { name: string; active: boolean; inStock: boolean; price: number | null }[];
   orders: { id: string; number: number; status: BrandOrderStatus; total: number; createdAt: string }[];
 };
@@ -259,5 +261,6 @@ export type BrandOrderRow = {
   rejectReason: string | null;
   createdAt: string;
   distributor: string;
+  distributorLogoUrl: string | null;
   items: { name: string; packSize: number; unit: string; qty: number; price: number }[];
 };

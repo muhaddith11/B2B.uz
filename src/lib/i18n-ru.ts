@@ -177,4 +177,6 @@ export const RU = {
   "Onlayn to'lov": "Онлайн-оплата",
   "Obuna to'landi": "Подписка оплачена",
   "{date} gacha": "до {date}",
+  "Faqat do'kon egasi o'zgartira oladi": "Изменить может только владелец магазина",
+  "Do'konning surati bor: uni faqat do'kon egasi almashtiradi": "У магазина уже есть фото: заменить его может только владелец",
 } as const;

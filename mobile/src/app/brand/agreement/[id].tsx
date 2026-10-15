@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Banner, Button, Card, ErrorState, Loading, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { Badge, Banner, Button, Card, ErrorState, Loading, Pic, PressCard, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { confirm } from '@/lib/confirm';
 import { haptic } from '@/lib/haptics';
@@ -45,7 +45,8 @@ export default function BrandAgreement() {
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
       <Card style={{ gap: 6 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <Pic uri={data.distributor.logoUrl} name={data.distributor.name} size={44} />
           <T size="h2" style={{ flex: 1 }}>
             {data.distributor.name}
           </T>

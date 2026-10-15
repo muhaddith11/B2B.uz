@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { AuthImage } from '@/components/auth-image';
+import { PicEdit } from '@/components/pic-edit';
 import { CallLink, CashForm, OrderCard } from '@/components/staff';
-import { Badge, Banner, Button, Card, Chip, ErrorState, Field, Loading, Money, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { AbrBar, Badge, Banner, Button, Card, Chip, ErrorState, Field, Loading, Money, Pic, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
@@ -30,6 +31,22 @@ export default function StaffShopScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
       <Stack.Screen options={{ title: data.shop.name }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        {!data.shop.imageUrl && can('ADMIN', 'OPERATOR', 'AGENT') ? (
+          // Surat yo'q: agent do'kon oldida turib qo'yadi (yetkazuvchi do'konni shundan topadi). Almashtirish do'kon egasining ishi
+          <PicEdit uri={null} name={data.shop.name} size={64} label={t("Do'kon suratini qo'yish")} path={`/api/staff/shops/${linkId}/image`} field="imageUrl" onChange={() => reload()} canRemove={false} />
+        ) : (
+          <Pic uri={data.shop.imageUrl} name={data.shop.name} size={64} />
+        )}
+        <View style={{ flex: 1, gap: 2 }}>
+          <T size="h2" numberOfLines={2}>
+            {data.shop.name}
+          </T>
+          <T size="small" tone="hint" numberOfLines={2}>
+            {data.shop.address} · {data.shop.district}
+          </T>
+        </View>
+      </View>
       <Card style={{ gap: 4 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <T size="small" tone="hint">
@@ -38,6 +55,11 @@ export default function StaffShopScreen() {
           {data.status === 'BLOCKED' && <Badge label={t('Bloklangan')} tone="danger" />}
         </View>
         <Money value={s.debt} size="title" tone={s.overdueAmount > 0 ? 'danger' : 'text'} />
+        {data.terms.creditLimit > 0 && (
+          <View style={{ marginVertical: 8 }}>
+            <AbrBar value={s.debt / data.terms.creditLimit} dye={s.overdueAmount > 0 ? c.danger : c.accent} track={c.field} height={10} label={t('Nasiya limitidan ishlatilgani')} />
+          </View>
+        )}
         {s.overdueAmount > 0 && (
           <T size="small" tone="danger" num>
             {t("Muddati {n} kun o'tgan: {sum}", { n: s.overdueDays, sum: formatSom(s.overdueAmount) })}
@@ -53,12 +75,14 @@ export default function StaffShopScreen() {
         <Row label={t('Agent')} value={data.terms.agent?.name ?? '—'} />
       </Card>
 
-      <Card style={{ gap: 4 }}>
-        <T size="small" tone="hint">
-          {data.shop.address} · {data.shop.district}
-        </T>
+      <Card style={{ gap: 10 }}>
         {data.users.map((u) => (
-          <CallLink key={u.phone} phone={u.phone} name={u.name} />
+          <View key={u.phone} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Pic uri={u.avatarUrl} name={u.name} size={36} shape="circle" />
+            <View style={{ flex: 1 }}>
+              <CallLink phone={u.phone} name={u.name} />
+            </View>
+          </View>
         ))}
       </Card>
 

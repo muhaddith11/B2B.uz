@@ -162,7 +162,7 @@ export default function LoginScreen() {
                 {accounts.map((a, i) => (
                   <View key={a.token} style={{ gap: 8 }}>
                     {i > 0 && <Divider />}
-                    <ListRow icon={KIND_ICON[a.kind]} title={a.title} sub={a.subtitle} onPress={() => choose(a)} />
+                    <ListRow icon={KIND_ICON[a.kind]} pic={{ uri: a.imageUrl, name: a.title }} title={a.title} sub={a.subtitle} onPress={() => choose(a)} />
                   </View>
                 ))}
               </Card>

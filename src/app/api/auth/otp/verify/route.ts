@@ -35,6 +35,7 @@ export const POST = handle(async (req: Request) => {
     ...shopUsers.map((u) => ({
       kind: "shop" as const,
       title: u.shop.name,
+      imageUrl: u.shop.imageUrl,
       subtitle: render(L("Do'kon · {name}", { name: u.name }), lang),
       token: signToken({ kind: "shop", shopUserId: u.id, exp }),
     })),
@@ -42,12 +43,14 @@ export const POST = handle(async (req: Request) => {
       kind: "staff" as const,
       role: s.role,
       title: s.distributor.name,
+      imageUrl: s.distributor.logoUrl,
       subtitle: render(L("Distribyutor · {name}, {role}", { name: s.name, role: L(ROLE_LABEL[s.role]) }), lang),
       token: signToken({ kind: "staff", staffId: s.id, exp }),
     })),
     ...brandUsers.map((u) => ({
       kind: "brand" as const,
       title: u.brand.name,
+      imageUrl: u.brand.logoUrl,
       subtitle: render(L("Tovar egasi · {name}", { name: u.name }), lang),
       token: signToken({ kind: "brand", brandUserId: u.id, exp }),
     })),

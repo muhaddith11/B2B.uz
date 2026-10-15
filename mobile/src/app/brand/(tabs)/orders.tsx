@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Empty, ErrorState, Loading, PressCard, Screen, Segmented, StickyBar, T } from '@/components/ui';
+import { Badge, Empty, ErrorState, Loading, Pic, PressCard, Screen, Segmented, StickyBar, T } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
 import { brandOrderLabel, type BrandOrderRow, type BrandOrderStatus } from '@/lib/staff-types';
@@ -32,7 +32,8 @@ export default function BrandOrders() {
       {!data && <Loading inline />}
       {data?.orders.map((o) => (
         <PressCard key={o.id} onPress={() => router.push(`/brand/order/${o.id}`)}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <Pic uri={o.distributorLogoUrl} name={o.distributor} size={36} />
             <T bold num style={{ flex: 1 }}>
               №{o.number} · {o.distributor}
             </T>

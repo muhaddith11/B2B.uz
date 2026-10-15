@@ -5,8 +5,9 @@ import { get, put } from "@vercel/blob";
 import { db } from "./db";
 import { HttpError } from "./session";
 
-// Yuklangan fayllar: to'lov cheklari va tovar rasmlari. Ochiq havola yo'q: fayl faqat /api/files orqali beriladi
-// (chek ruxsat tekshirilgandan keyin, tovar rasmi esa hammaga, faqat biror tovarga biriktirilgan bo'lsa).
+// Yuklangan fayllar: to'lov cheklari, tovar rasmlari, logolar (distribyutor, tovar egasi, do'kon surati) va avatarlar.
+// Ochiq havola yo'q: fayl faqat /api/files orqali beriladi (chek ruxsat tekshirilgandan keyin, rasmlar esa hammaga,
+// faqat biror tovar, tashkilot yoki foydalanuvchiga biriktirilgan bo'lsa).
 // Qayerda: BLOB_READ_WRITE_TOKEN bo'lsa yopiq Vercel Blob omborida; Vercel'da (yoki UPLOAD_STORAGE=db) bazada;
 // aks holda diskda (UPLOAD_DIR yoki ./uploads).
 
@@ -14,9 +15,9 @@ const ROOT = path.resolve(process.env.UPLOAD_DIR || "uploads");
 // Vercel funksiyasi 4,5 MB dan katta so'rov tanasini qabul qilmaydi
 const MAX_BYTES = 4 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "application/pdf": "pdf" };
-// Tovar rasmi barcha telefonlarda ko'rinishi kerak: HEIC va PDF emas
+// Rasmlar barcha telefonlarda ko'rinishi kerak: HEIC va PDF emas
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-export type UploadFolder = "receipts" | "products";
+export type UploadFolder = "receipts" | "products" | "logos" | "avatars";
 
 function backend(): "blob" | "db" | "disk" {
   if (process.env.BLOB_READ_WRITE_TOKEN) return "blob";

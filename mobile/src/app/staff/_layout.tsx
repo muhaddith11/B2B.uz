@@ -1,13 +1,15 @@
 import { Stack } from 'expo-router';
 
 import { StaffProvider } from '@/context/staff';
+import { useStackOptions } from '@/components/nav';
 import { t } from '@/lib/i18n';
 
 // Distribyutor xodimi ekranlari: tablar va ichki sahifalar
 export default function StaffLayout() {
+  const options = useStackOptions();
   return (
     <StaffProvider>
-      <Stack screenOptions={{ headerBackTitle: t('Orqaga'), headerShadowVisible: false, headerTitleStyle: { fontWeight: '600' } }}>
+      <Stack screenOptions={options}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ title: t('Buyurtma') }} />
         <Stack.Screen name="shop/[linkId]" options={{ title: t("Do'kon") }} />
