@@ -70,7 +70,7 @@ export function clientIp(headers: Headers): string | null {
 
 // Ilova, panel va admin uchun bitta matn: SMS xizmatida (TextUP) bitta shablon tasdiqlatiladi.
 // OTP_SMS_TEXT bilan almashtirish mumkin ({code} o'rniga kod qo'yiladi)
-const DEFAULT_OTP_TEXT = "Captar: kirish kodi {code}. Kodni hech kimga bermang.";
+const DEFAULT_OTP_TEXT = "Captar ilovasi kirish kodi {code}. Kodni hech kimga bermang.";
 export function otpSmsText(code: string): string {
   return (process.env.OTP_SMS_TEXT || DEFAULT_OTP_TEXT).replace("{code}", code);
 }
