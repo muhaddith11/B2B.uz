@@ -57,6 +57,18 @@ export function UploadForm() {
               Qo'llandi: {state.count} ta tovar yangilandi{state.deactivated ? `, ${state.deactivated} tasi faylda yo'qligi uchun nofaol qilindi` : ""}.
             </p>
           )}
+          {state.kind === "applied" && state.imageWarnings && state.imageWarnings.length > 0 && (
+            <div className="rounded-lg bg-warn-soft p-3 text-warn">
+              <div className="font-medium">Rasmi olinmagan tovarlar ({state.imageWarnings.length}): tovar yozildi, rasmi o'zgarmadi</div>
+              <ul className="mt-1 list-disc pl-5">
+                {state.imageWarnings.slice(0, 30).map((w) => (
+                  <li key={w.sku}>
+                    {w.sku}: {w.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {state.errors.length > 0 && (
             <div className="rounded-lg bg-danger-soft p-3 text-danger">
               <div className="font-medium">Xatolar ({state.errors.length}): tuzatib, qayta yuklang</div>

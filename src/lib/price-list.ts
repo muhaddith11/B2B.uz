@@ -34,6 +34,13 @@ const FIELDS = {
 type Field = keyof typeof FIELDS;
 const REQUIRED: Field[] = ["sku", "name", "brand", "category", "unit", "packSize", "price"];
 
+// Ilovadan tovar qo'shishdagi chegaralar bilan bir xil: katta son bazaga sig'maydi (server xatosi o'rniga qator xatosi),
+// uzun matn esa katalog va buyurtmalarni buzadi
+export const MAX_PRICE = 100_000_000;
+const MAX_PACK = 10_000;
+const MAX_MIN_PACKS = 1000;
+const MAX_LEN: Partial<Record<Field, number>> = { sku: 50, name: 200, brand: 100, category: 100, unit: 20, barcode: 50, imageUrl: 1000 };
+
 // "O'lchov birligi", "O‘lchov  birligi" -> "olchovbirligi"
 export function normalizeHeader(h: string): string {
   return h
@@ -96,6 +103,11 @@ export function parsePriceList(
       errors.push({ row: rowNo, message: `Bo'sh majburiy ustun: ${emptyRequired.map((f) => FIELDS[f]).join(", ")}` });
       return;
     }
+    const tooLong = (Object.entries(MAX_LEN) as [Field, number][]).filter(([f, max]) => text(get(f)).length > max);
+    if (tooLong.length) {
+      errors.push({ row: rowNo, message: `Matn juda uzun: ${tooLong.map(([f, max]) => `${FIELDS[f]} (${max} belgigacha)`).join(", ")}` });
+      return;
+    }
     const sku = text(get("sku"));
     if (seen.has(sku)) {
       errors.push({ row: rowNo, message: `Artikul ${sku} takrorlangan (${seen.get(sku)}-qatorda ham bor)` });
@@ -106,15 +118,19 @@ export function parsePriceList(
       errors.push({ row: rowNo, message: "Narx nol, manfiy yoki son emas" });
       return;
     }
+    if (price > MAX_PRICE) {
+      errors.push({ row: rowNo, message: "Narx juda katta: bir dona narxi 100 000 000 so'mdan oshmasin" });
+      return;
+    }
     const packSize = parseAmount(get("packSize"));
-    if (packSize === null || packSize <= 0) {
-      errors.push({ row: rowNo, message: "Yashikdagi soni musbat butun son bo'lishi kerak" });
+    if (packSize === null || packSize <= 0 || packSize > MAX_PACK) {
+      errors.push({ row: rowNo, message: "Yashikdagi soni 1 dan 10 000 gacha butun son bo'lishi kerak" });
       return;
     }
     const minRaw = text(get("minOrderPacks"));
     const minOrderPacks = minRaw ? parseAmount(minRaw) : 1;
-    if (minOrderPacks === null || minOrderPacks <= 0) {
-      errors.push({ row: rowNo, message: "Minimal buyurtma musbat son bo'lishi kerak" });
+    if (minOrderPacks === null || minOrderPacks <= 0 || minOrderPacks > MAX_MIN_PACKS) {
+      errors.push({ row: rowNo, message: "Minimal buyurtma 1 dan 1000 yashikkacha bo'lishi kerak" });
       return;
     }
     const inStock = parseStock(get("stock"));
@@ -123,17 +139,24 @@ export function parsePriceList(
       return;
     }
 
-    // Rasm havolasi: internetdagi rasm (http/https). Bo'sh bo'lsa tovarning hozirgi rasmi saqlanadi
+    // Rasm havolasi: internetdagi rasm (faqat https: telefonlar shifrlanmagan http rasmni ochmaydi). Qo'llashda rasm
+    // o'z omborimizga yuklab olinadi (price-list-apply.ts). Bo'sh bo'lsa tovarning hozirgi rasmi saqlanadi
     const imageUrl = text(get("imageUrl")) || null;
-    if (imageUrl && !/^(https?:\/\/\S+|\/api\/files\/products\/[a-f0-9]{32}\.[a-z]+)$/i.test(imageUrl)) {
-      errors.push({ row: rowNo, message: "Rasm havolasi http:// yoki https:// bilan boshlanadigan manzil bo'lsin" });
+    if (imageUrl && !/^(https:\/\/\S+|\/api\/files\/products\/[a-f0-9]{32}\.[a-z]+)$/i.test(imageUrl)) {
+      errors.push({ row: rowNo, message: "Rasm havolasi https:// bilan boshlanadigan manzil bo'lsin" });
       return;
     }
 
     const extraPrices: Record<string, number> = {};
+    const badGroups: string[] = [];
     for (const g of groupCols) {
       const p = parseAmount(r[g.idx]);
-      if (p !== null && p > 0) extraPrices[g.name] = p;
+      if (p !== null && p > MAX_PRICE) badGroups.push(g.name);
+      else if (p !== null && p > 0) extraPrices[g.name] = p;
+    }
+    if (badGroups.length) {
+      errors.push({ row: rowNo, message: `Narx juda katta: ${badGroups.join(", ")}` });
+      return;
     }
 
     seen.set(sku, rowNo);

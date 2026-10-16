@@ -17,16 +17,23 @@ export default function StaffShopNew() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [invited, setInvited] = useState(false);
+  const [existing, setExisting] = useState(false);
   const set = (key: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [key]: v }));
 
   async function submit() {
     setBusy(true);
     setErr(null);
     try {
-      const res = await api<{ linkId: string; invited: boolean }>('/api/staff/shops', { method: 'POST', body: JSON.stringify(form) });
+      const res = await api<{ linkId: string; invited: boolean; existingShop?: boolean }>('/api/staff/shops', { method: 'POST', body: JSON.stringify(form) });
       haptic.success();
       if (res.invited) {
         setInvited(true);
+        setBusy(false);
+        return;
+      }
+      // Raqam egasining tizimdagi do'koni qayta faollashdi: kiritilgan nom va manzil emas, egasiniki qoladi
+      if (res.existingShop) {
+        setExisting(true);
         setBusy(false);
         return;
       }
@@ -41,10 +48,17 @@ export default function StaffShopNew() {
   const filled =
     form.shopName.trim().length >= 2 && form.address.trim().length >= 5 && form.district.trim().length >= 2 && form.ownerName.trim().length >= 2 && form.phone.replace(/\D/g, '').length >= 12;
 
-  if (invited) {
+  if (invited || existing) {
     return (
       <Screen gap={14}>
-        <Banner tone="ok">{t("Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.")}</Banner>
+        <Banner tone="ok">
+          {invited
+            ? t("Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.")
+            : t("Bu raqam egasining do'koni qayta ulandi.")}
+        </Banner>
+        <T size="small" tone="hint">
+          {t("Do'kon nomi va manzili egasi ilovada kiritgandek qoladi, siz yozgani saqlanmaydi.")}
+        </T>
         <Button title={t('Tushunarli')} onPress={() => router.back()} />
       </Screen>
     );

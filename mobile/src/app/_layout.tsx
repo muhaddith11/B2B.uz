@@ -85,6 +85,7 @@ function RootStack() {
         <Stack.Screen name="distributor/[id]" options={{ title: t('Katalog') }} />
         <Stack.Screen name="find" options={{ title: t('Yangi distribyutor topish') }} />
         <Stack.Screen name="pay/[id]" options={{ title: t("Qarzni to'lash") }} />
+        <Stack.Screen name="shop-team" options={{ title: t('Sotuvchilar') }} />
       </Stack.Protected>
       <Stack.Protected guard={kind === 'staff'}>
         <Stack.Screen name="staff" options={{ headerShown: false }} />

@@ -74,6 +74,9 @@ export type StaffLedger = {
   note: string | null;
   receiptUrl: string | null;
   orderNumber: number | null;
+  // Tuzatish: qaysi yozuvni bekor qilgan va o'zi bekor qilinganmi
+  reversesId: string | null;
+  reversed: boolean;
 };
 
 export type ShopDetail = {

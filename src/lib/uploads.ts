@@ -96,19 +96,39 @@ export async function imageInUse(folder: ImageFolder, url: string): Promise<bool
   return (await Promise.all(counts)).some((n) => n > 0);
 }
 
-// Almashtirilgan yoki olib tashlangan rasm hech kimga biriktirilmagan bo'lsa, ombordan o'chiriladi (baza to'lib ketmasin).
-// Bitta rasm bir nechta joyda bo'lishi mumkin (tovar egasi rasmi distribyutor katalogida ham): unda qoladi.
-// Tozalash asosiy amalni to'xtatmaydi: xato logga yoziladi, xolos
-export async function releaseImage(url: string | null | undefined): Promise<void> {
-  const file = url ? imagePath(url) : null;
-  if (!file || (await imageInUse(file.folder, url!))) return;
-  const key = `${file.folder}/${file.name}`;
+// Ombordan o'chirish. Tozalash asosiy amalni to'xtatmaydi: xato logga yoziladi, xolos
+async function removeStored(folder: string, name: string): Promise<void> {
+  const key = `${folder}/${name}`;
   try {
     const where = backend();
     if (where === "blob") await del(key);
     else if (where === "db") await db.storedFile.deleteMany({ where: { path: key } });
-    else await unlink(path.join(ROOT, file.folder, file.name));
+    else await unlink(path.join(ROOT, folder, name));
   } catch (e) {
-    console.error("rasm o'chirilmadi:", key, e);
+    console.error("fayl o'chirilmadi:", key, e);
   }
+}
+
+// Almashtirilgan yoki olib tashlangan rasm hech kimga biriktirilmagan bo'lsa, ombordan o'chiriladi (baza to'lib ketmasin).
+// Bitta rasm bir nechta joyda bo'lishi mumkin (tovar egasi rasmi distribyutor katalogida ham): unda qoladi
+export async function releaseImage(url: string | null | undefined): Promise<void> {
+  const file = url ? imagePath(url) : null;
+  if (!file || (await imageInUse(file.folder, url!))) return;
+  await removeStored(file.folder, file.name);
+}
+
+// Saqlangan, lekin yozuvga biriktirilmay qolgan chek (masalan, tranzaksiya rad etilgan): ombordan o'chiriladi
+export async function discardReceipt(url: string): Promise<void> {
+  const m = /^\/api\/files\/receipts\/([a-f0-9]{32}\.[a-z]+)$/.exec(url);
+  if (m) await removeStored("receipts", m[1]);
+}
+
+// Bazadagi fayllar hajmi (Vercel'da Blob bo'lmasa cheklar va rasmlar shu yerda) va butun baza hajmi: admin sahifasida
+// ogohlantirish uchun. Bepul Neon tarifida baza hajmi cheklangan: to'lsa, butun platforma yozishdan to'xtaydi
+export async function storageUsage(): Promise<{ files: number; fileBytes: number; databaseBytes: number; limitBytes: number }> {
+  const [row] = await db.$queryRaw<{ files: bigint; fileBytes: bigint; databaseBytes: bigint }[]>`
+    SELECT COUNT(*) AS "files", COALESCE(SUM(octet_length("data")), 0)::bigint AS "fileBytes", pg_database_size(current_database()) AS "databaseBytes"
+    FROM "StoredFile"`;
+  const limitMb = Number(process.env.DATABASE_LIMIT_MB) || 512;
+  return { files: Number(row.files), fileBytes: Number(row.fileBytes), databaseBytes: Number(row.databaseBytes), limitBytes: limitMb * 1024 * 1024 };
 }

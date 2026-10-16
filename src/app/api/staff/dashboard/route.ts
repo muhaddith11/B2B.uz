@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { overdue } from "@/lib/ledger";
 import { handle, requireStaff } from "@/lib/session";
-import { ledgerCalcSelect } from "@/lib/shop-summary";
+import { ledgerFacts } from "@/lib/shop-summary";
 import { linkScope, orderScope } from "@/lib/staff-data";
 import { startOfTashkentDay } from "@/lib/time";
 
@@ -19,7 +19,7 @@ export const GET = handle(async (req: Request) => {
     db.order.aggregate({ where: { ...scope, status: "DELIVERED", updatedAt: { gte: startOfDay } }, _count: true, _sum: { deliveredTotal: true } }),
     db.shopLink.findMany({
       where: { ...linkScope(staff), status: "ACTIVE" },
-      select: { ledger: { select: ledgerCalcSelect } },
+      select: { id: true },
     }),
     db.ledgerEntry.aggregate({
       where: { shopLink: { distributorId }, type: "PAYMENT", status: "CONFIRMED", date: { gte: startOfDay }, ...(staff.role === "AGENT" || staff.role === "COURIER" ? { createdBy: `staff:${staff.id}` } : {}) },
@@ -32,7 +32,9 @@ export const GET = handle(async (req: Request) => {
   ]);
 
   const today = new Date();
-  const od = links.map((l) => overdue(l.ledger, today)).filter((x) => x.amount > 0);
+  // Faqat qarzi bor do'konlarning yozuvlari yuklanadi: har ochilishda butun daftar o'qilmaydi
+  const facts = await ledgerFacts(links.map((l) => l.id));
+  const od = links.map((l) => overdue(facts.get(l.id)!.entries, today)).filter((x) => x.amount > 0);
 
   return Response.json({
     distributorStatus: staff.distributor.status,

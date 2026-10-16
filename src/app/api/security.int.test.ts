@@ -218,8 +218,13 @@ describe("rasmlar: kesh va eski fayllarni tozalash", () => {
     await applyPriceList(w.admin, [{ ...row, imageUrl: null }]);
     expect((await db.product.findUniqueOrThrow({ where: { id: w.product.id } })).imageUrl).toBe(url);
 
-    await applyPriceList(w.admin, [{ ...row, imageUrl: "https://example.com/rasm.jpg" }]);
-    expect((await db.product.findUniqueOrThrow({ where: { id: w.product.id } })).imageUrl).toBe("https://example.com/rasm.jpg");
+    // Tashqi havoladagi rasm o'z omborimizga yuklab olinadi (tarmoqqa chiqmaslik uchun yuklovchi almashtirilgan)
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]) as Buffer<ArrayBuffer>;
+    const fetchImage = async () => ({ buf: png, type: "image/png", ext: "png", hash: uid() });
+    await applyPriceList(w.admin, [{ ...row, imageUrl: "https://example.com/rasm.jpg" }], { fetchImage });
+    const after = await db.product.findUniqueOrThrow({ where: { id: w.product.id } });
+    expect(after.imageUrl).toMatch(/^\/api\/files\/products\/[a-f0-9]{32}\.png$/);
+    expect(after.imageSource).toBe("https://example.com/rasm.jpg");
     expect(await stored(url)).toBe(0);
   });
 });

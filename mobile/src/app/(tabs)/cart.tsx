@@ -9,6 +9,7 @@ import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t, tx } from '@/lib/i18n';
 import { formatSom } from '@/lib/money';
+import { newRequestKey } from '@/lib/net';
 import { paymentLabel, type CatalogData, type HomeData, type LinkSummary, type PaymentType } from '@/lib/types';
 
 type Group = { link: LinkSummary; catalog: CatalogData };
@@ -29,6 +30,17 @@ export default function CartScreen() {
   const [results, setResults] = useState<Record<string, Result>>({});
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Ulanishi yopilgan (bloklangan yoki o'chirilgan) distribyutor tovarlari savatdan olinadi: ularga buyurtma o'tmaydi
+  const [dropped, setDropped] = useState(false);
+  // Har distribyutor buyurtmasining kaliti: javob yo'lda yo'qolib qayta yuborilsa, server buyurtmani ikki marta yaratmaydi.
+  // Buyurtma o'tgach yoki savat o'zgarsa yangisi olinadi
+  const [keys, setKeys] = useState<Record<string, string>>({});
+  const dropKey = (id: string) =>
+    setKeys((k) => {
+      const next = { ...k };
+      delete next[id];
+      return next;
+    });
 
   const distKey = Object.keys(cart).sort().join(',');
 
@@ -42,6 +54,11 @@ export default function CartScreen() {
           return;
         }
         const home = await api<HomeData>('/api/shop/home');
+        const closed = ids.filter((id) => !home.links.some((l) => l.distributor.id === id));
+        if (closed.length && alive()) {
+          closed.forEach(clearDistributor);
+          setDropped(true);
+        }
         const loaded = await Promise.all(
           ids.map(async (id) => {
             const link = home.links.find((l) => l.distributor.id === id);
@@ -58,7 +75,7 @@ export default function CartScreen() {
         if (alive()) setErr((e as Error).message);
       }
     },
-    [api, distKey],
+    [api, distKey, clearDistributor],
   );
 
   useFocusEffect(
@@ -79,13 +96,16 @@ export default function CartScreen() {
       const id = g.catalog.distributor.id;
       const items = Object.entries(cart[id] ?? {}).map(([productId, qty]) => ({ productId, qty }));
       if (items.length === 0) continue;
+      const clientKey = keys[id] ?? newRequestKey();
+      setKeys((k) => ({ ...k, [id]: clientKey }));
       try {
         const res = await api<{ number: number }>('/api/shop/orders', {
           method: 'POST',
-          body: JSON.stringify({ distributorId: id, paymentType: payment[id] ?? 'CASH', items }),
+          body: JSON.stringify({ distributorId: id, paymentType: payment[id] ?? 'CASH', items, clientKey }),
         });
         next[id] = { ok: true, number: res.number };
         clearDistributor(id);
+        dropKey(id);
       } catch (e) {
         next[id] = { ok: false, error: (e as Error).message };
       }
@@ -147,6 +167,7 @@ export default function CartScreen() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 140 }}>
         {sent.length > 0 && <Banner tone="ok">{t('Yuborildi: {numbers}', { numbers })}</Banner>}
+        {dropped && <Banner tone="warn">{t("Ba'zi distribyutorlar bilan ulanish yopilgan: ularning tovarlari savatdan olindi.")}</Banner>}
 
         {active.map(({ link, catalog }) => {
           const id = catalog.distributor.id;
@@ -188,7 +209,13 @@ export default function CartScreen() {
                         </T>
                         <Money value={qty * p.price} size="small" />
                       </View>
-                      <QtyStepper packs={Math.floor(qty / p.packSize)} onChange={(n) => setQty(id, p.id, Math.max(0, n) * p.packSize)} />
+                      <QtyStepper
+                        packs={Math.floor(qty / p.packSize)}
+                        onChange={(n) => {
+                          setQty(id, p.id, Math.max(0, n) * p.packSize);
+                          dropKey(id);
+                        }}
+                      />
                     </View>
                   </View>
                 );

@@ -57,5 +57,5 @@ export function tx(text: string): string {
 // To'lov izohi: server avtomatik yozgan qismlar tarjima qilinadi ("Rad etildi: sabab"), odam yozgani o'zgarmaydi
 export function txNote(note: string): string {
   if (current !== 'ru') return note;
-  return tx(note).replace(/Rad etildi: /g, `${RU['Rad etildi:']} `);
+  return tx(note).replace(/Rad etildi: /g, `${RU['Rad etildi:']} `).replace(/Bekor qilindi: /g, `${RU['Bekor qilindi:']} `);
 }

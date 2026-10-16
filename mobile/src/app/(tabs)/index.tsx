@@ -91,6 +91,7 @@ export default function HomeScreen() {
         avatarUrl={data.user.avatarUrl}
         onAvatar={(avatarUrl) => setData({ ...data, user: { ...data.user, avatarUrl } })}
       />
+      {data.user.role === 'OWNER' && <Button title={t('Sotuvchilar')} icon="people-outline" kind="secondary" onPress={() => router.push('/shop-team')} />}
       <AccountLinks />
     </Screen>
   );

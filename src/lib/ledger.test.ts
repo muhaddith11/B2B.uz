@@ -93,3 +93,25 @@ describe("checkCredit", () => {
     expect(checkCredit({ creditLimit: 1_000_000, blockAfterDays: null }, [debt(100_000, "2026-09-01", "2026-09-30")], 10_000, today).ok).toBe(true);
   });
 });
+
+describe("bekor qilingan yozuvlar", () => {
+  const today = d("2026-10-20");
+  it("bekor qilingan to'lov eski qarzni yopmaydi: qarz asl muddati bilan qaytadi", () => {
+    const entries: LedgerLike[] = [
+      { id: "q1", ...debt(200_000, "2026-09-01", "2026-09-15") },
+      { id: "t1", ...pay(200_000, "2026-09-20") },
+      { id: "r1", amount: 200_000, date: d("2026-09-25"), dueDate: null, status: "CONFIRMED", reversesId: "t1" },
+    ];
+    expect(balance(entries)).toBe(200_000);
+    expect(overdue(entries, today)).toEqual({ amount: 200_000, maxDays: 35 });
+  });
+  it("bekor qilingan qarz muddat hisobiga kirmaydi", () => {
+    const entries: LedgerLike[] = [
+      { id: "q1", ...debt(100_000, "2026-09-01", "2026-09-10") },
+      { id: "r1", amount: -100_000, date: d("2026-09-12"), dueDate: null, status: "CONFIRMED", reversesId: "q1" },
+      { id: "q2", ...debt(50_000, "2026-10-01", "2026-10-25") },
+    ];
+    expect(overdue(entries, today)).toEqual({ amount: 0, maxDays: 0 });
+    expect(openDebts(entries)).toEqual([{ date: d("2026-10-01"), dueDate: d("2026-10-25"), remaining: 50_000 }]);
+  });
+});

@@ -25,6 +25,7 @@ function SettingsForm({ distributor: d }: { distributor: StaffMe['distributor'] 
   const [f, setF] = useState({ name: d.name, inn: d.inn ?? '', minOrder: String(d.minOrder), districts: d.districts, categories: d.categories, deliveryDays: d.deliveryDays });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const approved = d.status === 'ACTIVE';
 
   const toggleDay = (day: string) =>
     setF((x) => ({
@@ -53,8 +54,14 @@ function SettingsForm({ distributor: d }: { distributor: StaffMe['distributor'] 
 
   return (
     <Screen gap={14}>
-      <Field label={t('Kompaniya nomi')} value={f.name} onChangeText={(v) => setF({ ...f, name: v })} />
-      <Field label={t('STIR')} value={f.inn} onChangeText={(v) => setF({ ...f, inn: v.replace(/\D/g, '').slice(0, 9) })} keyboardType="number-pad" />
+      {/* Platforma tekshirib tasdiqlagan nom va STIR ilovadan o'zgarmaydi: do'konlar distribyutorni shu bilan taniydi */}
+      <Field label={t('Kompaniya nomi')} value={f.name} onChangeText={(v) => setF({ ...f, name: v })} editable={!approved} />
+      <Field label={t('STIR')} value={f.inn} onChangeText={(v) => setF({ ...f, inn: v.replace(/\D/g, '').slice(0, 9) })} keyboardType="number-pad" editable={!approved} />
+      {approved && (
+        <T size="small" tone="hint">
+          {t("Tasdiqlangan kompaniyaning nomi va STIRini o'zgartirish uchun platforma bilan bog'laning.")}
+        </T>
+      )}
       <Field label={t("Minimal buyurtma, so'm")} value={f.minOrder} onChangeText={(v) => setF({ ...f, minOrder: v.replace(/\D/g, '') })} keyboardType="number-pad" />
       <TagInput label={t('Yetkazish hududlari')} value={f.districts} onChange={(v) => setF({ ...f, districts: v })} />
       <TagInput label={t('Tovar toifalari')} value={f.categories} onChange={(v) => setF({ ...f, categories: v })} />

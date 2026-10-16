@@ -576,6 +576,47 @@ export const RU = {
   'Kompaniya logosi': 'Логотип компании',
   "Do'kon suratini qo'yish": 'Добавить фото магазина',
   'Brend logosi': 'Логотип бренда',
+
+  // Tarmoq va rasm
+  "Server javob bermadi. Internetni tekshirib, qayta urinib ko'ring": 'Сервер не ответил. Проверьте интернет и попробуйте ещё раз',
+  'Fayl juda katta. Kichikroq rasm tanlang': 'Файл слишком большой. Выберите изображение поменьше',
+  "Rasmni tayyorlab bo'lmadi. Boshqa rasm tanlang": 'Не удалось подготовить изображение. Выберите другое',
+
+  // Qarzlar va savat
+  "Distribyutor yangi buyurtmalarni yopgan. Qarzni to'lashingiz mumkin.": 'Дистрибьютор закрыл новые заказы. Долг можно оплатить.',
+  "Ba'zi distribyutorlar bilan ulanish yopilgan: ularning tovarlari savatdan olindi.": 'Подключение к некоторым дистрибьюторам закрыто: их товары удалены из корзины.',
+  'bekor qilingan': 'отменено',
+  'Bekor qilindi:': 'Отменено:',
+
+  // Qarz daftarini tuzatish (xodim)
+  'Tuzatish yozuvi (qaytarilgan tovar, eski qarz)': 'Корректировка (возврат товара, старый долг)',
+  'Tuzatishni yopish': 'Закрыть корректировку',
+  'Xato yozilgan: bekor qilish': 'Записано ошибочно: отменить',
+  '{sum} bekor qilinsinmi?': 'Отменить {sum}?',
+  "Qarz daftariga teskari yozuv qo'shiladi. Buni qaytarib bo'lmaydi.": 'В долговую книгу будет добавлена обратная запись. Это действие нельзя отменить.',
+  "Sabab (do'konga ham ko'rinadi)": 'Причина (видна и магазину)',
+  'Masalan: summa xato yozilgan': 'Например: сумма записана с ошибкой',
+  'Masalan: 3 yashik qaytarildi': 'Например: возвращено 3 коробки',
+  'Masalan: daftardagi eski qarz': 'Например: старый долг из тетради',
+  'Qarzni kamaytirish': 'Уменьшить долг',
+  'Qarzni oshirish': 'Увеличить долг',
+  Yozish: 'Записать',
+
+  // Hisobni o'chirish, sozlamalar, do'kon qo'shish
+  'Tasdiqlash kodi {phone} raqamiga SMS bilan yuborildi.': 'Код подтверждения отправлен SMS на номер {phone}.',
+  "Tasdiqlangan kompaniyaning nomi va STIRini o'zgartirish uchun platforma bilan bog'laning.":
+    'Чтобы изменить название и ИНН подтверждённой компании, свяжитесь с платформой.',
+  "Bu raqam egasining do'koni qayta ulandi.": 'Магазин владельца этого номера снова подключён.',
+  "Do'kon nomi va manzili egasi ilovada kiritgandek qoladi, siz yozgani saqlanmaydi.": 'Название и адрес останутся такими, как их указал владелец; введённые вами не сохраняются.',
+  "Hisobingiz platforma tasdig'idan o'tgach distribyutorlar ro'yxati ochiladi.": 'Список дистрибьюторов откроется после проверки аккаунта платформой.',
+  "Hisobingiz platforma tasdig'idan o'tgach tovar egalari ro'yxati ochiladi.": 'Список владельцев товаров откроется после проверки аккаунта платформой.',
+
+  // Do'kon sotuvchilari
+  Sotuvchilar: 'Продавцы',
+  'Yangi sotuvchi': 'Новый продавец',
+  'Olib tashlash': 'Удалить',
+  '{name} olib tashlansinmi?': 'Удалить {name}?',
+  'Sotuvchi ilovaga kira olmaydi. Uning buyurtmalari tarixda qoladi.': 'Продавец не сможет войти в приложение. Его заказы останутся в истории.',
 } as const satisfies Record<string, string | readonly [string, string, string]>;
 
 export type Key = keyof typeof RU;

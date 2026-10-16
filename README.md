@@ -105,6 +105,8 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `TEXTUP_NICKNAME_ID` | Ixtiyoriy: TextUP'dagi alfa-nom (jo'natuvchi nomi) ID'si. Bo'lmasa qisqa raqamdan yuboriladi |
 | `TEXTUP_TEMPLATE_ID` | Ixtiyoriy: TextUP talab qilsa, tasdiqlangan shablon ID'si |
 | `OTP_SMS_TEXT` | Ixtiyoriy: SMS matni, `{code}` o'rniga kod. TextUP'da tasdiqlangan shablon bilan bir xil bo'lsin |
+| `OTP_DELETE_SMS_TEXT` | Ixtiyoriy: hisobni o'chirish kodi uchun alohida SMS matni (TextUP'da alohida shablon tasdiqlangach). Bo'sh bo'lsa umumiy matn |
+| `DATABASE_LIMIT_MB` | Ixtiyoriy: baza tarifining hajm chegarasi, MB (standart 512). `/admin` 80% dan oshganda ogohlantiradi |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
 | `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati sahifasidagi murojaat manzili (App Store va Google Play uchun) |
 

@@ -1,10 +1,11 @@
 import { purchasePrice } from "@/lib/brands";
 import { db } from "@/lib/db";
-import { handle, HttpError, requireStaff } from "@/lib/session";
+import { assertApproved, handle, HttpError, requireStaff } from "@/lib/session";
 
 // Tovar egasi kartasi: tovarlari, kelishuv, katalogga qo'shilganlar va xarid buyurtmalari
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const staff = await requireStaff(req, ["ADMIN"]);
+  assertApproved(staff.distributor);
   const { id } = await ctx.params;
   const brand = await db.brand.findFirst({ where: { id, status: "ACTIVE" }, include: { products: { where: { active: true }, orderBy: [{ category: "asc" }, { name: "asc" }] } } });
   if (!brand) throw new HttpError(404, "Tovar egasi topilmadi");

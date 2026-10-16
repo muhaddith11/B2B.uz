@@ -159,7 +159,6 @@ const brands: {
 
 async function main() {
   // Takroriy ishga tushirishda toza boshlash uchun (bog'liqlik tartibida)
-  await db.message.deleteMany();
   await db.onlinePayment.deleteMany();
   await db.ledgerEntry.updateMany({ data: { reversesId: null } });
   await db.ledgerEntry.deleteMany();
@@ -175,7 +174,6 @@ async function main() {
   await db.shopLink.deleteMany();
   await db.priceGroup.deleteMany();
   await db.paymentMethod.deleteMany();
-  await db.promotion.deleteMany();
   await db.staff.deleteMany();
   await db.distributor.deleteMany();
   await db.shopUser.deleteMany();

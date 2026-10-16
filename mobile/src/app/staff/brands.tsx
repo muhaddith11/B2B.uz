@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Badge, Chip, Empty, Loading, Pic, PressCard, Screen, SearchInput, SectionTitle, StickyBar, T } from '@/components/ui';
+import { Badge, Banner, Chip, Empty, Loading, Pic, PressCard, Screen, SearchInput, SectionTitle, StickyBar, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { t } from '@/lib/i18n';
 import { agreementLabel, type BrandCard } from '@/lib/staff-types';
@@ -12,7 +12,8 @@ export default function StaffBrands() {
   const { api } = useSession();
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-  const [data, setData] = useState<{ categories: string[]; brands: BrandCard[] } | null>(null);
+  // pending: distribyutor hali platforma tasdig'ida, tovar egalari ro'yxati yopiq
+  const [data, setData] = useState<{ pending?: boolean; categories: string[]; brands: BrandCard[] } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export default function StaffBrands() {
     if (q.trim()) params.set('q', q.trim());
     if (category) params.set('category', category);
     const timer = setTimeout(() => {
-      api<{ categories: string[]; brands: BrandCard[] }>(`/api/staff/brands?${params}`)
+      api<{ pending?: boolean; categories: string[]; brands: BrandCard[] }>(`/api/staff/brands?${params}`)
         .then((d) => {
           setData(d);
           setErr(null);
@@ -57,7 +58,8 @@ export default function StaffBrands() {
       {others.map((b) => (
         <BrandRow key={b.id} b={b} />
       ))}
-      {data && data.brands.length === 0 && <Empty icon="ribbon-outline">{t('Hech narsa topilmadi')}</Empty>}
+      {data?.pending && <Banner>{t("Hisobingiz platforma tasdig'idan o'tgach tovar egalari ro'yxati ochiladi.")}</Banner>}
+      {data && !data.pending && data.brands.length === 0 && <Empty icon="ribbon-outline">{t('Hech narsa topilmadi')}</Empty>}
     </Screen>
   );
 }

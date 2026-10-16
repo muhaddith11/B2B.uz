@@ -4,10 +4,12 @@ import { devAuthEnabled, getAdmin } from "@/lib/session";
 import { publicUrl } from "@/lib/checkout";
 import { MONTH_OPTIONS, monthlyPrice, platformClick, platformPayme, subscriptionInfo, subscriptionLabel, WARN_DAYS } from "@/lib/subscription";
 import { DAY_MS } from "@/lib/time";
+import { storageUsage } from "@/lib/uploads";
 import {
   adminLogout,
   devAdminLogin,
   extendSubscriptionAction,
+  renameDistributor,
   requestAdminCode,
   setBrandStatus,
   setDistributorStatus,
@@ -26,7 +28,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const q = (params.q ?? "").trim();
-  const [distributors, brands, shops, orders, subscriptions] = await Promise.all([
+  const [distributors, brands, shops, orders, subscriptions, storage] = await Promise.all([
     db.distributor.findMany({
       include: { staff: { where: { role: "ADMIN" }, take: 1 }, _count: { select: { links: { where: { status: "ACTIVE" } }, products: true } } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -35,7 +37,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     db.shop.count(),
     db.order.aggregate({ where: { status: "DELIVERED", updatedAt: { gte: since } }, _count: true, _sum: { deliveredTotal: true } }),
     loadSubscriptions(q),
+    storageUsage(),
   ]);
+  // Bazadagi fayllar (cheklar, rasmlar) va butun baza hajmi: tarif chegarasiga yaqinlashsa oldindan ko'rinsin
+  const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
+  const storageFull = storage.databaseBytes / storage.limitBytes;
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -53,19 +59,26 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           {[
             ["Distribyutorlar", `${distributors.filter((d) => d.status === "ACTIVE").length} faol`],
             ["Tovar egalari", `${brands.filter((b) => b.status === "ACTIVE").length} faol`],
             ["Do'konlar", `${shops} ta`],
             ["30 kunlik savdo", `${formatSom(orders._sum.deliveredTotal ?? 0)} · ${orders._count} buyurtma`],
+            ["Baza hajmi", `${mb(storage.databaseBytes)} / ${mb(storage.limitBytes)}`],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-line bg-card p-4">
+            <div key={label} className={`rounded-xl border bg-card p-4 ${label === "Baza hajmi" && storageFull > 0.8 ? "border-danger/40" : "border-line"}`}>
               <div className="text-sm text-hint">{label}</div>
               <div className="mt-1 text-lg font-semibold">{value}</div>
             </div>
           ))}
         </div>
+        {storageFull > 0.8 && (
+          <p className="text-sm text-danger">
+            Baza hajmi chegaraga yaqin ({Math.round(storageFull * 100)}%). Fayllar: {storage.files} ta, {mb(storage.fileBytes)}. To'lsa, platforma yangi yozuvlarni saqlay
+            olmaydi: tarifni oshiring yoki fayllar uchun Blob omborini ulang (BLOB_READ_WRITE_TOKEN).
+          </p>
+        )}
 
         {params.error && <p className="text-sm text-danger">{params.error}</p>}
         {params.ok && <p className="text-sm text-ok">{params.ok}</p>}
@@ -84,6 +97,18 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               ]}
               action={setDistributorStatus}
               id={d.id}
+              edit={
+                // Tasdiqlangan distribyutor nomi va STIRini o'zi o'zgartira olmaydi: tekshirib, shu yerda o'zgartiriladi
+                <details className="w-full text-sm">
+                  <summary className="cursor-pointer text-hint">Nomi va STIRini o'zgartirish</summary>
+                  <form action={renameDistributor} className="mt-2 flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="id" value={d.id} />
+                    <input name="name" defaultValue={d.name} className="w-64 field" aria-label="Kompaniya nomi" />
+                    <input name="inn" defaultValue={d.inn ?? ""} inputMode="numeric" maxLength={9} placeholder="STIR" className="w-32 field" aria-label="STIR" />
+                    <button className="btn btn-sm btn-primary">Saqlash</button>
+                  </form>
+                </details>
+              }
             />
           ))}
         </Section>
@@ -198,7 +223,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Row({ pending, title, lines, action, id }: { pending: boolean; title: string; lines: string[]; action: (f: FormData) => Promise<void>; id: string }) {
+function Row({
+  pending,
+  title,
+  lines,
+  action,
+  id,
+  edit,
+}: {
+  pending: boolean;
+  title: string;
+  lines: string[];
+  action: (f: FormData) => Promise<void>;
+  id: string;
+  edit?: React.ReactNode;
+}) {
   return (
     <div className={`flex flex-wrap items-center gap-4 rounded-xl border bg-card p-4 ${pending ? "border-warn/40" : "border-line"}`}>
       <div className="min-w-0 flex-1">
@@ -222,6 +261,7 @@ function Row({ pending, title, lines, action, id }: { pending: boolean; title: s
           </ConfirmButton>
         )}
       </form>
+      {edit}
     </div>
   );
 }

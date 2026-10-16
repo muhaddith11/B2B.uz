@@ -5,7 +5,8 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*"],
+    // test/ papkasi ildizdagi vitest bilan ishlaydi (vitest mobil paketlarda yo'q)
+    ignores: ["dist/*", "test/*"],
   },
   {
     // O'zbek lotin yozuvida apostrof oddiy harf (so'm, o'tish), uni JSX'da escape qilish shart emas

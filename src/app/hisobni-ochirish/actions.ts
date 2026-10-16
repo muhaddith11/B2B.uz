@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { accountsForPhone, deleteAccountsForPhone } from "@/lib/account";
+import { accountsForPhone, assertDeletable, deleteAccountsForPhone } from "@/lib/account";
 import { render, type Lang } from "@/lib/i18n";
 import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
@@ -26,7 +26,7 @@ export async function requestDeletionCode(form: FormData) {
   if ((await accountsForPhone(phone)).length === 0) return back(lang, { phone });
   let code: string;
   try {
-    code = await deliverOtp(phone, clientIp(await headers()));
+    code = await deliverOtp(phone, clientIp(await headers()), "delete");
   } catch (e) {
     return back(lang, { error: errorText(e, "Kod yuborilmadi", lang) });
   }
@@ -38,11 +38,15 @@ export async function confirmDeletion(form: FormData) {
   const phone = normalizePhone(String(form.get("phone") ?? ""));
   if (!phone) return back(lang, { error: render("Telefon raqami noto'g'ri", lang) });
   if (form.get("confirm") !== "on") return back(lang, { phone, error: render("O'chirishni tasdiqlash uchun belgini qo'ying", lang) });
+  let count: number;
   try {
-    await verifyOtp(phone, String(form.get("code") ?? ""));
+    // Yagona admin avval jamoani boshqasiga topshiradi: buni kod ishlatilishidan oldin aytamiz
+    await assertDeletable(await accountsForPhone(phone));
+    await verifyOtp(phone, String(form.get("code") ?? ""), new Date(), "delete");
+    count = await deleteAccountsForPhone(phone);
   } catch (e) {
-    return back(lang, { phone, error: errorText(e, "Kod noto'g'ri", lang) });
+    if (!(e instanceof HttpError)) console.error("hisobni o'chirish:", e);
+    return back(lang, { phone, error: errorText(e, "Hisobni o'chirib bo'lmadi. Qayta urinib ko'ring", lang) });
   }
-  const count = await deleteAccountsForPhone(phone);
   back(lang, { done: String(count) });
 }

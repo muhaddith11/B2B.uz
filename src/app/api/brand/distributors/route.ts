@@ -4,6 +4,8 @@ import { handle, requireBrandUser } from "@/lib/session";
 // Tovar egasi uchun distribyutorlar: hudud, toifa, qamrov (nechta do'kon bilan ishlaydi)
 export const GET = handle(async (req: Request) => {
   const user = await requireBrandUser(req);
+  // Platforma tasdiqlamagan tovar egasi distribyutorlar ro'yxati va qamrovini (do'konlar soni) ko'rmaydi
+  if (user.brand.status !== "ACTIVE") return Response.json({ pending: true, categories: [], districts: [], distributors: [] });
   const params = new URL(req.url).searchParams;
   const q = (params.get("q") ?? "").trim().slice(0, 100);
   const category = (params.get("category") ?? "").trim();

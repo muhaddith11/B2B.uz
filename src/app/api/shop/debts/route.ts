@@ -5,10 +5,11 @@ import { linkSummaries } from "@/lib/shop-summary";
 // Qarzlarim ekrani: har bir distribyutor bo'yicha qoldiq va yozuvlar tarixi (rad etilgan cheklar ham, sababi bilan)
 export const GET = handle(async (req: Request) => {
   const user = await requireShopUser(req);
-  const summaries = await linkSummaries(user.shopId);
+  // Bloklangan distribyutor ham: qarz ko'rinib turadi va to'lanadi
+  const summaries = await linkSummaries(user.shopId, ["ACTIVE", "BLOCKED"]);
   const entries = await db.ledgerEntry.findMany({
     where: { shopLink: { shopId: user.shopId } },
-    include: { order: { select: { number: true } } },
+    include: { order: { select: { number: true } }, reversedBy: { select: { id: true } } },
     orderBy: { date: "desc" },
     take: 200,
   });
@@ -25,6 +26,7 @@ export const GET = handle(async (req: Request) => {
       channel: e.channel,
       note: e.note,
       orderNumber: e.order?.number ?? null,
+      reversed: e.reversedBy !== null,
     })),
   });
 });

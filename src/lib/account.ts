@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
-import type { AccountRef } from "./session";
+import { HttpError, type AccountRef } from "./session";
 import { releaseImage } from "./uploads";
 
 // Hisobni o'chirish (App Store va Google Play talabi).
@@ -10,16 +10,45 @@ import { releaseImage } from "./uploads";
 type Tx = Prisma.TransactionClient;
 export type { AccountRef };
 
+const lastAdminMsg = "Siz yagona adminsiz: avval jamoadan boshqa xodimni admin qiling, keyin hisobni o'chiring";
+
+// Do'kon foydalanuvchisini o'chirish: o'z hisobini o'chirganda yoki egasi sotuvchini olib tashlaganda.
 // Har biri o'chirilgan odamning avatarini qaytaradi: tranzaksiyadan keyin fayl ombordan ham o'chiriladi
-async function deleteShopUser(tx: Tx, id: string) {
-  // Buyurtma va xabarlarda kim yuborgani bo'sh qoladi, yozuvning o'zi qoladi
+export async function removeShopUser(tx: Tx, id: string) {
+  // Buyurtmalarda kim yuborgani bo'sh qoladi, yozuvning o'zi qoladi
   await tx.order.updateMany({ where: { createdByShopUserId: id }, data: { createdByShopUserId: null } });
-  await tx.message.updateMany({ where: { senderShopUserId: id }, data: { senderShopUserId: null } });
   await tx.pushToken.deleteMany({ where: { ownerKind: "SHOP_USER", ownerId: id } });
-  return (await tx.shopUser.delete({ where: { id } })).avatarUrl;
+  const user = await tx.shopUser.delete({ where: { id } });
+  // Foydalanuvchisi qolmagan do'kon: buyurtma beradigan ham, taklifga javob beradigan ham yo'q. Distribyutor qarzni ko'radi
+  // va to'lovni yozadi, lekin yangi buyurtma yozilmaydi (ulanish bloklanadi), javobsiz so'rov va takliflar o'chadi
+  if ((await tx.shopUser.count({ where: { shopId: user.shopId } })) === 0) {
+    await tx.shopLink.deleteMany({ where: { shopId: user.shopId, status: { in: ["REQUESTED", "INVITED"] } } });
+    const blocked = await tx.shopLink.updateMany({ where: { shopId: user.shopId, status: "ACTIVE" }, data: { status: "BLOCKED" } });
+    await tx.auditLog.create({ data: { actor: "system", action: "shop.orphaned", entity: "Shop", entityId: user.shopId, after: { blockedLinks: blocked.count } } });
+  }
+  return user.avatarUrl;
+}
+
+// Yagona faol admin o'z hisobini o'chirsa, jamoa (xodimlar, to'lov usullari, sozlamalar) boshqaruvsiz qolardi.
+// Jamoada boshqa hech kim bo'lmasa o'chiraveradi: distribyutor yopiladi (deleteStaff)
+async function assertNotLastAdmin(client: Tx | typeof db, staffId: string) {
+  const s = await client.staff.findUnique({ where: { id: staffId }, select: { role: true, active: true, distributorId: true } });
+  if (!s || s.role !== "ADMIN" || !s.active) return;
+  const others = { distributorId: s.distributorId, active: true, id: { not: staffId } };
+  const [admins, team] = await Promise.all([client.staff.count({ where: { ...others, role: "ADMIN" } }), client.staff.count({ where: others })]);
+  if (admins === 0 && team > 0) throw new HttpError(400, lastAdminMsg);
+}
+
+// Saytdagi o'chirish sahifasi: SMS kodni tekshirishdan oldin aytiladi (kod behuda ishlatilmasin)
+export async function assertDeletable(refs: AccountRef[]): Promise<void> {
+  for (const ref of refs) if (ref.kind === "staff") await assertNotLastAdmin(db, ref.id);
 }
 
 async function deleteStaff(tx: Tx, id: string) {
+  // Jamoa o'zgarishlari bilan bir navbatda (team/[id] PATCH): bir vaqtda ikki admin bir-birini o'chirib yubormaydi
+  const { distributorId } = await tx.staff.findUniqueOrThrow({ where: { id }, select: { distributorId: true } });
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`team:${distributorId}`}))`;
+  await assertNotLastAdmin(tx, id);
   // Xodim buyurtma va yetkazishlar tarixida qoladi, shuning uchun yozuv o'chirilmay, shaxsiy ma'lumoti (rasmi ham) tozalanadi
   const before = await tx.staff.findUniqueOrThrow({ where: { id }, select: { avatarUrl: true } });
   const staff = await tx.staff.update({ where: { id }, data: { name: "O'chirilgan xodim", phone: "", avatarUrl: null, active: false } });
@@ -40,9 +69,18 @@ async function deleteBrandUser(tx: Tx, id: string) {
 }
 
 async function deleteOne(tx: Tx, ref: AccountRef): Promise<string | null> {
-  const avatarUrl = ref.kind === "shop" ? await deleteShopUser(tx, ref.id) : ref.kind === "staff" ? await deleteStaff(tx, ref.id) : await deleteBrandUser(tx, ref.id);
+  const avatarUrl = ref.kind === "shop" ? await removeShopUser(tx, ref.id) : ref.kind === "staff" ? await deleteStaff(tx, ref.id) : await deleteBrandUser(tx, ref.id);
   await tx.auditLog.create({ data: { actor: `${ref.kind}:${ref.id}`, action: "account.delete", entity: ref.kind, entityId: ref.id } });
   return avatarUrl;
+}
+
+// Hisob bog'langan telefon raqami: o'chirish kodi shu raqamga yuboriladi
+export async function accountPhone(ref: AccountRef): Promise<string> {
+  const where = { where: { id: ref.id }, select: { phone: true } };
+  const row =
+    ref.kind === "shop" ? await db.shopUser.findUnique(where) : ref.kind === "staff" ? await db.staff.findUnique(where) : await db.brandUser.findUnique(where);
+  if (!row?.phone) throw new HttpError(404, "Foydalanuvchi topilmadi");
+  return row.phone;
 }
 
 // Ilovadan: hozir kirgan bitta hisob

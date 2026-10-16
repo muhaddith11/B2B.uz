@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { reviewCodeFor, sendAllowed } from "./otp";
+import { otpSmsText, reviewCodeFor, sendAllowed } from "./otp";
 import { normalizePhone } from "./phone";
 
 describe("normalizePhone", () => {
@@ -49,5 +49,17 @@ describe("reviewCodeFor", () => {
     vi.stubEnv("REVIEW_PHONE", "");
     vi.stubEnv("REVIEW_CODE", "246810");
     expect(reviewCodeFor("+998990000001")).toBeNull();
+  });
+});
+
+describe("otpSmsText", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("hisobni o'chirish kodi alohida matn bilan (sozlangan bo'lsa), aks holda umumiy matn", () => {
+    vi.stubEnv("OTP_SMS_TEXT", "");
+    vi.stubEnv("OTP_DELETE_SMS_TEXT", "");
+    expect(otpSmsText("123456", "delete")).toBe(otpSmsText("123456"));
+    vi.stubEnv("OTP_DELETE_SMS_TEXT", "Captar: hisobni o'chirish kodi {code}");
+    expect(otpSmsText("123456", "delete")).toBe("Captar: hisobni o'chirish kodi 123456");
+    expect(otpSmsText("123456", "login")).toContain("kirish kodi 123456");
   });
 });

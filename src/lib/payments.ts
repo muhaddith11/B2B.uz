@@ -3,18 +3,21 @@ import { z } from "zod";
 import { clickCheckoutUrl, paymeCheckoutUrl, paymeTestMode, publicUrl } from "./checkout";
 import { db } from "./db";
 import { L, som } from "./i18n";
-import { activeLink } from "./orders";
+import { payableLink } from "./orders";
 import { notifyShop, notifyStaff } from "./push";
 import { HttpError } from "./session";
 import { linkScope } from "./staff-data";
 import { extendSubscription, notifySubscriptionPaid, shortenSubscription, subscriberOf } from "./subscription";
-import { prepareUpload, storeUpload } from "./uploads";
+import { discardReceipt, prepareUpload, storeUpload } from "./uploads";
 
 // To'lovlar: qarz daftariga faqat yangi yozuv qo'shiladi.
 // Naqd va o'tkazmani xodim yozadi (darhol tasdiqlangan), chekli to'lovni do'kon yuboradi (distribyutor tasdiqlaydi),
 // Payme va Click to'lov tizimi tasdiqlagach avtomatik yoziladi.
 
 export const MAX_PAYMENT = 1_000_000_000;
+// Bitta do'kon bir distribyutorga bir vaqtda shuncha tasdiqlanmagan chek yubora oladi: distribyutor ko'rib chiqqach yana.
+// Cheklar bazada saqlanadi: cheksiz yuklash baza hajmini to'ldirib, butun platformani to'xtatib qo'yishi mumkin
+export const MAX_PENDING_RECEIPTS = 5;
 const amountSchema = z.coerce.number().int().positive().max(MAX_PAYMENT);
 
 // Do'konga ko'rsatiladigan to'lov usullari: kalitlarsiz
@@ -88,37 +91,50 @@ export async function submitReceipt(shopUser: { id: string; shopId: string }, fo
   if (!amount.success) throw new HttpError(400, "Summani to'g'ri kiriting");
   const file = form.get("receipt");
   if (!(file instanceof File)) throw new HttpError(400, "Chek rasmini yuklang");
-  const link = await activeLink(shopUser.shopId, distributorId);
+  const link = await payableLink(shopUser.shopId, distributorId);
   const methodId = String(form.get("paymentMethodId") ?? "") || null;
   if (methodId && !(await db.paymentMethod.findFirst({ where: { id: methodId, distributorId } }))) throw new HttpError(400, "To'lov usuli topilmadi");
 
   // Bitta chekni ikki marta (yoki ikki distribyutorga) yuborib bo'lmaydi. Takroriy chek faylini saqlashdan oldin rad etamiz
   const upload = await prepareUpload(file);
   const dupMsg = "Bu chek avval yuborilgan";
+  const busyMsg = "Tasdiq kutayotgan cheklaringiz ko'p. Distribyutor ularni ko'rib chiqqach yana yuboring";
   const isDup = (client: Prisma.TransactionClient) =>
     client.ledgerEntry.findFirst({ where: { receiptHash: upload.hash, status: { not: "REJECTED" } }, select: { id: true } });
+  const tooMany = async (client: Prisma.TransactionClient) =>
+    (await client.ledgerEntry.count({ where: { shopLinkId: link.id, channel: "CARD_RECEIPT", status: "PENDING" } })) >= MAX_PENDING_RECEIPTS;
+  // Fayl saqlanishidan oldin: takroriy chek va chegaradan oshgan so'rov omborga tushmaydi
   if (await isDup(db)) throw new HttpError(400, dupMsg);
+  if (await tooMany(db)) throw new HttpError(429, busyMsg);
 
   const saved = await storeUpload("receipts", upload);
-  const entry = await db.$transaction(async (tx) => {
-    // Bir vaqtda yuborilgan ikki bir xil chekdan faqat bittasi yoziladi
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${upload.hash}))`;
-    if (await isDup(tx)) throw new HttpError(400, dupMsg);
-    return tx.ledgerEntry.create({
-      data: {
-        shopLinkId: link.id,
-        type: "PAYMENT",
-        amount: -amount.data,
-        status: "PENDING",
-        channel: "CARD_RECEIPT",
-        paymentMethodId: methodId,
-        receiptUrl: saved.url,
-        receiptHash: saved.hash,
-        createdBy: `shop:${shopUser.id}`,
-        note: String(form.get("note") ?? "").trim().slice(0, 200) || null,
-      },
+  const entry = await db
+    .$transaction(async (tx) => {
+      // Bir vaqtda yuborilgan ikki bir xil chekdan faqat bittasi yoziladi; bir ulanishning cheklari navbat bilan sanaladi
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${upload.hash}))`;
+      await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
+      if (await isDup(tx)) throw new HttpError(400, dupMsg);
+      if (await tooMany(tx)) throw new HttpError(429, busyMsg);
+      return tx.ledgerEntry.create({
+        data: {
+          shopLinkId: link.id,
+          type: "PAYMENT",
+          amount: -amount.data,
+          status: "PENDING",
+          channel: "CARD_RECEIPT",
+          paymentMethodId: methodId,
+          receiptUrl: saved.url,
+          receiptHash: saved.hash,
+          createdBy: `shop:${shopUser.id}`,
+          note: String(form.get("note") ?? "").trim().slice(0, 200) || null,
+        },
+      });
+    })
+    .catch(async (e) => {
+      // Yozuv yaratilmadi: saqlangan fayl hech kimga biriktirilmay qolmasin
+      await discardReceipt(saved.url);
+      throw e;
     });
-  });
   notifyStaff(link.distributorId, ["ADMIN", "ACCOUNTANT"], {
     title: "Chek bilan to'lov",
     body: L("{sum}, tasdiqlash kerak", { sum: som(amount.data) }),
@@ -158,7 +174,7 @@ export const onlinePaymentInput = z.object({
 });
 
 export async function createOnlinePayment(shopUser: { shopId: string }, input: z.infer<typeof onlinePaymentInput>) {
-  const link = await activeLink(shopUser.shopId, input.distributorId);
+  const link = await payableLink(shopUser.shopId, input.distributorId);
   const method = await db.paymentMethod.findFirst({
     where: { distributorId: input.distributorId, type: input.provider, active: true, merchantId: { not: null }, secretKeyEnc: { not: null } },
     orderBy: { isPrimary: "desc" },

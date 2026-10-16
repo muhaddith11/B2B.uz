@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OrderStatus, PaymentType, Prisma, ShopLink, Distributor } from "@prisma/client";
+import { Prisma, type Distributor, type OrderStatus, type PaymentType, type ShopLink } from "@prisma/client";
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
 import { addDays, checkCredit } from "./ledger";
@@ -13,10 +13,14 @@ const itemsSchema = z
   .min(1)
   .max(200);
 
+// Ilova har bir buyurtma uchun bitta kalit yuboradi: internet uzilib so'rov qayta yuborilsa, buyurtma bir marta yaratiladi
+const clientKeySchema = z.string().trim().min(8).max(64).optional();
+
 export const createOrderInput = z.object({
   distributorId: z.string().min(1),
   paymentType: z.enum(["CASH", "TRANSFER", "CREDIT"]),
   items: itemsSchema,
+  clientKey: clientKeySchema,
 });
 export type CreateOrderInput = z.infer<typeof createOrderInput>;
 
@@ -25,6 +29,7 @@ export const agentOrderInput = z.object({
   linkId: z.string().min(1),
   paymentType: z.enum(["CASH", "TRANSFER", "CREDIT"]),
   items: itemsSchema,
+  clientKey: clientKeySchema,
 });
 
 // Do'konga bildirishnoma: buyurtma holati o'zgardi
@@ -59,6 +64,17 @@ export async function activeLink(shopId: string, distributorId: string) {
   return link;
 }
 
+// Qarz to'lash uchun: bloklangan do'kon ham to'lay oladi (distribyutor odatda aynan qarz uchun bloklaydi,
+// to'lovni yopib qo'yish qarzni undirishga xalaqit beradi). So'rov va taklif holatidagi ulanishda qarz bo'lmaydi
+export async function payableLink(shopId: string, distributorId: string) {
+  const link = await db.shopLink.findUnique({
+    where: { shopId_distributorId: { shopId, distributorId } },
+    include: { distributor: true },
+  });
+  if (!link || (link.status !== "ACTIVE" && link.status !== "BLOCKED")) throw new HttpError(403, "Bu distribyutor bilan ulanish faol emas");
+  return link;
+}
+
 export async function createOrder(shopUser: { id: string; shopId: string }, input: CreateOrderInput) {
   const link = await activeLink(shopUser.shopId, input.distributorId);
   return createOrderForLink(link, { shopUserId: shopUser.id }, input);
@@ -69,8 +85,19 @@ type Creator = { shopUserId: string } | { staffId: string };
 export async function createOrderForLink(
   link: ShopLink & { distributor: Distributor },
   creator: Creator,
-  input: { paymentType: PaymentType; items: { productId: string; qty: number }[] },
+  input: { paymentType: PaymentType; items: { productId: string; qty: number }[]; clientKey?: string },
 ) {
+  // Shu kalit bilan buyurtma allaqachon yaratilgan bo'lsa (javob yo'lda yo'qolib, ilova qayta yubordi), o'sha qaytadi
+  const clientKey = input.clientKey ? `${"staffId" in creator ? `staff:${creator.staffId}` : `shop:${creator.shopUserId}`}:${input.clientKey}` : null;
+  const repeated = async () => {
+    if (!clientKey) return null;
+    const prev = await db.order.findUnique({ where: { clientKey }, include: { items: true, shopLink: { include: { shop: true } } } });
+    if (prev && prev.shopLinkId !== link.id) throw new HttpError(409, "Bu so'rov boshqa buyurtma uchun ishlatilgan");
+    return prev;
+  };
+  const prev = await repeated();
+  if (prev) return prev;
+
   if (link.status !== "ACTIVE") throw new HttpError(403, "Bu do'kon bilan ulanish faol emas");
   // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi.
   // Platforma tasdig'i olib qo'yilgan (yoki hali berilmagan) distribyutor ham savdo qilmaydi
@@ -108,44 +135,58 @@ export async function createOrderForLink(
   }
 
   const fromStaff = "staffId" in creator;
-  const order = await db.$transaction(async (tx) => {
-    if (input.paymentType === "CREDIT") {
-      // Bir do'konning nasiyali buyurtmalari navbat bilan tekshiriladi: bir vaqtda kelgan ikki buyurtma birgalikda limitdan oshmaydi
-      await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
-      const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
-      // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
-      const pending = await tx.order.aggregate({
-        where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },
-        _sum: { total: true },
-      });
-      const check = checkCredit(link, entries, total + (pending._sum.total ?? 0), new Date());
-      if (!check.ok) {
-        const msg =
-          check.reason === "CREDIT_OFF"
-            ? "Bu distribyutor nasiya bermagan"
-            : check.reason === "OVERDUE_BLOCK"
-              ? L("Muddati {days} kun o'tgan qarz bor, nasiya vaqtincha yopiq", { days: check.overdueDays })
-              : L("Nasiya limiti {sum}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring", { sum: som(check.exceedBy) });
-        throw new HttpError(400, msg);
+  const create = () =>
+    db.$transaction(async (tx) => {
+      if (input.paymentType === "CREDIT") {
+        // Bir do'konning nasiyali buyurtmalari navbat bilan tekshiriladi: bir vaqtda kelgan ikki buyurtma birgalikda limitdan oshmaydi
+        await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
+        const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
+        // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
+        const pending = await tx.order.aggregate({
+          where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },
+          _sum: { total: true },
+        });
+        const check = checkCredit(link, entries, total + (pending._sum.total ?? 0), new Date());
+        if (!check.ok) {
+          const msg =
+            check.reason === "CREDIT_OFF"
+              ? "Bu distribyutor nasiya bermagan"
+              : check.reason === "OVERDUE_BLOCK"
+                ? L("Muddati {days} kun o'tgan qarz bor, nasiya vaqtincha yopiq", { days: check.overdueDays })
+                : L("Nasiya limiti {sum}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring", { sum: som(check.exceedBy) });
+          throw new HttpError(400, msg);
+        }
       }
-    }
 
-    return tx.order.create({
-      data: {
-        shopLinkId: link.id,
-        paymentType: input.paymentType,
-        total,
-        source: fromStaff ? "AGENT" : "APP",
-        createdByShopUserId: fromStaff ? null : creator.shopUserId,
-        createdByStaffId: fromStaff ? creator.staffId : null,
-        // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
-        status: fromStaff ? "ACCEPTED" : "SENT",
-        acceptedAt: fromStaff ? new Date() : null,
-        items: { create: lines },
-      },
-      include: { items: true, shopLink: { include: { shop: true } } },
+      return tx.order.create({
+        data: {
+          shopLinkId: link.id,
+          clientKey,
+          paymentType: input.paymentType,
+          total,
+          source: "staffId" in creator ? "AGENT" : "APP",
+          createdByShopUserId: "staffId" in creator ? null : creator.shopUserId,
+          createdByStaffId: "staffId" in creator ? creator.staffId : null,
+          // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
+          status: fromStaff ? "ACCEPTED" : "SENT",
+          acceptedAt: fromStaff ? new Date() : null,
+          items: { create: lines },
+        },
+        include: { items: true, shopLink: { include: { shop: true } } },
+      });
     });
-  });
+
+  let order;
+  try {
+    order = await create();
+  } catch (e) {
+    // Bir xil kalitli ikki so'rov bir vaqtda kelsa: ikkinchisi birinchisi yaratgan buyurtmani oladi
+    if (clientKey && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const first = await repeated();
+      if (first) return first;
+    }
+    throw e;
+  }
 
   if (fromStaff) {
     notifyShop(link.shopId, { title: L("Buyurtma №{n}", { n: order.number }), body: L("Agent {sum}lik buyurtma oldi", { sum: som(total) }), data: { url: "/orders" } });

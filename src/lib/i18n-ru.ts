@@ -190,4 +190,37 @@ export const RU = {
   "{date} gacha": "до {date}",
   "Faqat do'kon egasi o'zgartira oladi": "Изменить может только владелец магазина",
   "Do'konning surati bor: uni faqat do'kon egasi almashtiradi": "У магазина уже есть фото: заменить его может только владелец",
+
+  // Qarz daftarini tuzatish
+  "Yozuv topilmadi": "Запись не найдена",
+  "Faqat tasdiqlangan yozuvni bekor qilish mumkin. Chekni tasdiqlash yoki rad etish kifoya":
+    "Отменить можно только подтверждённую запись. Чек достаточно подтвердить или отклонить",
+  "Bu yozuvning o'zi tuzatish: kerak bo'lsa yangi tuzatish yozing": "Эта запись сама является корректировкой: при необходимости добавьте новую",
+  "Onlayn to'lovni faqat to'lov tizimi bekor qiladi": "Онлайн-платёж отменяет только платёжная система",
+  "Bu so'rov boshqa yozuv uchun ishlatilgan": "Этот запрос уже использован для другой записи",
+  "Bu yozuv allaqachon bekor qilingan": "Эта запись уже отменена",
+  "Qarz daftari tuzatildi": "Долговая книга исправлена",
+  "Summa va sababni kiriting": "Укажите сумму и причину",
+  "Bekor qilish sababini yozing": "Укажите причину отмены",
+
+  // Buyurtma, chek, hisob
+  "Bu so'rov boshqa buyurtma uchun ishlatilgan": "Этот запрос уже использован для другого заказа",
+  "Tasdiq kutayotgan cheklaringiz ko'p. Distribyutor ularni ko'rib chiqqach yana yuboring":
+    "У вас много чеков на проверке. Отправьте снова, когда дистрибьютор их рассмотрит",
+  "Siz yagona adminsiz: avval jamoadan boshqa xodimni admin qiling, keyin hisobni o'chiring":
+    "Вы единственный администратор: сначала назначьте администратором другого сотрудника, затем удалите аккаунт",
+  "SMS koddagi 6 ta raqamni kiriting": "Введите 6 цифр из SMS-кода",
+  "Hisobni o'chirib bo'lmadi. Qayta urinib ko'ring": "Не удалось удалить аккаунт. Попробуйте ещё раз",
+
+  // Do'kon jamoasi va distribyutor
+  "Faqat do'kon egasi": "Только владелец магазина",
+  "Ism va telefonni kiriting": "Укажите имя и телефон",
+  "Bu raqam do'koningizda allaqachon bor": "Этот номер уже есть в вашем магазине",
+  "Sotuvchilar soni 20 tadan oshmasin": "Продавцов может быть не больше 20",
+  "Sotuvchi topilmadi": "Продавец не найден",
+  "Tasdiqlangan kompaniyaning nomi va STIRi platforma orqali o'zgartiriladi": "Название и ИНН подтверждённой компании меняются через платформу",
+  "Bu raqamda bir nechta do'kon bor. Do'kon nomini egasining ilovasidagidek aniq yozing":
+    "На этом номере несколько магазинов. Укажите название точно так, как в приложении владельца",
+  "Do'kon o'zi ulanishni so'ragan: uni admin narx va nasiya shartlari bilan tasdiqlaydi":
+    "Магазин сам запросил подключение: его подтверждает администратор с ценами и условиями рассрочки",
 } as const;

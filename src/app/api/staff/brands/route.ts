@@ -4,6 +4,8 @@ import { handle, requireStaff } from "@/lib/session";
 // Tovar egalari: tasdiqlangan brendlar va ular bilan kelishuv holati
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN"]);
+  // Platforma tasdiqlamagan distribyutor tovar egalari ro'yxatini ko'rmaydi
+  if (staff.distributor.status !== "ACTIVE") return Response.json({ pending: true, categories: [], brands: [] });
   const params = new URL(req.url).searchParams;
   const q = (params.get("q") ?? "").trim().slice(0, 100);
   const category = (params.get("category") ?? "").trim();

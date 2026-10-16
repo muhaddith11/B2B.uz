@@ -3,6 +3,8 @@ import { t } from './i18n';
 
 export type LinkSummary = {
   linkId: string;
+  // BLOCKED: distribyutor yangi buyurtmani yopgan (faqat qarzlar ekranida keladi), qarzni to'lash mumkin
+  status?: 'ACTIVE' | 'BLOCKED';
   distributor: { id: string; name: string; logoUrl: string | null; categories: string[]; minOrder: number; deliveryDays: string[] };
   debt: number;
   overdueAmount: number;
@@ -104,6 +106,8 @@ export type LedgerItem = {
   channel: string | null;
   note: string | null;
   orderNumber: number | null;
+  // Distribyutor bu yozuvni bekor qilgan (tuzatish yozuvi bilan)
+  reversed?: boolean;
 };
 
 export type StaffRole = 'ADMIN' | 'OPERATOR' | 'ACCOUNTANT' | 'AGENT' | 'COURIER';

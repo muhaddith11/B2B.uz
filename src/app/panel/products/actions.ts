@@ -15,6 +15,8 @@ export type PriceListState =
       priceChanged: { name: string; oldPrice: number; newPrice: number }[];
       removed: string[];
       deactivated?: number;
+      // Prays-listdagi tashqi havoladan olinmagan rasmlar (tovarning o'zi yoziladi, rasmi o'zgarmaydi)
+      imageWarnings?: { sku: string; message: string }[];
     };
 
 // Bitta forma: "Tekshirish" faylni o'qib farqni ko'rsatadi, "Qo'llash" o'sha faylni bazaga yozadi
@@ -43,5 +45,5 @@ export async function priceListAction(_prev: PriceListState, form: FormData): Pr
 
   const applied = await applyPriceList(staff, result.items);
   revalidatePath("/panel", "layout");
-  return { kind: "applied", ...summary, deactivated: applied.deactivated };
+  return { kind: "applied", ...summary, deactivated: applied.deactivated, imageWarnings: applied.imageWarnings };
 }

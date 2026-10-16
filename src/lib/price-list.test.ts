@@ -102,3 +102,27 @@ describe("diffPriceList", () => {
     expect(diff.removed.map((p) => p.sku)).toEqual(["A-2"]);
   });
 });
+
+describe("chegaralar", () => {
+  const withImage = ["Artikul", "Nomi", "Brend", "Toifa", "O'lchov birligi", "Yashikda nechta", "Narx, so'm", "Rasm havolasi", "Ulgurji"];
+  it("bazaga sig'maydigan son, uzun matn va http havola qator xatosi bo'ladi", () => {
+    const { items, errors } = parsePriceList(
+      withImage,
+      [
+        ["A-1", "T", "B", "T", "dona", "6", "5000000000", "", ""],
+        ["A-2", "x".repeat(201), "B", "T", "dona", "6", "1000", "", ""],
+        ["A-3", "T", "B", "T", "dona", "20000", "1000", "", ""],
+        ["A-4", "T", "B", "T", "dona", "6", "1000", "http://example.com/r.jpg", ""],
+        ["A-5", "T", "B", "T", "dona", "6", "1000", "", "999999999999"],
+        ["A-6", "T", "B", "T", "dona", "6", "100000000", "https://example.com/r.jpg", "90000000"],
+      ],
+      ["Ulgurji"],
+    );
+    expect(errors.map((e) => e.row)).toEqual([2, 3, 4, 5, 6]);
+    expect(errors[0].message).toContain("Narx juda katta");
+    expect(errors[1].message).toContain("nomi (200 belgigacha)");
+    expect(errors[3].message).toContain("https://");
+    expect(errors[4].message).toContain("Ulgurji");
+    expect(items).toEqual([expect.objectContaining({ sku: "A-6", price: 100_000_000, extraPrices: { Ulgurji: 90_000_000 } })]);
+  });
+});

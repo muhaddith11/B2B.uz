@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AbrBar, Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, Screen, T } from '@/components/ui';
+import { AbrBar, Badge, Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, Screen, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
@@ -40,6 +40,7 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
           <T tone="hint" numberOfLines={1} style={{ flex: 1 }}>
             {l.distributor.name}
           </T>
+          {l.status === 'BLOCKED' && <Badge label={t('Bloklangan')} tone="danger" />}
         </View>
         <Money value={l.debt} size="title" tone={late ? 'danger' : 'text'} />
         {l.nextDue && !late ? (
@@ -67,6 +68,7 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
         </T>
       )}
 
+      {l.status === 'BLOCKED' && <Banner tone="danger">{t("Distribyutor yangi buyurtmalarni yopgan. Qarzni to'lashingiz mumkin.")}</Banner>}
       {late && <Banner tone="danger">{t("Muddati {n} kun o'tgan: {sum}", { n: l.overdueDays, sum: formatSom(l.overdueAmount) })}</Banner>}
       {pending > 0 && (
         <Banner tone="accent" icon="time-outline">
@@ -93,14 +95,24 @@ function DebtCard({ l, entries }: { l: LinkSummary; entries: LedgerItem[] }) {
 function Entry({ e }: { e: LedgerItem }) {
   const c = usePalette();
   const pay = e.amount < 0;
-  const rejected = e.status === 'REJECTED';
+  // Rad etilgan chek va distribyutor bekor qilgan yozuv qoldiqqa kirmaydi: chizilgan ko'rinadi
+  const rejected = e.status === 'REJECTED' || !!e.reversed;
   const title =
     e.type === 'DEBT'
       ? t('Buyurtma №{n}', { n: e.orderNumber ?? '—' })
       : e.type === 'PAYMENT'
         ? `${t("To'lov")}${e.channel ? ` · ${channelLabel(e.channel)}` : ''}`
         : t('Tuzatish');
-  const status = e.status === 'PENDING' ? ` · ${t('tasdiq kutilmoqda')}` : rejected ? ` · ${e.note ? txNote(e.note) : t('rad etildi')}` : '';
+  const status =
+    e.status === 'PENDING'
+      ? ` · ${t('tasdiq kutilmoqda')}`
+      : e.reversed
+        ? ` · ${t('bekor qilingan')}`
+        : rejected
+          ? ` · ${e.note ? txNote(e.note) : t('rad etildi')}`
+          : e.type === 'ADJUSTMENT' && e.note
+            ? ` · ${txNote(e.note)}`
+            : '';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, opacity: rejected ? 0.6 : 1 }}>
       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: pay ? c.okSoft : c.field, alignItems: 'center', justifyContent: 'center' }}>

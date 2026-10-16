@@ -94,7 +94,10 @@ async function cancelPending(payment: OnlinePayment, reason: number) {
 async function dispatch(box: Cashbox, name: string, params: Params) {
   switch (name) {
     case "CheckPerformTransaction": {
-      checkPayable(await findByAccount(box, params), params.amount);
+      const payment = await findByAccount(box, params);
+      checkPayable(payment, params.amount);
+      // To'lovga boshqa tranzaksiya bog'lanib, natijasi kutilmoqda: ikkinchi to'lovga ruxsat yo'q (CreateTransaction bilan bir xil javob)
+      if (payment.providerTxnId && payment.providerState === 1) throw new PaymeError(-31052, "order_id");
       return { allow: true };
     }
 

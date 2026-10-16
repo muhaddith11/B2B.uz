@@ -7,6 +7,8 @@ import { ImageCell } from "./image-cell";
 import { UploadForm } from "./upload-form";
 
 export const dynamic = "force-dynamic";
+// Prays-list qo'llash: tashqi rasmlarni yuklab olish va minglab tovarni yozish standart vaqtdan ko'proq olishi mumkin
+export const maxDuration = 180;
 
 // Tovarlar, Excel prays-list va tovar rasmlari
 export default async function PanelProducts() {

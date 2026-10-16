@@ -1,13 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, request } from '@/lib/api';
+import { needsRefresh } from '@/lib/net';
 import { savedPushToken } from '@/lib/push';
 import { kv, secure } from '@/lib/storage';
 
 // Kim kirgan: do'kon, distribyutor xodimi (rol bilan) yoki tovar egasi
 export type AccountKind = 'shop' | 'staff' | 'brand';
 export type StaffRole = 'ADMIN' | 'OPERATOR' | 'ACCOUNTANT' | 'AGENT' | 'COURIER';
-export type Session = { token: string; kind: AccountKind; role?: StaffRole };
+// refreshedAt: token oxirgi marta qachon olingan yoki yangilangan (ms)
+export type Session = { token: string; kind: AccountKind; role?: StaffRole; refreshedAt?: number };
 
 // Savat (faqat do'kon): distribyutor -> tovar -> miqdor (dona)
 export type Cart = Record<string, Record<string, number>>;
@@ -44,25 +46,44 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       const [saved, savedCart] = await Promise.all([secure.get(SESSION_KEY), kv.get(CART_KEY)]);
+      let restored: Session | null = null;
       try {
         const s = saved ? (JSON.parse(saved) as Session) : null;
-        if (s?.token && s.kind) setSession(s);
+        if (s?.token && s.kind) restored = s;
       } catch {
         /* eski yoki buzilgan yozuv: qayta kiriladi */
       }
+      if (restored) setSession(restored);
       try {
         setCart(JSON.parse(savedCart ?? '{}'));
       } catch {
         /* bo'sh savat */
       }
       setReady(true);
+      // Token 30 kun amal qiladi: ilova ochilganda eskirgani yangisiga almashtiriladi (faol foydalanuvchi qayta SMS kutmaydi).
+      // Sessiya serverda yopilgan bo'lsa (401), telefondan ham tozalanadi; internet bo'lmasa keyingi ochilishda urinadi
+      if (restored && needsRefresh(restored.refreshedAt)) {
+        try {
+          const { token } = await request<{ token: string }>('/api/auth/refresh', { method: 'POST', token: restored.token });
+          const next = { ...restored, token, refreshedAt: Date.now() };
+          await secure.set(SESSION_KEY, JSON.stringify(next));
+          setSession(next);
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) {
+            await Promise.all([secure.remove(SESSION_KEY), kv.remove(CART_KEY)]);
+            setCart({});
+            setSession(null);
+          }
+        }
+      }
     })();
   }, []);
 
   const signIn = useCallback(async (s: Session) => {
-    await secure.set(SESSION_KEY, JSON.stringify(s));
+    const next = { ...s, refreshedAt: Date.now() };
+    await secure.set(SESSION_KEY, JSON.stringify(next));
     setPhoneToken(null);
-    setSession(s);
+    setSession(next);
   }, []);
 
   // Telefondagi sessiya va savatni tozalash

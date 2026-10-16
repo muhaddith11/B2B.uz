@@ -9,7 +9,8 @@ import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { formatAmount, formatSom } from '@/lib/money';
-import type { HomeData, PaymentOptions } from '@/lib/types';
+import { shrinkImage } from '@/lib/shrink';
+import type { LedgerItem, LinkSummary, PaymentOptions } from '@/lib/types';
 
 type Picked = { uri: string; mimeType: string; name: string };
 
@@ -27,11 +28,12 @@ export default function PayScreen() {
 
   const load = useCallback(
     () =>
-      Promise.all([api<PaymentOptions>(`/api/shop/payments?distributorId=${encodeURIComponent(id)}`), api<HomeData>('/api/shop/home')])
-        .then(([o, home]) => {
+      // Qarz ekrani bloklangan distribyutorni ham qaytaradi: bloklangan do'kon ham qarzini to'laydi
+      Promise.all([api<PaymentOptions>(`/api/shop/payments?distributorId=${encodeURIComponent(id)}`), api<{ links: LinkSummary[]; entries: LedgerItem[] }>('/api/shop/debts')])
+        .then(([o, debts]) => {
           setOpts(o);
           setErr(null);
-          const d = home.links.find((l) => l.distributor.id === id)?.debt ?? 0;
+          const d = debts.links.find((l) => l.distributor.id === id)?.debt ?? 0;
           setDebt(d);
           setAmount((a) => a || (d > 0 ? formatAmount(d) : ''));
         })
@@ -86,9 +88,13 @@ export default function PayScreen() {
     const pickOpts = { mediaTypes: ['images'] as ImagePicker.MediaType[], quality: 0.6 };
     const res = fromCamera ? await ImagePicker.launchCameraAsync(pickOpts) : await ImagePicker.launchImageLibraryAsync(pickOpts);
     if (res.canceled || !res.assets?.[0]) return;
-    const a = res.assets[0];
-    const mimeType = a.mimeType ?? 'image/jpeg';
-    setReceipt({ uri: a.uri, mimeType, name: a.fileName ?? `chek.${mimeType.split('/')[1] ?? 'jpg'}` });
+    try {
+      // Kichraytirilib JPEG ga o'giriladi: kameraning asl surati 4 MB dan katta bo'lib, yuborilmay qolardi
+      const a = await shrinkImage(res.assets[0]);
+      setReceipt({ uri: a.uri, mimeType: a.mimeType, name: 'chek.jpeg' });
+    } catch {
+      setErr(t("Rasmni tayyorlab bo'lmadi. Boshqa rasm tanlang"));
+    }
   }
 
   async function sendReceipt() {

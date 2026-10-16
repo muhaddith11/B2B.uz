@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
-import { ledgerCalcSelect, PENDING_STATUSES, summarize } from "@/lib/shop-summary";
+import { factsFrom, ledgerCalcSelect, PENDING_STATUSES, summarize } from "@/lib/shop-summary";
 import { linkScope, orderInclude, orderScope, serializeOrder } from "@/lib/staff-data";
 
 // Do'kon kartasi: qarz, nasiya shartlari, qarz daftari va oxirgi buyurtmalar
@@ -29,7 +29,12 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       take: 20,
     }),
     // Ekranda ko'rsatiladigan oxirgi yozuvlar
-    db.ledgerEntry.findMany({ where: { shopLinkId: link.id }, include: { order: { select: { number: true } } }, orderBy: { date: "desc" }, take: 100 }),
+    db.ledgerEntry.findMany({
+      where: { shopLinkId: link.id },
+      include: { order: { select: { number: true } }, reversedBy: { select: { id: true } } },
+      orderBy: { date: "desc" },
+      take: 100,
+    }),
   ]);
   return Response.json({
     linkId: link.id,
@@ -37,7 +42,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
     shop: { id: link.shop.id, name: link.shop.name, imageUrl: link.shop.imageUrl, address: link.shop.address, district: link.shop.district, inn: link.shop.inn },
     users: link.shop.users.map((u) => ({ name: u.name, phone: u.phone, role: u.role, avatarUrl: u.avatarUrl })),
     terms: { priceGroup: link.priceGroup, creditLimit: link.creditLimit, creditDays: link.creditDays, blockAfterDays: link.blockAfterDays, agent: link.agent },
-    summary: summarize(link.ledger, pending, link.creditLimit),
+    summary: summarize(factsFrom(link.ledger), pending, link.creditLimit),
     ledger: recent.map((e) => ({
       id: e.id,
       type: e.type,
@@ -49,6 +54,9 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       note: e.note,
       receiptUrl: e.receiptUrl,
       orderNumber: e.order?.number ?? null,
+      // Tuzatish: bu yozuv qaysi yozuvni bekor qilgan va o'zi bekor qilinganmi
+      reversesId: e.reversesId,
+      reversed: e.reversedBy !== null,
     })),
     orders: orders.map(serializeOrder),
   });

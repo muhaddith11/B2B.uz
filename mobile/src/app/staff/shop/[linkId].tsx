@@ -11,8 +11,10 @@ import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { confirm } from '@/lib/confirm';
 import { t, txNote } from '@/lib/i18n';
-import { formatDate, formatSom } from '@/lib/money';
-import { channelLabel, type ShopDetail } from '@/lib/staff-types';
+import { haptic } from '@/lib/haptics';
+import { formatAmount, formatDate, formatSom } from '@/lib/money';
+import { newRequestKey } from '@/lib/net';
+import { channelLabel, type ShopDetail, type StaffLedger } from '@/lib/staff-types';
 import { useLoad } from '@/lib/use-load';
 
 // Do'kon kartasi: qarz, shartlar, buyurtma olish, to'lov qabul qilish, qarz daftari
@@ -21,8 +23,11 @@ export default function StaffShopScreen() {
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const { can } = useStaff();
   const { data, error, refreshing, reload, retry } = useLoad<ShopDetail>(`/api/staff/shops/${linkId}`);
-  const [panel, setPanel] = useState<'cash' | 'terms' | null>(null);
+  const [panel, setPanel] = useState<'cash' | 'terms' | 'adjust' | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
+  // Qarz daftarini tuzatish (admin va hisobchi): bekor qilinayotgan yozuv
+  const [reversing, setReversing] = useState<string | null>(null);
+  const corrector = can('ADMIN', 'ACCOUNTANT');
 
   if (error && !data) return <ErrorState message={error} onRetry={retry} />;
   if (!data) return <Loading rows={2} />;
@@ -97,6 +102,22 @@ export default function StaffShopScreen() {
           <CashForm linkId={linkId} onDone={reload} />
         </Card>
       )}
+      {corrector && (
+        <Button
+          title={panel === 'adjust' ? t('Tuzatishni yopish') : t('Tuzatish yozuvi (qaytarilgan tovar, eski qarz)')}
+          kind="secondary"
+          onPress={() => setPanel(panel === 'adjust' ? null : 'adjust')}
+        />
+      )}
+      {panel === 'adjust' && (
+        <AdjustForm
+          linkId={linkId}
+          onDone={() => {
+            setPanel(null);
+            reload();
+          }}
+        />
+      )}
       {can('ADMIN') && (
         <Button title={panel === 'terms' ? t('Shartlarni yopish') : t("Nasiya va narx shartlarini o'zgartirish")} kind="secondary" onPress={() => setPanel(panel === 'terms' ? null : 'terms')} />
       )}
@@ -123,7 +144,7 @@ export default function StaffShopScreen() {
           </T>
         )}
         {data.ledger.map((e) => (
-          <View key={e.id} style={{ gap: 2, opacity: e.status === 'REJECTED' ? 0.5 : 1 }}>
+          <View key={e.id} style={{ gap: 2, opacity: e.status === 'REJECTED' || e.reversed ? 0.5 : 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
               <T size="small" tone="hint" num style={{ flex: 1 }}>
                 {formatDate(e.date)} ·{' '}
@@ -132,7 +153,13 @@ export default function StaffShopScreen() {
                   : e.type === 'PAYMENT'
                     ? t("To'lov ({channel})", { channel: channelLabel(e.channel) })
                     : t('Tuzatish')}
-                {e.status === 'PENDING' ? ` · ${t('tasdiq kutilmoqda')}` : e.status === 'REJECTED' ? ` · ${t('rad etilgan')}` : ''}
+                {e.status === 'PENDING'
+                  ? ` · ${t('tasdiq kutilmoqda')}`
+                  : e.status === 'REJECTED'
+                    ? ` · ${t('rad etilgan')}`
+                    : e.reversed
+                      ? ` · ${t('bekor qilingan')}`
+                      : ''}
               </T>
               <T size="small" num tone={e.amount < 0 ? 'ok' : 'text'} style={{ fontWeight: '500' }}>
                 {formatSom(e.amount)}
@@ -149,10 +176,114 @@ export default function StaffShopScreen() {
               </T>
             )}
             {receipt === e.receiptUrl && e.receiptUrl && <AuthImage path={e.receiptUrl} style={{ width: '100%', height: 280, borderRadius: 8, backgroundColor: c.bg }} />}
+            {corrector && reversible(e) && reversing !== e.id && (
+              <T size="tiny" tone="danger" accessibilityRole="button" onPress={() => setReversing(e.id)}>
+                {t('Xato yozilgan: bekor qilish')}
+              </T>
+            )}
+            {reversing === e.id && (
+              <ReverseForm
+                entry={e}
+                onClose={() => setReversing(null)}
+                onDone={() => {
+                  setReversing(null);
+                  reload();
+                }}
+              />
+            )}
           </View>
         ))}
       </Card>
     </Screen>
+  );
+}
+
+// Bekor qilsa bo'ladigan yozuv: tasdiqlangan, hali bekor qilinmagan, o'zi tuzatish emas. Payme va Click to'lovini to'lov tizimi bekor qiladi
+function reversible(e: StaffLedger): boolean {
+  return e.status === 'CONFIRMED' && !e.reversed && !e.reversesId && e.channel !== 'PAYME' && e.channel !== 'CLICK';
+}
+
+// Xato yozilgan to'lov yoki qarzni bekor qilish: teskari yozuv qo'shiladi, sababi do'konga ham boradi
+function ReverseForm({ entry, onClose, onDone }: { entry: StaffLedger; onClose: () => void; onDone: () => void }) {
+  const { api } = useSession();
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    const ok = await confirm({
+      title: t('{sum} bekor qilinsinmi?', { sum: formatSom(entry.amount) }),
+      message: t("Qarz daftariga teskari yozuv qo'shiladi. Buni qaytarib bo'lmaydi."),
+      action: t('Bekor qilish'),
+    });
+    if (!ok) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(`/api/staff/ledger/${entry.id}/reverse`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+      haptic.success();
+      onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+      haptic.error();
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={{ gap: 8, marginTop: 6 }}>
+      <Field label={t("Sabab (do'konga ham ko'rinadi)")} value={reason} onChangeText={setReason} placeholder={t('Masalan: summa xato yozilgan')} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button title={t('Ortga')} kind="secondary" compact style={{ flex: 1 }} disabled={busy} onPress={onClose} />
+        <Button title={t('Bekor qilish')} kind="danger" compact style={{ flex: 1 }} loading={busy} disabled={reason.trim().length < 3} onPress={submit} />
+      </View>
+      {err && <Banner tone="danger">{err}</Banner>}
+    </View>
+  );
+}
+
+// Tuzatish yozuvi: qaytarilgan tovar va chegirma qarzni kamaytiradi, qog'ozdagi eski qarz uni oshiradi
+function AdjustForm({ linkId, onDone }: { linkId: string; onDone: () => void }) {
+  const { api } = useSession();
+  const [direction, setDirection] = useState<'down' | 'up'>('down');
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Takroriy yuborishda (tarmoq uzilishi) yozuv bir marta tushadi
+  const [key] = useState(newRequestKey);
+  const sum = Number(amount.replace(/\D/g, '')) || 0;
+
+  async function submit() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api('/api/staff/ledger', { method: 'POST', body: JSON.stringify({ linkId, amount: direction === 'down' ? -sum : sum, note: note.trim(), clientKey: key }) });
+      haptic.success();
+      onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+      haptic.error();
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 10 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <Chip label={t('Qarzni kamaytirish')} active={direction === 'down'} onPress={() => setDirection('down')} />
+        <Chip label={t('Qarzni oshirish')} active={direction === 'up'} onPress={() => setDirection('up')} />
+      </View>
+      <Field label={t("Summa, so'm")} value={amount} onChangeText={(v) => setAmount(formatAmount(Number(v.replace(/\D/g, '')) || 0).replace(/^0$/, ''))} keyboardType="number-pad" />
+      <Field
+        label={t("Sabab (do'konga ham ko'rinadi)")}
+        value={note}
+        onChangeText={setNote}
+        placeholder={direction === 'down' ? t('Masalan: 3 yashik qaytarildi') : t('Masalan: daftardagi eski qarz')}
+      />
+      <Button title={t('Yozish')} onPress={submit} loading={busy} disabled={sum <= 0 || note.trim().length < 3} />
+      {err && <Banner tone="danger">{err}</Banner>}
+    </Card>
   );
 }
 

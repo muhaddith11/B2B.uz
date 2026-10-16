@@ -1,7 +1,7 @@
 import type { Prisma, StaffRole } from "@prisma/client";
 import { db } from "./db";
 import { HttpError } from "./session";
-import { ledgerCalcSelect, PENDING_STATUSES, summarize } from "./shop-summary";
+import { ledgerFacts, PENDING_STATUSES, summarize } from "./shop-summary";
 
 // Mobil ilovadagi xodim ekranlari uchun umumiy so'rovlar va javob shakllari
 
@@ -90,18 +90,18 @@ export async function shopList(staff: { id: string; distributorId: string; role:
     include: {
       shop: true,
       agent: { select: { name: true } },
-      ledger: { select: ledgerCalcSelect },
       orders: { where: { status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } },
     },
     orderBy: { shop: { name: "asc" } },
     take: 500,
   });
+  const facts = await ledgerFacts(links.map((l) => l.id));
   return links.map((l) => ({
     linkId: l.id,
     status: l.status,
     shop: { id: l.shop.id, name: l.shop.name, imageUrl: l.shop.imageUrl, address: l.shop.address, district: l.shop.district },
     agent: l.agent?.name ?? null,
-    ...summarize(l.ledger, l.orders, l.creditLimit),
+    ...summarize(facts.get(l.id)!, l.orders, l.creditLimit),
   }));
 }
 

@@ -21,8 +21,9 @@ export const PATCH = handle(async (req: Request, ctx: { params: Promise<{ id: st
     if (input.price !== undefined) {
       const base = product.prices.find((p) => p.priceGroup.isDefault);
       for (const p of product.prices) {
-        // Guruhlar orasidagi nisbat saqlanadi (masalan, katta do'konga 3% arzon)
-        const next = base && base.price > 0 && !p.priceGroup.isDefault ? Math.round((p.price * input.price) / base.price / 100) * 100 || input.price : input.price;
+        // Guruhlar orasidagi nisbat saqlanadi (masalan, katta do'konga 3% arzon). Butun so'mga yaxlitlanadi:
+        // yuzlikka yaxlitlash arzon tovarda chegirmani yo'qotib, guruh narxini asosiy narxga tenglashtirib qo'yardi
+        const next = base && base.price > 0 && !p.priceGroup.isDefault ? Math.max(1, Math.round((p.price * input.price) / base.price)) : input.price;
         await tx.price.update({ where: { id: p.id }, data: { price: next, validFrom: new Date() } });
       }
     }

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const calls: string[] = [];
 let activeStaffLeft = 0;
 let brandUsersLeft = 0;
+let shopUsersLeft = 1;
 
 function model(name: string, extra: Record<string, unknown> = {}) {
   const rec =
@@ -16,17 +17,26 @@ function model(name: string, extra: Record<string, unknown> = {}) {
 }
 
 const tx = {
+  $executeRaw: async () => 0,
   order: model("order"),
-  message: model("message"),
   pushToken: model("pushToken"),
-  shopUser: model("shopUser"),
+  shopUser: model("shopUser", {
+    delete: async (args: unknown) => {
+      calls.push(`shopUser.delete ${JSON.stringify(args)}`);
+      return { id: "su1", shopId: "s1", avatarUrl: null };
+    },
+    count: async () => shopUsersLeft,
+  }),
+  shopLink: model("shopLink"),
   staff: model("staff", {
     update: async (args: unknown) => {
       calls.push(`staff.update ${JSON.stringify(args)}`);
       return { id: "st1", distributorId: "d1" };
     },
     count: async () => activeStaffLeft,
-    findUniqueOrThrow: async () => ({ avatarUrl: null }),
+    // Oddiy xodim (admin emas): yagona admin qoidasi integratsiya testida tekshiriladi
+    findUnique: async () => ({ role: "AGENT", active: true, distributorId: "d1" }),
+    findUniqueOrThrow: async () => ({ avatarUrl: null, distributorId: "d1" }),
   }),
   distributor: model("distributor"),
   brandUser: model("brandUser", {
@@ -56,18 +66,25 @@ beforeEach(() => {
   calls.length = 0;
   activeStaffLeft = 0;
   brandUsersLeft = 0;
+  shopUsersLeft = 1;
 });
 
 describe("hisobni o'chirish", () => {
-  it("do'kon foydalanuvchisi: buyurtma va xabarlardagi havola bo'shatiladi, o'zi o'chiriladi", async () => {
+  it("do'kon foydalanuvchisi: buyurtmalardagi havola bo'shatiladi, o'zi o'chiriladi", async () => {
     await deleteAccount({ kind: "shop", id: "su1" });
     expect(calls).toEqual([
       'order.updateMany {"where":{"createdByShopUserId":"su1"},"data":{"createdByShopUserId":null}}',
-      'message.updateMany {"where":{"senderShopUserId":"su1"},"data":{"senderShopUserId":null}}',
       'pushToken.deleteMany {"where":{"ownerKind":"SHOP_USER","ownerId":"su1"}}',
       'shopUser.delete {"where":{"id":"su1"}}',
       'auditLog.create {"data":{"actor":"shop:su1","action":"account.delete","entity":"shop","entityId":"su1"}}',
     ]);
+  });
+
+  it("do'konning oxirgi foydalanuvchisi: faol ulanishlar bloklanadi, javobsiz so'rov va takliflar o'chadi", async () => {
+    shopUsersLeft = 0;
+    await deleteAccount({ kind: "shop", id: "su1" });
+    expect(calls).toContain('shopLink.deleteMany {"where":{"shopId":"s1","status":{"in":["REQUESTED","INVITED"]}}}');
+    expect(calls).toContain('shopLink.updateMany {"where":{"shopId":"s1","status":"ACTIVE"},"data":{"status":"BLOCKED"}}');
   });
 
   it("xodim: shaxsiy ma'lumoti tozalanadi va o'chiriladi; faol xodim qolmasa distribyutor yashiriladi", async () => {

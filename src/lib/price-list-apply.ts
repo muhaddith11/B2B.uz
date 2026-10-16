@@ -1,7 +1,10 @@
+import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { db } from "./db";
 import { diffPriceList, parsePriceList, type PriceListItem } from "./price-list";
-import { releaseImage } from "./uploads";
+import { fetchRemoteImage } from "./remote-image";
+import { releaseImage, storeUpload, type PreparedUpload } from "./uploads";
 
 export const TEMPLATE_HEADER = ["Artikul", "Nomi", "Brend", "Toifa", "O'lchov birligi", "Yashikda nechta", "Narx, so'm", "Shtrix-kod", "Minimal buyurtma, yashik", "Qoldiq", "Rasm havolasi"];
 
@@ -43,64 +46,142 @@ export async function previewPriceList(distributorId: string, data: ArrayBuffer)
   return { ...parsed, diff };
 }
 
+// Bir yuklashda yangi yuklab olinadigan tashqi rasmlar soni va vaqti: funksiya vaqt chegarasidan oshmasin.
+// Qolganlari keyingi yuklashda olinadi (allaqachon olinganlari qayta yuklanmaydi: Product.imageSource)
+export const MAX_IMAGE_DOWNLOADS = 100;
+const DOWNLOAD_BUDGET_MS = 60_000;
+const DOWNLOAD_CONCURRENCY = 6;
+const CHUNK = 500;
+
+export type ImageWarning = { sku: string; message: string };
+type ImageFetcher = (url: string) => Promise<PreparedUpload>;
+
+const isExternal = (url: string) => url.startsWith("https://");
+const newId = () => `c${randomBytes(12).toString("hex")}`;
+
+// Tashqi havolalardagi rasmlarni o'z omborimizga yuklab oladi: havola -> /api/files/products/... yoki xato sababi
+async function importImages(urls: string[], fetchImage: ImageFetcher) {
+  const stored = new Map<string, string>();
+  const failed = new Map<string, string>();
+  const started = Date.now();
+  const queue = urls.slice(0, MAX_IMAGE_DOWNLOADS);
+  for (const url of urls.slice(MAX_IMAGE_DOWNLOADS)) failed.set(url, `bir yuklashda ko'pi bilan ${MAX_IMAGE_DOWNLOADS} ta yangi rasm: faylni yana bir bor qo'llang`);
+  const worker = async () => {
+    for (let url = queue.shift(); url !== undefined; url = queue.shift()) {
+      if (Date.now() - started > DOWNLOAD_BUDGET_MS) {
+        failed.set(url, "vaqt tugadi: faylni yana bir bor qo'llang");
+        continue;
+      }
+      try {
+        stored.set(url, (await storeUpload("products", await fetchImage(url))).url);
+      } catch (e) {
+        failed.set(url, `rasm olinmadi (${e instanceof Error ? e.message : "xato"})`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: DOWNLOAD_CONCURRENCY }, worker));
+  return { stored, failed };
+}
+
 // Qo'llash: yangi tovarlar qo'shiladi, borlari yangilanadi, faylda yo'qlari nofaol bo'ladi (o'chirilmaydi).
 // Tovar egasidan olingan tovarlarga prays-list tegmaydi.
-export async function applyPriceList(staff: { id: string; distributorId: string }, items: PriceListItem[]) {
+// Tovar va narxlar bir necha katta so'rovda yoziladi (har tovar uchun alohida so'rov minglab tovarda vaqt chegarasidan oshardi)
+export async function applyPriceList(staff: { id: string; distributorId: string }, items: PriceListItem[], opts: { fetchImage?: ImageFetcher } = {}) {
   const groups = await db.priceGroup.findMany({ where: { distributorId: staff.distributorId } });
   const def = groups.find((g) => g.isDefault);
   if (!def) throw new Error("Asosiy narx guruhi yo'q");
   const now = new Date();
 
-  const result = await db.$transaction(
-    async (tx) => {
-      // Faylda rasm havolasi berilgan tovarlarning hozirgi rasmi: almashtirilgach eskisi ombordan tozalanadi
-      const linkBySku = new Map(items.filter((i) => i.imageUrl).map((i) => [i.sku, i.imageUrl]));
-      const before = linkBySku.size
-        ? await tx.product.findMany({ where: { distributorId: staff.distributorId, sku: { in: [...linkBySku.keys()] } }, select: { sku: true, imageUrl: true } })
-        : [];
-      const replaced = before.filter((p) => p.imageUrl && p.imageUrl !== linkBySku.get(p.sku)).map((p) => p.imageUrl!);
+  // Rasmlar: o'z omborimizdagi havola o'zgarmay qo'yiladi; tashqi havoladan olingan rasm qayta yuklanmaydi
+  const current = await db.product.findMany({
+    where: { distributorId: staff.distributorId, sku: { in: items.map((i) => i.sku) } },
+    select: { sku: true, imageUrl: true, imageSource: true },
+  });
+  const bySku = new Map(current.map((p) => [p.sku, p]));
+  const alreadyImported = (it: PriceListItem) => {
+    const p = bySku.get(it.sku);
+    return Boolean(p?.imageUrl && p.imageSource === it.imageUrl);
+  };
+  const toFetch = [...new Set(items.filter((i) => i.imageUrl && isExternal(i.imageUrl) && !alreadyImported(i)).map((i) => i.imageUrl!))];
+  const { stored, failed } = await importImages(toFetch, opts.fetchImage ?? fetchRemoteImage);
+  const warnings: ImageWarning[] = [];
+  const image = (it: PriceListItem): { url: string | null; source: string | null } => {
+    if (!it.imageUrl || alreadyImported(it)) return { url: null, source: null };
+    if (!isExternal(it.imageUrl)) return { url: it.imageUrl, source: null };
+    const url = stored.get(it.imageUrl);
+    if (url) return { url, source: it.imageUrl };
+    warnings.push({ sku: it.sku, message: failed.get(it.imageUrl) ?? "rasm olinmadi" });
+    return { url: null, source: null };
+  };
+  const rows = items.map((it) => ({ it, img: image(it) }));
+  // Almashtirilgan eski rasmlar: qo'llangach (boshqa joyda ishlatilmasa) ombordan tozalanadi
+  const replaced = rows.map(({ it, img }) => (img.url ? bySku.get(it.sku)?.imageUrl : null)).filter((u): u is string => Boolean(u));
 
-      for (const it of items) {
-        const fields = {
-          name: it.name,
-          brand: it.brand,
-          category: it.category,
-          unit: it.unit,
-          packSize: it.packSize,
-          barcode: it.barcode,
-          minOrderPacks: it.minOrderPacks,
-          inStock: it.inStock,
+  let result;
+  try {
+    result = await db.$transaction(
+      async (tx) => {
+        const ids = new Map<string, string>();
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const values = rows
+            .slice(i, i + CHUNK)
+            .map(
+              ({ it, img }) =>
+                Prisma.sql`(${newId()}, ${staff.distributorId}, ${it.sku}, ${it.name}, ${it.brand}, ${it.category}, ${it.unit}, ${it.packSize}::int, ${it.barcode}, ${it.minOrderPacks}::int, ${it.inStock}, ${img.url}, ${img.source}, true, ${now})`,
+            );
           // "Rasm havolasi" bo'sh bo'lsa, tovarning hozirgi rasmi (paneldan yoki ilovadan yuklangani) o'zgarmaydi
-          ...(it.imageUrl ? { imageUrl: it.imageUrl } : {}),
-          active: true,
-        };
-        const product = await tx.product.upsert({
-          where: { distributorId_sku: { distributorId: staff.distributorId, sku: it.sku } },
-          create: { ...fields, sku: it.sku, distributorId: staff.distributorId },
-          update: fields,
-        });
-        for (const g of groups) {
-          const price = g.isDefault ? it.price : (it.extraPrices[g.name] ?? it.price);
-          await tx.price.upsert({
-            where: { productId_priceGroupId: { productId: product.id, priceGroupId: g.id } },
-            create: { productId: product.id, priceGroupId: g.id, price, validFrom: now },
-            update: { price, validFrom: now },
-          });
+          const saved = await tx.$queryRaw<{ id: string; sku: string }[]>`
+            INSERT INTO "Product" ("id", "distributorId", "sku", "name", "brand", "category", "unit", "packSize", "barcode", "minOrderPacks", "inStock", "imageUrl", "imageSource", "active", "updatedAt")
+            VALUES ${Prisma.join(values)}
+            ON CONFLICT ("distributorId", "sku") DO UPDATE SET
+              "name" = EXCLUDED."name", "brand" = EXCLUDED."brand", "category" = EXCLUDED."category", "unit" = EXCLUDED."unit",
+              "packSize" = EXCLUDED."packSize", "barcode" = EXCLUDED."barcode", "minOrderPacks" = EXCLUDED."minOrderPacks", "inStock" = EXCLUDED."inStock",
+              "imageUrl" = COALESCE(EXCLUDED."imageUrl", "Product"."imageUrl"),
+              "imageSource" = CASE WHEN EXCLUDED."imageUrl" IS NULL THEN "Product"."imageSource" ELSE EXCLUDED."imageSource" END,
+              "active" = true, "updatedAt" = EXCLUDED."updatedAt"
+            WHERE "Product"."brandProductId" IS NULL
+            RETURNING "id", "sku"`;
+          for (const r of saved) ids.set(r.sku, r.id);
         }
-      }
-      const removed = await tx.product.updateMany({
-        where: { distributorId: staff.distributorId, brandProductId: null, active: true, sku: { notIn: items.map((i) => i.sku) } },
-        data: { active: false },
-      });
-      await tx.auditLog.create({
-        data: { actor: `staff:${staff.id}`, action: "pricelist.applied", entity: "Distributor", entityId: staff.distributorId, after: { items: items.length, deactivated: removed.count } },
-      });
-      return { items: items.length, deactivated: removed.count, replaced };
-    },
-    { timeout: 60_000 },
-  );
-  for (const url of result.replaced) await releaseImage(url);
-  return { items: result.items, deactivated: result.deactivated };
+
+        const prices = rows.flatMap(({ it }) => {
+          const productId = ids.get(it.sku);
+          return productId ? groups.map((g) => ({ productId, groupId: g.id, price: g.isDefault ? it.price : (it.extraPrices[g.name] ?? it.price) })) : [];
+        });
+        for (let i = 0; i < prices.length; i += CHUNK) {
+          const values = prices.slice(i, i + CHUNK).map((p) => Prisma.sql`(${newId()}, ${p.productId}, ${p.groupId}, ${p.price}::int, ${now})`);
+          await tx.$executeRaw`
+            INSERT INTO "Price" ("id", "productId", "priceGroupId", "price", "validFrom")
+            VALUES ${Prisma.join(values)}
+            ON CONFLICT ("productId", "priceGroupId") DO UPDATE SET "price" = EXCLUDED."price", "validFrom" = EXCLUDED."validFrom"`;
+        }
+
+        const removed = await tx.product.updateMany({
+          where: { distributorId: staff.distributorId, brandProductId: null, active: true, sku: { notIn: items.map((i) => i.sku) } },
+          data: { active: false },
+        });
+        await tx.auditLog.create({
+          data: {
+            actor: `staff:${staff.id}`,
+            action: "pricelist.applied",
+            entity: "Distributor",
+            entityId: staff.distributorId,
+            after: { items: items.length, deactivated: removed.count, imagesImported: stored.size, imageWarnings: warnings.length },
+          },
+        });
+        return { items: ids.size, deactivated: removed.count };
+      },
+      { timeout: 60_000 },
+    );
+  } catch (e) {
+    // Yozilmadi: yuklab olingan rasmlar hech kimga biriktirilmay qolmasin
+    for (const url of stored.values()) await releaseImage(url);
+    throw e;
+  }
+  for (const url of new Set(replaced)) await releaseImage(url);
+  // Bir xil havola bir nechta tovarda bo'lsa, rasm bitta saqlanadi; hech qayerga yozilmay qolgani tozalanadi
+  for (const url of stored.values()) await releaseImage(url);
+  return { ...result, imageWarnings: warnings };
 }
 
 export async function templateWorkbook(distributorId: string): Promise<Buffer> {

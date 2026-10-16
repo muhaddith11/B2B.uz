@@ -31,7 +31,7 @@ export async function requestAdminCode(form: FormData) {
   if (!platformAdminPhones().includes(phone)) return back({ phone });
   let code: string;
   try {
-    code = await deliverOtp(phone, clientIp(await headers()));
+    code = await deliverOtp(phone, clientIp(await headers()), "admin");
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod yuborilmadi" });
   }
@@ -42,7 +42,7 @@ export async function verifyAdminCode(form: FormData) {
   const phone = normalizePhone(String(form.get("phone") ?? ""));
   if (!phone) return back({ error: "Telefon raqami noto'g'ri" });
   try {
-    await verifyOtp(phone, String(form.get("code") ?? ""));
+    await verifyOtp(phone, String(form.get("code") ?? ""), new Date(), "admin");
   } catch (e) {
     return back({ error: e instanceof HttpError ? e.message : "Kod noto'g'ri", phone });
   }
@@ -75,6 +75,21 @@ export async function setDistributorStatus(form: FormData) {
   await db.distributor.update({ where: { id }, data: { status } });
   await db.auditLog.create({ data: { actor: `admin:${admin.phone}`, action: `distributor.${status}`, entity: "Distributor", entityId: id } });
   redirect("/admin");
+}
+
+// Tasdiqlangan distribyutorning nomi va STIRi faqat shu yerda o'zgaradi (ilovadan emas): platforma tekshirib o'zgartiradi
+export async function renameDistributor(form: FormData) {
+  const admin = await requireAdmin();
+  const id = String(form.get("id"));
+  const name = String(form.get("name") ?? "").trim();
+  const inn = String(form.get("inn") ?? "").replace(/\D/g, "");
+  if (name.length < 2 || name.length > 150) return back({ error: "Nomi 2 dan 150 belgigacha bo'lsin" });
+  if (inn && inn.length !== 9) return back({ error: "STIR 9 xonali bo'lsin" });
+  const before = await db.distributor.findUnique({ where: { id }, select: { name: true, inn: true } });
+  if (!before) return back({ error: "Distribyutor topilmadi" });
+  await db.distributor.update({ where: { id }, data: { name, inn: inn || null } });
+  await db.auditLog.create({ data: { actor: `admin:${admin.phone}`, action: "distributor.renamed", entity: "Distributor", entityId: id, before, after: { name, inn: inn || null } } });
+  back({ ok: `${name}: saqlandi` });
 }
 
 export async function setBrandStatus(form: FormData) {

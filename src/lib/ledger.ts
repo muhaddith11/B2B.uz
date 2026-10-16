@@ -4,11 +4,13 @@
 import { DAY_MS, tashkentDayNumber } from "./time";
 
 export type LedgerLike = {
+  id?: string;
   amount: number;
   date: Date;
   dueDate: Date | null;
   status: "CONFIRMED" | "PENDING" | "REJECTED";
   orderId?: string | null; // topshirishda olingan naqd o'sha buyurtma qarzini yopadi
+  reversesId?: string | null; // tuzatish yozuvi: shu yozuvni bekor qiladi
 };
 
 export type OpenDebt = { date: Date; dueDate: Date | null; remaining: number };
@@ -19,8 +21,16 @@ export function balance(entries: LedgerLike[]): number {
 
 // To'lovlar eng eski qarzdan boshlab yopiladi (spetsifikatsiya, "Nasiya qoidalari" 4-band).
 // Istisno: buyurtmaga bog'langan to'lov (topshirishda olingan naqd) avval o'sha buyurtma qarzini yopadi.
+// Bekor qilingan yozuv va uni bekor qilgan tuzatish bir-birini yo'qqa chiqaradi: muddat hisobiga ikkalasi ham kirmaydi.
+// Aks holda bekor qilingan to'lov eng eski qarzni "yopib" qo'yar, qaytgan qarz esa muddatsiz yangi qarz bo'lib qolardi
+function withoutReversals(confirmed: LedgerLike[]): LedgerLike[] {
+  const ids = new Set(confirmed.map((e) => e.id).filter((id): id is string => Boolean(id)));
+  const cancelled = new Set(confirmed.map((e) => e.reversesId).filter((id): id is string => Boolean(id) && ids.has(id as string)));
+  return confirmed.filter((e) => !(e.id && cancelled.has(e.id)) && !(e.reversesId && cancelled.has(e.reversesId)));
+}
+
 export function openDebts(entries: LedgerLike[]): OpenDebt[] {
-  const confirmed = entries.filter((e) => e.status === "CONFIRMED");
+  const confirmed = withoutReversals(entries.filter((e) => e.status === "CONFIRMED"));
   const debts = confirmed
     .filter((e) => e.amount > 0)
     .sort((a, b) => a.date.getTime() - b.date.getTime())

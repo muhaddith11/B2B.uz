@@ -90,12 +90,6 @@ enum PaymentMethodType {
   BANK_ACCOUNT
 }
 
-enum SenderType {
-  SHOP
-  STAFF
-  SYSTEM
-}
-
 enum BrandStatus {
   PENDING // platforma tekshiruvida
   ACTIVE
@@ -140,11 +134,6 @@ enum PaymentPurpose {
   SUBSCRIPTION // platformaning kassasiga, obuna muddatini uzaytiradi
 }
 
-enum PromotionType {
-  PERCENT
-  N_PLUS_ONE
-}
-
 model Distributor {
   id           String            @id @default(cuid())
   name         String
@@ -165,7 +154,6 @@ model Distributor {
   priceGroups          PriceGroup[]
   links                ShopLink[]
   paymentMethods       PaymentMethod[]
-  promotions           Promotion[]
   agreements           Agreement[]
   brandOrders          BrandOrder[]
   subscriptionPayments OnlinePayment[] @relation("DistributorSubscription")
@@ -189,7 +177,6 @@ model Staff {
   agentLinks    ShopLink[] @relation("LinkAgent")
   createdOrders Order[]    @relation("OrderCreatedByStaff")
   courierOrders Order[]    @relation("OrderCourier")
-  sentMessages  Message[]
 
   @@index([distributorId])
   @@index([avatarUrl])
@@ -228,8 +215,7 @@ model ShopUser {
   sessionsValidAfter DateTime?
   createdAt          DateTime     @default(now())
 
-  orders       Order[]
-  sentMessages Message[]
+  orders Order[]
 
   @@index([shopId])
   @@index([avatarUrl])
@@ -268,7 +254,6 @@ model ShopLink {
 
   orders         Order[]
   ledger         LedgerEntry[]
-  messages       Message[]
   onlinePayments OnlinePayment[]
 
   @@unique([shopId, distributorId])
@@ -287,6 +272,8 @@ model Product {
   packSize       Int           @default(1) // yashikda nechta
   barcode        String?
   imageUrl       String?
+  // Prays-listdagi tashqi rasm havolasi: rasm shu havoladan yuklab olingan. Fayl qayta yuklansa, rasm qayta olinmaydi
+  imageSource    String?
   inStock        Boolean       @default(true)
   minOrderPacks  Int           @default(1)
   marked         Boolean       @default(false) // raqamli markirovkali
@@ -338,12 +325,13 @@ model Order {
   acceptedAt          DateTime?
   dispatchedAt        DateTime?
   deliveredAt         DateTime?
+  // "<kim>:<ilova kaliti>": internet uzilib so'rov qayta yuborilsa, buyurtma ikki marta yaratilmaydi
+  clientKey           String?     @unique
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  items    OrderItem[]
-  ledger   LedgerEntry[]
-  messages Message[]
+  items  OrderItem[]
+  ledger LedgerEntry[]
 
   @@index([shopLinkId, createdAt])
 }
@@ -385,8 +373,6 @@ model LedgerEntry {
   clientKey       String?         @unique // "<xodim id>:<ilova kaliti>": takroriy so'rov to'lovni ikki marta yozmasligi uchun
   createdAt       DateTime        @default(now())
 
-  messages Message[]
-
   @@index([shopLinkId, date])
   @@index([receiptHash])
 }
@@ -411,41 +397,6 @@ model PaymentMethod {
   onlinePayments OnlinePayment[]
 
   @@index([distributorId])
-}
-
-model Message {
-  id               String       @id @default(cuid())
-  shopLinkId       String
-  shopLink         ShopLink     @relation(fields: [shopLinkId], references: [id])
-  senderType       SenderType
-  senderShopUserId String?
-  senderShopUser   ShopUser?    @relation(fields: [senderShopUserId], references: [id])
-  senderStaffId    String?
-  senderStaff      Staff?       @relation(fields: [senderStaffId], references: [id])
-  text             String?
-  fileUrl          String?
-  orderId          String?
-  order            Order?       @relation(fields: [orderId], references: [id])
-  ledgerEntryId    String?
-  ledgerEntry      LedgerEntry? @relation(fields: [ledgerEntryId], references: [id])
-  readAt           DateTime?
-  createdAt        DateTime     @default(now())
-
-  @@index([shopLinkId, createdAt])
-}
-
-model Promotion {
-  id            String        @id @default(cuid())
-  distributorId String
-  distributor   Distributor   @relation(fields: [distributorId], references: [id])
-  type          PromotionType
-  title         String
-  percent       Int? // PERCENT uchun
-  buyQty        Int? // N_PLUS_ONE: N ta olsang
-  freeQty       Int? // N_PLUS_ONE: shuncha bepul
-  productIds    String[]
-  startsAt      DateTime
-  endsAt        DateTime
 }
 
 // Tovar egasi: ishlab chiqaruvchi yoki brend egasi. Distribyutorlar bilan kelishuv tuzib savdo qiladi.
@@ -636,9 +587,13 @@ model OtpCode {
   attempts  Int       @default(0)
   usedAt    DateTime?
   ip        String? // so'rov kelgan IP: bitta manzildan ko'p raqamga kod so'rashni cheklash uchun
+  // Kod nima uchun: "login" (ilova, panel, obuna sahifasi), "admin" (platforma admini), "delete" (hisobni o'chirish).
+  // Bir maqsadga so'ralgan kod boshqasida ishlamaydi
+  purpose   String    @default("login")
   createdAt DateTime  @default(now())
 
   @@index([phone, createdAt])
+  @@index([phone, purpose, createdAt])
   @@index([ip, createdAt])
   @@index([createdAt])
 }

@@ -8,6 +8,7 @@ import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t, tx } from '@/lib/i18n';
 import { formatSom } from '@/lib/money';
+import { newRequestKey } from '@/lib/net';
 import { paymentLabel, type CatalogProduct, type PaymentType } from '@/lib/types';
 import { useLoad } from '@/lib/use-load';
 
@@ -30,6 +31,8 @@ export default function StaffNewOrder() {
   const [payment, setPayment] = useState<PaymentType>('CASH');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Buyurtma kaliti: javob yo'lda yo'qolib qayta yuborilsa, server buyurtmani ikki marta yaratmaydi. Tovar o'zgarsa yangisi
+  const [orderKey, setOrderKey] = useState(newRequestKey);
 
   const categories = useMemo(() => [...new Set(data?.products.map((p) => p.category) ?? [])], [data]);
   const shown = useMemo(() => {
@@ -51,7 +54,7 @@ export default function StaffNewOrder() {
       const items = Object.entries(qty)
         .filter(([, q]) => q > 0)
         .map(([productId, q]) => ({ productId, qty: q }));
-      const res = await api<{ id: string }>('/api/staff/orders', { method: 'POST', body: JSON.stringify({ linkId, paymentType: payment, items }) });
+      const res = await api<{ id: string }>('/api/staff/orders', { method: 'POST', body: JSON.stringify({ linkId, paymentType: payment, items, clientKey: orderKey }) });
       haptic.success();
       router.replace(`/staff/order/${res.id}`);
     } catch (e) {
@@ -110,7 +113,14 @@ export default function StaffNewOrder() {
                 </T>
               </View>
               {p.inStock ? (
-                <QtyStepper packs={n} onChange={(v) => setQty((q) => ({ ...q, [p.id]: Math.max(0, v) * p.packSize }))} label={false} />
+                <QtyStepper
+                  packs={n}
+                  onChange={(v) => {
+                    setQty((q) => ({ ...q, [p.id]: Math.max(0, v) * p.packSize }));
+                    setOrderKey(newRequestKey());
+                  }}
+                  label={false}
+                />
               ) : (
                 <T size="tiny" tone="hint">
                   {t('Tugagan')}

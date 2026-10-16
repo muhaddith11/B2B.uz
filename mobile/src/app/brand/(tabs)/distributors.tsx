@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Badge, Chip, Empty, Loading, Pic, PressCard, Screen, SearchInput, StickyBar, T } from '@/components/ui';
+import { Badge, Banner, Chip, Empty, Loading, Pic, PressCard, Screen, SearchInput, StickyBar, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { t } from '@/lib/i18n';
 import { agreementLabel, type DistributorForBrand } from '@/lib/staff-types';
 
-type Data = { categories: string[]; districts: string[]; distributors: DistributorForBrand[] };
+// pending: tovar egasi hali platforma tasdig'ida, distribyutorlar ro'yxati yopiq
+type Data = { pending?: boolean; categories: string[]; districts: string[]; distributors: DistributorForBrand[] };
 
 // Hamkor distribyutor topish: hudud, toifa, qamrov
 export default function BrandDistributors() {
@@ -74,7 +75,8 @@ export default function BrandDistributors() {
           </T>
         </PressCard>
       ))}
-      {data?.distributors.length === 0 && <Empty icon="business-outline">{t('Hech narsa topilmadi')}</Empty>}
+      {data?.pending && <Banner>{t("Hisobingiz platforma tasdig'idan o'tgach distribyutorlar ro'yxati ochiladi.")}</Banner>}
+      {data && !data.pending && data.distributors.length === 0 && <Empty icon="business-outline">{t('Hech narsa topilmadi')}</Empty>}
     </Screen>
   );
 }
