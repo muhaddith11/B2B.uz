@@ -14,7 +14,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 // Mobil ilovaga boradigan matnlar: xato (HttpError, readJson), o'zgaruvchidagi xato matni va bildirishnoma sarlavhasi.
-// Web sahifalar (panel, admin, obuna) faqat o'zbekcha, ular tekshirilmaydi.
+// Distribyutor paneli o'z lug'atida (src/app/panel/texts.ts, TypeScript tekshiradi); admin va obuna sahifasi o'zbekcha.
 const APP_DIRS = ["src/lib", "src/app/api"];
 const PATTERNS = [
   /new HttpError\(\d+, "([^"]+)"\)/g,
@@ -37,6 +37,12 @@ describe("server tarjimasi", () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it("tarjimadagi o'rinlar ({sum}, {n}, ...) o'zbekcha matnnikiga teng", () => {
+    const slots = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+    const bad = Object.entries(RU).filter(([uz, ru]) => !ru.trim() || slots(uz) !== slots(ru));
+    expect(bad).toEqual([]);
   });
 
   it("satr, shablon va ichki qiymatlarni tarjima qiladi", () => {

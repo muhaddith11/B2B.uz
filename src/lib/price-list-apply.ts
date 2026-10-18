@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { db } from "./db";
+import { L, type Text } from "./i18n";
 import { diffPriceList, parsePriceList, type PriceListItem } from "./price-list";
 import { fetchRemoteImage } from "./remote-image";
 import { releaseImage, storeUpload, type PreparedUpload } from "./uploads";
@@ -53,7 +54,7 @@ const DOWNLOAD_BUDGET_MS = 60_000;
 const DOWNLOAD_CONCURRENCY = 6;
 const CHUNK = 500;
 
-export type ImageWarning = { sku: string; message: string };
+export type ImageWarning = { sku: string; message: Text };
 type ImageFetcher = (url: string) => Promise<PreparedUpload>;
 
 const isExternal = (url: string) => url.startsWith("https://");
@@ -62,20 +63,20 @@ const newId = () => `c${randomBytes(12).toString("hex")}`;
 // Tashqi havolalardagi rasmlarni o'z omborimizga yuklab oladi: havola -> /api/files/products/... yoki xato sababi
 async function importImages(urls: string[], fetchImage: ImageFetcher) {
   const stored = new Map<string, string>();
-  const failed = new Map<string, string>();
+  const failed = new Map<string, Text>();
   const started = Date.now();
   const queue = urls.slice(0, MAX_IMAGE_DOWNLOADS);
-  for (const url of urls.slice(MAX_IMAGE_DOWNLOADS)) failed.set(url, `bir yuklashda ko'pi bilan ${MAX_IMAGE_DOWNLOADS} ta yangi rasm: faylni yana bir bor qo'llang`);
+  for (const url of urls.slice(MAX_IMAGE_DOWNLOADS)) failed.set(url, L("bir yuklashda ko'pi bilan {n} ta yangi rasm: faylni yana bir bor qo'llang", { n: MAX_IMAGE_DOWNLOADS }));
   const worker = async () => {
     for (let url = queue.shift(); url !== undefined; url = queue.shift()) {
       if (Date.now() - started > DOWNLOAD_BUDGET_MS) {
-        failed.set(url, "vaqt tugadi: faylni yana bir bor qo'llang");
+        failed.set(url, L("vaqt tugadi: faylni yana bir bor qo'llang"));
         continue;
       }
       try {
         stored.set(url, (await storeUpload("products", await fetchImage(url))).url);
       } catch (e) {
-        failed.set(url, `rasm olinmadi (${e instanceof Error ? e.message : "xato"})`);
+        failed.set(url, L("rasm olinmadi ({reason})", { reason: e instanceof Error ? e.message : "?" }));
       }
     }
   };
@@ -110,7 +111,7 @@ export async function applyPriceList(staff: { id: string; distributorId: string 
     if (!isExternal(it.imageUrl)) return { url: it.imageUrl, source: null };
     const url = stored.get(it.imageUrl);
     if (url) return { url, source: it.imageUrl };
-    warnings.push({ sku: it.sku, message: failed.get(it.imageUrl) ?? "rasm olinmadi" });
+    warnings.push({ sku: it.sku, message: failed.get(it.imageUrl) ?? L("rasm olinmadi") });
     return { url: null, source: null };
   };
   const rows = items.map((it) => ({ it, img: image(it) }));

@@ -1,6 +1,8 @@
 // Prays-list yuklash: spetsifikatsiyadagi "Prays-list yuklash" bo'limidagi shablon.
 // Bu fayl faqat jadval qatorlarini tekshiradi va solishtiradi; Excel o'qish alohida.
 
+import { L, type Text } from "./i18n";
+
 export type PriceListItem = {
   sku: string;
   name: string;
@@ -16,7 +18,8 @@ export type PriceListItem = {
   extraPrices: Record<string, number>; // narx guruhi nomi -> narx
 };
 
-export type RowError = { row: number; message: string };
+// Xato matni panel tilida ko'rsatiladi (render): ustun nomlari Excel shablonidagidek qoladi
+export type RowError = { row: number; message: Text };
 
 const FIELDS = {
   sku: "artikul",
@@ -83,7 +86,7 @@ export function parsePriceList(
   const errors: RowError[] = [];
   const missing = REQUIRED.filter((f) => col[f] === -1);
   if (missing.length) {
-    return { items: [], errors: [{ row: 1, message: `Majburiy ustun yo'q: ${missing.map((f) => FIELDS[f]).join(", ")}` }] };
+    return { items: [], errors: [{ row: 1, message: L("Majburiy ustun yo'q: {cols}", { cols: missing.map((f) => FIELDS[f]).join(", ") }) }] };
   }
 
   const groupCols = priceGroupNames
@@ -100,17 +103,17 @@ export function parsePriceList(
 
     const emptyRequired = REQUIRED.filter((f) => text(get(f)) === "");
     if (emptyRequired.length) {
-      errors.push({ row: rowNo, message: `Bo'sh majburiy ustun: ${emptyRequired.map((f) => FIELDS[f]).join(", ")}` });
+      errors.push({ row: rowNo, message: L("Bo'sh majburiy ustun: {cols}", { cols: emptyRequired.map((f) => FIELDS[f]).join(", ") }) });
       return;
     }
     const tooLong = (Object.entries(MAX_LEN) as [Field, number][]).filter(([f, max]) => text(get(f)).length > max);
     if (tooLong.length) {
-      errors.push({ row: rowNo, message: `Matn juda uzun: ${tooLong.map(([f, max]) => `${FIELDS[f]} (${max} belgigacha)`).join(", ")}` });
+      errors.push({ row: rowNo, message: L("Matn juda uzun (belgilar soni chegarasi): {cols}", { cols: tooLong.map(([f, max]) => `${FIELDS[f]} ≤ ${max}`).join(", ") }) });
       return;
     }
     const sku = text(get("sku"));
     if (seen.has(sku)) {
-      errors.push({ row: rowNo, message: `Artikul ${sku} takrorlangan (${seen.get(sku)}-qatorda ham bor)` });
+      errors.push({ row: rowNo, message: L("Artikul {sku} takrorlangan ({row}-qatorda ham bor)", { sku, row: seen.get(sku)! }) });
       return;
     }
     const price = parseAmount(get("price"));
@@ -155,7 +158,7 @@ export function parsePriceList(
       else if (p !== null && p > 0) extraPrices[g.name] = p;
     }
     if (badGroups.length) {
-      errors.push({ row: rowNo, message: `Narx juda katta: ${badGroups.join(", ")}` });
+      errors.push({ row: rowNo, message: L("Narx juda katta: {groups}", { groups: badGroups.join(", ") }) });
       return;
     }
 

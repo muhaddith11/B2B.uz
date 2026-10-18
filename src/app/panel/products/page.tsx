@@ -5,6 +5,7 @@ import { getStaff } from "@/lib/session";
 import { BulkImages } from "./bulk-images";
 import { ImageCell } from "./image-cell";
 import { UploadForm } from "./upload-form";
+import { panelT } from "../panel-lang";
 
 export const dynamic = "force-dynamic";
 // Prays-list qo'llash: tashqi rasmlarni yuklab olish va minglab tovarni yozish standart vaqtdan ko'proq olishi mumkin
@@ -14,6 +15,7 @@ export const maxDuration = 180;
 export default async function PanelProducts() {
   const staff = await getStaff();
   if (!staff) redirect("/panel");
+  const { lang, t } = await panelT();
   const def = await db.priceGroup.findFirst({ where: { distributorId: staff.distributorId, isDefault: true } });
   const products = await db.product.findMany({
     where: { distributorId: staff.distributorId },
@@ -25,19 +27,19 @@ export default async function PanelProducts() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Tovarlar</h1>
-      {canEdit && <UploadForm />}
-      {canEdit && <BulkImages />}
+      <h1 className="text-2xl font-semibold">{t("Tovarlar")}</h1>
+      {canEdit && <UploadForm lang={lang} />}
+      {canEdit && <BulkImages lang={lang} />}
       <table className="w-full overflow-hidden rounded-xl border border-line bg-card text-sm">
         <thead className="bg-bg text-left text-hint">
           <tr>
-            <th className="px-3 py-2 font-medium">Rasm</th>
-            <th className="px-3 py-2 font-medium">Artikul</th>
-            <th className="px-3 py-2 font-medium">Tovar</th>
-            <th className="px-3 py-2 font-medium">Toifa</th>
-            <th className="px-3 py-2 text-right font-medium">Yashikda</th>
-            <th className="px-3 py-2 text-right font-medium">Narx ({def?.name ?? "asosiy"})</th>
-            <th className="px-3 py-2 font-medium">Holat</th>
+            <th className="px-3 py-2 font-medium">{t("Rasm")}</th>
+            <th className="px-3 py-2 font-medium">{t("Artikul")}</th>
+            <th className="px-3 py-2 font-medium">{t("Tovar")}</th>
+            <th className="px-3 py-2 font-medium">{t("Toifa")}</th>
+            <th className="px-3 py-2 text-right font-medium">{t("Yashikda")}</th>
+            <th className="px-3 py-2 text-right font-medium">{t("Narx ({group})", { group: def?.name ?? t("asosiy") })}</th>
+            <th className="px-3 py-2 font-medium">{t("Holat")}</th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +47,7 @@ export default async function PanelProducts() {
             <tr key={p.id} className={`border-t border-line ${p.active ? "" : "text-hint"}`}>
               <td className="px-3 py-2">
                 {canEdit ? (
-                  <ImageCell productId={p.id} imageUrl={p.imageUrl} name={p.name} />
+                  <ImageCell productId={p.id} imageUrl={p.imageUrl} name={p.name} lang={lang} />
                 ) : (
                   p.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element -- rasm /api/files dan, o'lchami kichik
@@ -56,14 +58,14 @@ export default async function PanelProducts() {
               <td className="px-3 py-2 text-hint">{p.sku}</td>
               <td className="px-3 py-2">
                 {p.name}
-                {p.brandProduct && <span className="ml-2 text-xs text-accent-ink">{p.brandProduct.brand.name} kelishuvi</span>}
+                {p.brandProduct && <span className="ml-2 text-xs text-accent-ink">{t("{brand} kelishuvi", { brand: p.brandProduct.brand.name })}</span>}
               </td>
               <td className="px-3 py-2">{p.category}</td>
               <td className="px-3 py-2 text-right">{p.packSize}</td>
               <td className="px-3 py-2 text-right">{p.prices[0] ? formatSom(p.prices[0].price) : "—"}</td>
               <td className="px-3 py-2">
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${!p.active ? "bg-field text-hint" : p.inStock ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>
-                  {!p.active ? "nofaol" : p.inStock ? "bor" : "tugagan"}
+                  {!p.active ? t("nofaol") : p.inStock ? t("bor") : t("tugagan")}
                 </span>
               </td>
             </tr>

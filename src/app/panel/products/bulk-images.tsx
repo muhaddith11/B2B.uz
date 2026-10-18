@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import type { Lang } from "@/lib/i18n";
+import { panelText } from "../texts";
 import { refreshProducts, setProductImageBySku } from "./image-actions";
 import { shrinkImage } from "./shrink-image";
 
 // Ko'plab rasm: fayl nomi artikul bilan bir xil (masalan, D-001.jpg) bo'lsa, o'sha tovarga qo'yiladi
-export function BulkImages() {
+export function BulkImages({ lang }: { lang: Lang }) {
+  const t = panelText(lang);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failed, setFailed] = useState<string[]>([]);
   const [saved, setSaved] = useState(0);
@@ -21,7 +24,7 @@ export function BulkImages() {
     for (const [i, file] of files.entries()) {
       const data = new FormData();
       data.set("image", await shrinkImage(file));
-      const r = await setProductImageBySku(data).catch(() => ({ ok: false as const, message: "Tarmoq xatosi" }));
+      const r = await setProductImageBySku(data).catch(() => ({ ok: false as const, message: t("Tarmoq xatosi") }));
       if (r.ok) ok++;
       else errors.push(`${file.name}: ${r.message}`);
       setProgress({ done: i + 1, total: files.length });
@@ -35,7 +38,7 @@ export function BulkImages() {
     <div className="rounded-xl border border-line bg-card p-4">
       <div className="flex flex-wrap items-center gap-3">
         <label className={`btn btn-sm btn-secondary ${running ? "pointer-events-none opacity-50" : ""}`}>
-          Rasmlarni ko&apos;plab yuklash
+          {t("Rasmlarni ko'plab yuklash")}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -49,13 +52,15 @@ export function BulkImages() {
             }}
           />
         </label>
-        <span className="text-sm text-hint">Fayl nomi tovar artikuli bilan bir xil bo&apos;lsin: masalan, D-001.jpg</span>
+        <span className="text-sm text-hint">{t("Fayl nomi tovar artikuli bilan bir xil bo'lsin: masalan, D-001.jpg")}</span>
       </div>
       {progress && (
         <p className="mt-3 text-sm" aria-live="polite">
           {running
-            ? `Yuklanmoqda: ${progress.done} / ${progress.total}`
-            : `Tayyor: ${saved} ta rasm qo'yildi${failed.length ? `, ${failed.length} tasi qo'yilmadi` : ""}`}
+            ? t("Yuklanmoqda: {done} / {total}", { done: progress.done, total: progress.total })
+            : failed.length
+              ? t("Tayyor: {saved} ta rasm qo'yildi, {failed} tasi qo'yilmadi", { saved, failed: failed.length })
+              : t("Tayyor: {saved} ta rasm qo'yildi", { saved })}
         </p>
       )}
       {!running && failed.length > 0 && (

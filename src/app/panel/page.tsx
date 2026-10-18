@@ -6,14 +6,19 @@ import { ledgerFacts } from "@/lib/shop-summary";
 import { devAuthEnabled, getStaff } from "@/lib/session";
 import { startOfTashkentDay } from "@/lib/time";
 import { requestPanelCode, verifyPanelCode } from "./login-actions";
+import { panelT } from "./panel-lang";
+import type { panelText } from "./texts";
+
+type T = ReturnType<typeof panelText>;
 
 export const dynamic = "force-dynamic";
 
 export default async function PanelHome({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const staff = await getStaff();
+  const { t } = await panelT();
   if (!staff) {
     const params = await searchParams;
-    return <Login phone={params.phone} error={params.error} devCode={params.dev} />;
+    return <Login t={t} phone={params.phone} error={params.error} devCode={params.dev} />;
   }
 
   const distributorId = staff.distributorId;
@@ -38,24 +43,22 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
     .sort((a, b) => b.maxDays - a.maxDays);
 
   const cards = [
-    { label: "Yangi buyurtmalar", value: `${newOrders._count} ta`, sub: formatSom(newOrders._sum.total ?? 0), href: "/panel/orders?status=SENT" },
-    { label: "Yo'ldagi buyurtmalar", value: `${inDelivery} ta`, href: "/panel/orders?status=IN_DELIVERY" },
-    { label: "Muddati o'tgan qarzlar", value: `${overdueShops.length} ta do'kon`, sub: formatSom(overdueShops.reduce((s, x) => s + x.amount, 0)) },
-    { label: "Bugun tushgan to'lovlar", value: formatSom(-(paidToday._sum.amount ?? 0)) },
+    { label: t("Yangi buyurtmalar"), value: t("{n} ta", { n: newOrders._count }), sub: formatSom(newOrders._sum.total ?? 0), href: "/panel/orders?status=SENT" },
+    { label: t("Yo'ldagi buyurtmalar"), value: t("{n} ta", { n: inDelivery }), href: "/panel/orders?status=IN_DELIVERY" },
+    { label: t("Muddati o'tgan qarzlar"), value: t("{n} ta do'kon", { n: overdueShops.length }), sub: formatSom(overdueShops.reduce((s, x) => s + x.amount, 0)) },
+    { label: t("Bugun tushgan to'lovlar"), value: formatSom(-(paidToday._sum.amount ?? 0)) },
   ];
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Bugun</h1>
+      <h1 className="text-2xl font-semibold">{t("Bugun")}</h1>
       {requests > 0 && (
         <Link
           href="/panel/requests"
           className="mt-4 flex items-center justify-between rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm hover:border-accent"
         >
-          <span>
-            <span className="font-semibold">{requests} ta yangi do'kon</span> sizga ulanishni so'rayapti
-          </span>
-          <span className="font-medium text-accent-ink">Ko'rish →</span>
+          <span>{t("{n} ta yangi do'kon sizga ulanishni so'rayapti", { n: requests })}</span>
+          <span className="font-medium text-accent-ink">{t("Ko'rish →")}</span>
         </Link>
       )}
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -81,20 +84,20 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
 
       {overdueShops.length > 0 && (
         <section className="mt-6">
-          <h2 className="text-lg font-semibold">Muddati o'tgan qarzlar</h2>
+          <h2 className="text-lg font-semibold">{t("Muddati o'tgan qarzlar")}</h2>
           <table className="mt-2 w-full overflow-hidden rounded-xl border border-line bg-card text-sm">
             <thead className="bg-bg text-left text-hint">
               <tr>
-                <th className="px-3 py-2 font-medium">Do'kon</th>
-                <th className="px-3 py-2 font-medium">Kechikish</th>
-                <th className="px-3 py-2 text-right font-medium">Summa</th>
+                <th className="px-3 py-2 font-medium">{t("Do'kon")}</th>
+                <th className="px-3 py-2 font-medium">{t("Kechikish")}</th>
+                <th className="px-3 py-2 text-right font-medium">{t("Summa")}</th>
               </tr>
             </thead>
             <tbody>
               {overdueShops.map((x) => (
                 <tr key={x.shop} className="border-t border-line">
                   <td className="px-3 py-2">{x.shop}</td>
-                  <td className="px-3 py-2">{x.maxDays} kun</td>
+                  <td className="px-3 py-2">{t("{n} kun", { n: x.maxDays })}</td>
                   <td className="px-3 py-2 text-right">{formatSom(x.amount)}</td>
                 </tr>
               ))}
@@ -107,33 +110,33 @@ export default async function PanelHome({ searchParams }: { searchParams: Promis
 }
 
 // SMS kod bilan kirish; sinov rejimida demo xodimni tanlab kirish ham bor
-async function Login({ phone, error, devCode }: { phone?: string; error?: string; devCode?: string }) {
+async function Login({ t, phone, error, devCode }: { t: T; phone?: string; error?: string; devCode?: string }) {
   return (
     <div className="mx-auto grid max-w-md gap-6">
       <div className="grid gap-3">
-        <h1 className="text-xl font-semibold">Distribyutor paneli</h1>
+        <h1 className="text-xl font-semibold">{t("Distribyutor paneli")}</h1>
         {error && <p className="text-sm text-danger">{error}</p>}
         {!phone ? (
           <form action={requestPanelCode} className="grid gap-3">
             <input name="phone" placeholder="+998 90 123 45 67" inputMode="tel" className="field" />
-            <button className="btn btn-primary">Kod olish</button>
+            <button className="btn btn-primary">{t("Kod olish")}</button>
           </form>
         ) : (
           <form action={verifyPanelCode} className="grid gap-3">
             <input type="hidden" name="phone" value={phone} />
-            <p className="text-sm text-hint">{phone} raqami panel xodimiga tegishli bo'lsa, unga SMS kod yuborildi.</p>
-            {devCode && <p className="text-sm text-accent-ink">Sinov rejimi: kod {devCode}</p>}
-            <input name="code" inputMode="numeric" maxLength={6} placeholder="SMS kod" className="field" />
-            <button className="btn btn-primary">Kirish</button>
+            <p className="text-sm text-hint">{t("{phone} raqami panel xodimiga tegishli bo'lsa, unga SMS kod yuborildi.", { phone })}</p>
+            {devCode && <p className="text-sm text-accent-ink">{t("Sinov rejimi: kod {code}", { code: devCode })}</p>}
+            <input name="code" inputMode="numeric" maxLength={6} placeholder={t("SMS kod")} className="field" />
+            <button className="btn btn-primary">{t("Kirish")}</button>
           </form>
         )}
       </div>
-      {devAuthEnabled() && <DevLogin />}
+      {devAuthEnabled() && <DevLogin t={t} />}
     </div>
   );
 }
 
-async function DevLogin() {
+async function DevLogin({ t }: { t: T }) {
   const staff = await db.staff.findMany({
     where: { role: { in: ["ADMIN", "OPERATOR"] } },
     include: { distributor: true },
@@ -141,8 +144,8 @@ async function DevLogin() {
   });
   return (
     <div className="mx-auto max-w-md">
-      <h2 className="text-lg font-semibold">Sinov rejimi</h2>
-      <p className="mt-1 text-sm text-hint">Qaysi xodim nomidan kirasiz?</p>
+      <h2 className="text-lg font-semibold">{t("Sinov rejimi")}</h2>
+      <p className="mt-1 text-sm text-hint">{t("Qaysi xodim nomidan kirasiz?")}</p>
       <div className="mt-4 grid gap-2">
         {staff.map((s) => (
           <form key={s.id} action="/api/panel/login" method="post">
