@@ -37,6 +37,11 @@ export async function requireShopUser(req: Request) {
   const user = await db.shopUser.findUnique({ where: { id: payload.shopUserId }, include: { shop: true } });
   if (!user) throw new HttpError(401, "Foydalanuvchi topilmadi");
   if (!issuedAfter(payload, user)) throw new HttpError(401, closedMsg);
+  // Egasining tokeni faqat SMS kod bilan tasdiqlangan raqamga beriladi (kirish, ro'yxatdan o'tish yoki shundan yangilangan):
+  // u ilovadan foydalanayotgan bo'lsa, do'kon tasdiqlangan (masalan, tasdiq ustuni paydo bo'lishidan oldin kirgan ega)
+  if (user.role === "OWNER" && !user.shop.confirmedAt) {
+    await db.shop.updateMany({ where: { id: user.shopId, confirmedAt: null }, data: { confirmedAt: new Date() } });
+  }
   return user;
 }
 
@@ -83,13 +88,17 @@ export function bearerPayload(req: Request) {
   return bearer(req);
 }
 
-// Panel sahifalari: cookie
+// Web panelga kiradigan rollar. Agent va yetkazuvchi faqat mobil ilovada ishlaydi va o'z do'kon va buyurtmalarini ko'radi
+export const PANEL_ROLES: StaffRole[] = ["ADMIN", "OPERATOR", "ACCOUNTANT"];
+
+// Panel sahifalari: cookie. Rol ham tekshiriladi: ilovadagi token (u /api/auth/otp/verify javobida keladi) cookie'ga
+// qo'yilsa ham agent yoki yetkazuvchi panel orqali butun kompaniyaning buyurtma va qarzlarini ko'ra olmaydi
 export async function getStaff() {
   const store = await cookies();
   const payload = verifyToken(store.get(PANEL_COOKIE)?.value);
   if (!payload || payload.kind !== "staff") return null;
   const staff = await db.staff.findFirst({
-    where: { id: payload.staffId, active: true },
+    where: { id: payload.staffId, active: true, role: { in: PANEL_ROLES } },
     include: { distributor: true },
   });
   return staff && issuedAfter(payload, staff) ? staff : null;

@@ -15,13 +15,23 @@ const lastAdminMsg = "Siz yagona adminsiz: avval jamoadan boshqa xodimni admin q
 // Do'kon foydalanuvchisini o'chirish: o'z hisobini o'chirganda yoki egasi sotuvchini olib tashlaganda.
 // Har biri o'chirilgan odamning avatarini qaytaradi: tranzaksiyadan keyin fayl ombordan ham o'chiriladi
 export async function removeShopUser(tx: Tx, id: string) {
+  // Do'kon jamoasi o'zgarishlari navbat bilan: ega va sotuvchi bir vaqtda o'chsa ham do'kon egasiz qolmaydi
+  const { shopId } = await tx.shopUser.findUniqueOrThrow({ where: { id }, select: { shopId: true } });
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`shop-team:${shopId}`}))`;
   // Buyurtmalarda kim yuborgani bo'sh qoladi, yozuvning o'zi qoladi
   await tx.order.updateMany({ where: { createdByShopUserId: id }, data: { createdByShopUserId: null } });
   await tx.pushToken.deleteMany({ where: { ownerKind: "SHOP_USER", ownerId: id } });
   const user = await tx.shopUser.delete({ where: { id } });
+  const left = await tx.shopUser.findMany({ where: { shopId }, orderBy: { createdAt: "asc" }, select: { id: true, role: true } });
+  // Ega ketdi, sotuvchilar qoldi: eng oldin qo'shilgan sotuvchi ega bo'ladi. Aks holda takliflar, jamoa, do'kon surati va
+  // obuna to'lovi (faqat egaga ruxsat) hech kimga ochilmay, do'kon tekin davri tugagach buyurtma bera olmay qolardi
+  if (left.length > 0 && !left.some((u) => u.role === "OWNER")) {
+    await tx.shopUser.update({ where: { id: left[0].id }, data: { role: "OWNER" } });
+    await tx.auditLog.create({ data: { actor: "system", action: "shop.owner.promoted", entity: "ShopUser", entityId: left[0].id, after: { shopId, previousOwner: id } } });
+  }
   // Foydalanuvchisi qolmagan do'kon: buyurtma beradigan ham, taklifga javob beradigan ham yo'q. Distribyutor qarzni ko'radi
   // va to'lovni yozadi, lekin yangi buyurtma yozilmaydi (ulanish bloklanadi), javobsiz so'rov va takliflar o'chadi
-  if ((await tx.shopUser.count({ where: { shopId: user.shopId } })) === 0) {
+  if (left.length === 0) {
     await tx.shopLink.deleteMany({ where: { shopId: user.shopId, status: { in: ["REQUESTED", "INVITED"] } } });
     const blocked = await tx.shopLink.updateMany({ where: { shopId: user.shopId, status: "ACTIVE" }, data: { status: "BLOCKED" } });
     await tx.auditLog.create({ data: { actor: "system", action: "shop.orphaned", entity: "Shop", entityId: user.shopId, after: { blockedLinks: blocked.count } } });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { L, som } from "./i18n";
 import { addDays } from "./ledger";
+import { UNCONFIRMED_SHOP } from "./orders";
 import { MAX_PAYMENT } from "./payments";
 import { notifyShop } from "./push";
 import { HttpError } from "./session";
@@ -78,8 +79,13 @@ export const adjustInput = z.object({
 });
 
 export async function adjustLedger(staff: { id: string; distributorId: string }, input: z.infer<typeof adjustInput>) {
-  const link = await db.shopLink.findFirst({ where: { id: input.linkId, distributorId: staff.distributorId, status: { in: ["ACTIVE", "BLOCKED"] } } });
+  const link = await db.shopLink.findFirst({
+    where: { id: input.linkId, distributorId: staff.distributorId, status: { in: ["ACTIVE", "BLOCKED"] } },
+    include: { shop: { select: { confirmedAt: true } } },
+  });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
+  // Qarz qo'shish (eski qarz va h.k.) egasi raqamini tasdiqlagan do'kongagina: begona raqamga roziligisiz qarz yozilmaydi
+  if (input.amount > 0 && !link.shop.confirmedAt) throw new HttpError(403, UNCONFIRMED_SHOP);
   const clientKey = input.clientKey ? `${staff.id}:${input.clientKey}` : null;
   const already = async () => {
     const prev = clientKey ? await db.ledgerEntry.findUnique({ where: { clientKey } }) : null;

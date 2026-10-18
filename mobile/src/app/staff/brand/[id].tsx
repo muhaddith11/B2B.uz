@@ -9,6 +9,7 @@ import { confirm } from '@/lib/confirm';
 import { haptic } from '@/lib/haptics';
 import { t, tx } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
+import { newRequestKey } from '@/lib/net';
 import { agreementLabel, brandOrderLabel, type BrandForStaff } from '@/lib/staff-types';
 import { useLoad } from '@/lib/use-load';
 
@@ -24,6 +25,8 @@ export default function StaffBrand() {
   const [discount, setDiscount] = useState('');
   const [sellPrice, setSellPrice] = useState<Record<string, string>>({});
   const [orderQty, setOrderQty] = useState<Record<string, number>>({});
+  // Xarid buyurtmasi kaliti: javob yo'lda yo'qolib qayta yuborilsa, server buyurtmani ikki marta yaratmaydi. Miqdor o'zgarsa yangisi
+  const [orderKey, setOrderKey] = useState(newRequestKey);
 
   if (error && !data) return <ErrorState message={error} onRetry={retry} />;
   if (!data) return <Loading rows={3} />;
@@ -152,7 +155,13 @@ export default function StaffBrand() {
                 <T size="small" tone="hint">
                   {t('Xarid')}
                 </T>
-                <QtyStepper packs={Math.floor((orderQty[p.id] ?? 0) / p.packSize)} onChange={(n) => setOrderQty((q) => ({ ...q, [p.id]: Math.max(0, n) * p.packSize }))} />
+                <QtyStepper
+                  packs={Math.floor((orderQty[p.id] ?? 0) / p.packSize)}
+                  onChange={(n) => {
+                    setOrderQty((q) => ({ ...q, [p.id]: Math.max(0, n) * p.packSize }));
+                    setOrderKey(newRequestKey());
+                  }}
+                />
               </View>
             </View>
           )}
@@ -169,8 +178,10 @@ export default function StaffBrand() {
                 items: Object.entries(orderQty)
                   .filter(([, q]) => q > 0)
                   .map(([brandProductId, qty]) => ({ brandProductId, qty })),
+                clientKey: orderKey,
               });
               setOrderQty({});
+              setOrderKey(newRequestKey());
             })
           }
         />

@@ -23,7 +23,8 @@ const newShopInput = z.object({
 });
 
 // Agent do'konga borib, uni qo'shadi. Faqat platforma tasdiqlagan distribyutor:
-// - raqam tizimda yo'q: yangi do'kon yaratiladi va darhol ulanadi (egasi shu raqam bilan SMS orqali kiradi);
+// - raqam tizimda yo'q: yangi do'kon yaratiladi va darhol ulanadi (egasi shu raqam bilan SMS orqali kiradi). Egasi ilovaga
+//   kirib raqamini tasdiqlamaguncha do'kon faqat naqd buyurtma oladi: begona raqamga roziligisiz qarz yozilmaydi (orders.ts);
 // - raqamda do'kon bor: ulanish taklif bo'ladi, do'kon egasi ilovada tasdiqlaydi. Roziligisiz begona do'konning
 //   ma'lumotini ko'rib, uning nomidan buyurtma va qarz yozib bo'lmaydi. Do'kon nomi va manzili egasi kiritgandek qoladi;
 //   egasining bir nechta do'koni bo'lsa, nomi mos kelgani tanlanadi (taxmin qilinmaydi);
@@ -42,10 +43,20 @@ export const POST = handle(async (req: Request) => {
   const { link, invited, existingShop } = await db.$transaction(async (tx) => {
     // Bir raqamga ikki xodim (yoki do'konning o'zi) bir vaqtda ro'yxatdan o'tkazsa ham bitta do'kon yaratiladi
     await lockRegistration(tx, phone);
-    const owners = await tx.shopUser.findMany({ where: { phone, role: "OWNER" }, include: { shop: { select: { name: true } } }, orderBy: { createdAt: "asc" } });
+    const owners = await tx.shopUser.findMany({ where: { phone, role: "OWNER" }, include: { shop: { select: { name: true, demo: true } } }, orderBy: { createdAt: "asc" } });
+    // Demo (App Store tekshiruvi) va haqiqiy tashkilotlar aralashmaydi: demo distribyutor haqiqiy do'konni, haqiqiy distribyutor
+    // demo do'konni qo'sha olmaydi
+    if (owners.some((o) => o.shop.demo !== staff.distributor.demo)) throw new HttpError(400, "Bu raqamga do'kon qo'shib bo'lmaydi");
     if (owners.length === 0) {
       const shop = await tx.shop.create({
-        data: { name: input.shopName, address: input.address, district: input.district, ...trialPeriod(), users: { create: { name: input.ownerName, phone, role: "OWNER" } } },
+        data: {
+          name: input.shopName,
+          address: input.address,
+          district: input.district,
+          demo: staff.distributor.demo,
+          ...trialPeriod(),
+          users: { create: { name: input.ownerName, phone, role: "OWNER" } },
+        },
       });
       const created = await tx.shopLink.create({ data: { shopId: shop.id, distributorId, status: "ACTIVE", agentId, source: "AGENT" } });
       await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "link.created", entity: "ShopLink", entityId: created.id, after: { shopId: shop.id } } });

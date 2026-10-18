@@ -144,6 +144,9 @@ model Distributor {
   minOrder     Int               @default(0) // minimal buyurtma, so'm
   deliveryDays String[] // masalan: ["Du", "Chor", "Ju"]
   status       DistributorStatus @default(PENDING)
+  // App Store va Google Play tekshiruvchilari uchun demo tashkilot (prisma/review.ts): faqat demo tashkilotlar bilan
+  // ko'rishadi, haqiqiy do'kon va tovar egalarining qidiruvi va ro'yxatlarida ko'rinmaydi
+  demo         Boolean           @default(false)
   // Obuna: tashkilot (barcha xodimlari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
   trialEndsAt  DateTime
   paidUntil    DateTime
@@ -183,7 +186,7 @@ model Staff {
 }
 
 model Shop {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   address     String
   district    String
@@ -191,10 +194,15 @@ model Shop {
   lng         Float?
   inn         String?
   imageUrl    String? // do'kon surati yoki logosi: /api/files/logos/...
+  // Demo do'kon (prisma/review.ts): faqat demo distribyutorlar bilan ishlaydi
+  demo        Boolean   @default(false)
+  // Egasi o'z raqamini SMS kod bilan tasdiqlagan vaqt (o'zi ro'yxatdan o'tganda yoki ilovaga birinchi kirganda).
+  // Agent qo'shgan do'kon tasdiqlanmaguncha faqat naqd buyurtma oladi: egasining roziligisiz uning raqamiga qarz yozilmaydi
+  confirmedAt DateTime?
   // Obuna: do'kon (barcha sotuvchilari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
   trialEndsAt DateTime
   paidUntil   DateTime
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   users                ShopUser[]
   links                ShopLink[]
@@ -408,6 +416,8 @@ model Brand {
   description String?
   categories  String[]
   status      BrandStatus @default(PENDING)
+  // Demo tovar egasi (prisma/review.ts): faqat demo distribyutorlar bilan ko'rishadi
+  demo        Boolean     @default(false)
   createdAt   DateTime    @default(now())
 
   users      BrandUser[]
@@ -494,6 +504,8 @@ model BrandOrder {
   total         Int
   note          String?
   rejectReason  String?
+  // "staff:<id>:<ilova kaliti>": internet uzilib so'rov qayta yuborilsa, xarid buyurtmasi ikki marta yaratilmaydi
+  clientKey     String?          @unique
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -586,7 +598,10 @@ model OtpCode {
   expiresAt DateTime
   attempts  Int       @default(0)
   usedAt    DateTime?
-  ip        String? // so'rov kelgan IP: bitta manzildan ko'p raqamga kod so'rashni cheklash uchun
+  ip        String? // so'rov kelgan tarmoq (IPv4 manzil yoki IPv6 /64): bitta tarmoqdan ko'p raqamga kod so'rashni cheklash uchun
+  // Kod hisobi yo'q raqamga (ro'yxatdan o'tish uchun) yuborilgan: platformaning soatlik umumiy chegarasi faqat shularni sanaydi,
+  // shuning uchun tasodifiy raqamlarga kod so'rab chegarani to'ldirgan hujum mavjud foydalanuvchilarning kirishini to'xtatmaydi
+  newPhone  Boolean   @default(false)
   // Kod nima uchun: "login" (ilova, panel, obuna sahifasi), "admin" (platforma admini), "delete" (hisobni o'chirish).
   // Bir maqsadga so'ralgan kod boshqasida ishlamaydi
   purpose   String    @default("login")

@@ -1,4 +1,4 @@
-import type { AgreementSide, BrandOrderStatus } from "@prisma/client";
+import { Prisma, type AgreementSide, type BrandOrderStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
@@ -38,6 +38,8 @@ export async function proposeAgreement(side: AgreementSide, brandId: string, dis
   const [brand, dist] = await Promise.all([db.brand.findUnique({ where: { id: brandId } }), db.distributor.findUnique({ where: { id: distributorId } })]);
   if (!brand || brand.status !== "ACTIVE") throw new HttpError(side === "BRAND" ? 403 : 404, side === "BRAND" ? "Hisobingiz hali tasdiqlanmagan" : "Tovar egasi topilmadi");
   if (!dist || dist.status !== "ACTIVE") throw new HttpError(side === "DISTRIBUTOR" ? 403 : 404, side === "DISTRIBUTOR" ? "Hisobingiz hali tasdiqlanmagan" : "Distribyutor topilmadi");
+  // Demo (App Store tekshiruvi) va haqiqiy tashkilotlar bir-biriga taklif yubora olmaydi
+  if (brand.demo !== dist.demo) throw new HttpError(404, side === "BRAND" ? "Distribyutor topilmadi" : "Tovar egasi topilmadi");
 
   const agreement = await db.$transaction(async (tx) => {
     // Bir juftlik uchun takliflar navbat bilan: ikki marta bosilsa yoki ikkala tomon bir vaqtda taklif qilsa, ochiq kelishuv bitta bo'ladi
@@ -123,21 +125,31 @@ export async function importBrandProduct(staff: { id: string; distributorId: str
   const groups = await db.priceGroup.findMany({ where: { distributorId: staff.distributorId } });
   if (groups.length === 0) throw new HttpError(400, "Avval narx guruhi yarating");
 
-  const existing = await db.product.findFirst({ where: { distributorId: staff.distributorId, brandProductId: bp.id } });
   const fields = { name: bp.name, brand: a.brand.name, category: bp.category, unit: bp.unit, packSize: bp.packSize, barcode: bp.barcode, imageUrl: bp.imageUrl, minOrderPacks: input.minOrderPacks, active: true, inStock: true };
-  return db.$transaction(async (tx) => {
-    const product = existing
-      ? await tx.product.update({ where: { id: existing.id }, data: fields })
-      : await tx.product.create({ data: { ...fields, distributorId: staff.distributorId, sku: `BR-${bp.id.slice(-8).toUpperCase()}`, brandProductId: bp.id } });
-    for (const g of groups) {
-      await tx.price.upsert({
-        where: { productId_priceGroupId: { productId: product.id, priceGroupId: g.id } },
-        create: { productId: product.id, priceGroupId: g.id, price: input.price },
-        update: { price: input.price, validFrom: new Date() },
-      });
-    }
-    return product;
-  });
+  const sku = `BR-${bp.id.slice(-8).toUpperCase()}`;
+  try {
+    return await db.$transaction(async (tx) => {
+      // Bir tovar navbat bilan qo'shiladi: ikki marta bosilsa ikkinchi so'rov birinchisi yaratgan tovarni yangilaydi
+      // (aks holda ikkalasi ham "yo'q" deb ko'rib, ikkinchisi artikul takrori bilan server xatosiga tushardi)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`import:${staff.distributorId}:${bp.id}`}))`;
+      const existing = await tx.product.findFirst({ where: { distributorId: staff.distributorId, brandProductId: bp.id } });
+      const product = existing
+        ? await tx.product.update({ where: { id: existing.id }, data: fields })
+        : await tx.product.create({ data: { ...fields, distributorId: staff.distributorId, sku, brandProductId: bp.id } });
+      for (const g of groups) {
+        await tx.price.upsert({
+          where: { productId_priceGroupId: { productId: product.id, priceGroupId: g.id } },
+          create: { productId: product.id, priceGroupId: g.id, price: input.price },
+          update: { price: input.price, validFrom: new Date() },
+        });
+      }
+      return product;
+    });
+  } catch (e) {
+    // Katalogda shu artikulli boshqa (prays-listdan) tovar bor
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(409, L("Artikul {sku} allaqachon bor", { sku }));
+    throw e;
+  }
 }
 
 export const brandOrderInput = z.object({
@@ -147,9 +159,22 @@ export const brandOrderInput = z.object({
     .array(z.object({ brandProductId: z.string().min(1), qty: z.number().int().positive().max(MAX_LINE_QTY) }))
     .min(1)
     .max(200),
+  // Ilova har bir xarid buyurtmasi uchun bitta kalit yuboradi: internet uzilib so'rov qayta yuborilsa, buyurtma bir marta yaratiladi
+  clientKey: z.string().trim().min(8).max(64).optional(),
 });
 
 export async function createBrandOrder(staff: { id: string; distributorId: string }, input: z.infer<typeof brandOrderInput>) {
+  const clientKey = input.clientKey ? `staff:${staff.id}:${input.clientKey}` : null;
+  // Shu kalit bilan buyurtma allaqachon yaratilgan bo'lsa (javob yo'lda yo'qolib, ilova qayta yubordi), o'sha qaytadi
+  const repeated = async () => {
+    if (!clientKey) return null;
+    const prev = await db.brandOrder.findUnique({ where: { clientKey }, include: { distributor: true } });
+    if (prev && prev.agreementId !== input.agreementId) throw new HttpError(409, "Bu so'rov boshqa buyurtma uchun ishlatilgan");
+    return prev;
+  };
+  const prev = await repeated();
+  if (prev) return prev;
+
   const a = await activeAgreement(staff.distributorId, input.agreementId);
   const products = await db.brandProduct.findMany({ where: { id: { in: input.items.map((i) => i.brandProductId) }, brandId: a.brandId, active: true } });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -161,10 +186,20 @@ export async function createBrandOrder(staff: { id: string; distributorId: strin
   });
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
   assertOrderTotal(total);
-  const order = await db.brandOrder.create({
-    data: { agreementId: a.id, brandId: a.brandId, distributorId: staff.distributorId, total, note: input.note || null, items: { create: lines } },
-    include: { distributor: true },
-  });
+  let order;
+  try {
+    order = await db.brandOrder.create({
+      data: { agreementId: a.id, brandId: a.brandId, distributorId: staff.distributorId, total, note: input.note || null, clientKey, items: { create: lines } },
+      include: { distributor: true },
+    });
+  } catch (e) {
+    // Bir xil kalitli ikki so'rov bir vaqtda kelsa: ikkinchisi birinchisi yaratgan buyurtmani oladi
+    if (clientKey && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const first = await repeated();
+      if (first) return first;
+    }
+    throw e;
+  }
   notifyBrand(a.brandId, { title: L("Xarid buyurtmasi №{n}", { n: order.number }), body: L("{name}: {sum}", { name: order.distributor.name, sum: som(total) }), data: { url: `/brand/order/${order.id}` } });
   return order;
 }
@@ -216,7 +251,7 @@ export async function moveBrandOrder(side: AgreementSide, sideId: string, orderI
 export async function brandSales(brandId: string, days = 30) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const items = await db.orderItem.findMany({
-    where: { product: { brandProduct: { brandId } }, order: { status: "DELIVERED", updatedAt: { gte: since } } },
+    where: { product: { brandProduct: { brandId } }, order: { status: "DELIVERED", deliveredAt: { gte: since } } },
     select: { qty: true, deliveredQty: true, price: true, product: { select: { distributorId: true, distributor: { select: { name: true } }, brandProductId: true, name: true } } },
   });
   const byDist = new Map<string, { distributorId: string; name: string; qty: number; sum: number }>();

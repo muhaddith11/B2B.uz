@@ -82,6 +82,14 @@ export type CreditCheck =
   | { ok: false; reason: "OVERDUE_BLOCK"; overdueDays: number }
   | { ok: false; reason: "LIMIT_EXCEEDED"; available: number; exceedBy: number };
 
+// Muddati o'tgan qarz blockAfterDays dan oshgan bo'lsa (6-band), necha kun o'tgani: yangi qarz bo'ladigan buyurtma
+// (nasiya yoki o'tkazma) yopiq. Aks holda null
+export function overdueBlock(terms: { blockAfterDays: number | null }, entries: LedgerLike[], today: Date): number | null {
+  if (terms.blockAfterDays === null) return null;
+  const od = overdue(entries, today);
+  return od.amount > 0 && od.maxDays > terms.blockAfterDays ? od.maxDays : null;
+}
+
 // Nasiyali buyurtma faqat "joriy qarz + buyurtma summasi <= limit" bo'lsa o'tadi (2-band),
 // muddati o'tgan qarz blockAfterDays dan oshsa bloklanadi (6-band).
 export function checkCredit(
@@ -91,10 +99,8 @@ export function checkCredit(
   today: Date,
 ): CreditCheck {
   if (terms.creditLimit <= 0) return { ok: false, reason: "CREDIT_OFF" };
-  const od = overdue(entries, today);
-  if (terms.blockAfterDays !== null && od.amount > 0 && od.maxDays > terms.blockAfterDays) {
-    return { ok: false, reason: "OVERDUE_BLOCK", overdueDays: od.maxDays };
-  }
+  const overdueDays = overdueBlock(terms, entries, today);
+  if (overdueDays !== null) return { ok: false, reason: "OVERDUE_BLOCK", overdueDays };
   const current = balance(entries);
   const available = Math.max(0, terms.creditLimit - current);
   if (current + orderTotal > terms.creditLimit) {

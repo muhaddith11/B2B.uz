@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "./db";
 import { issueOtp, MAX_ATTEMPTS, MAX_PER_IP_HOUR, verifyOtp } from "./otp";
-import { phone, settle, uid } from "@/test/factory";
+import { makeShop, phone, settle, uid } from "@/test/factory";
 
 const ip = () => `10.${uid()}`;
 
@@ -57,11 +57,20 @@ describe("SMS kod", () => {
     expect(await db.otpCode.count({ where: { ip: shared } })).toBe(MAX_PER_IP_HOUR);
   });
 
-  it("butun platforma bo'yicha soatlik chegara", async () => {
-    const lastHour = await db.otpCode.count({ where: { createdAt: { gt: new Date(Date.now() - 3600_000) } } });
+  it("butun platforma bo'yicha soatlik chegara (hisobi yo'q raqamlarga)", async () => {
+    const lastHour = await db.otpCode.count({ where: { newPhone: true, createdAt: { gt: new Date(Date.now() - 3600_000) } } });
     process.env.OTP_HOURLY_LIMIT = String(lastHour + 2);
     const r = await settle([1, 2, 3, 4].map(() => issueOtp(phone(), ip())));
     expect(r.ok).toHaveLength(2);
     expect(r.errors.every((e) => e.status === 429)).toBe(true);
+  });
+
+  it("umumiy chegara to'lgan bo'lsa ham hisobi bor raqam kod oladi (hujum foydalanuvchilarni kirishdan to'xtatmaydi)", async () => {
+    const shop = await makeShop();
+    const lastHour = await db.otpCode.count({ where: { newPhone: true, createdAt: { gt: new Date(Date.now() - 3600_000) } } });
+    process.env.OTP_HOURLY_LIMIT = String(lastHour);
+    await expect(issueOtp(phone(), ip())).rejects.toMatchObject({ status: 429 });
+    await expect(issueOtp(shop.owner.phone, ip())).resolves.toMatch(/^\d{6}$/);
+    expect((await db.otpCode.findFirstOrThrow({ where: { phone: shop.owner.phone } })).newPhone).toBe(false);
   });
 });

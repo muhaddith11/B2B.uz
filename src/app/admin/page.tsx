@@ -35,7 +35,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     }),
     db.brand.findMany({ include: { users: { take: 1 }, _count: { select: { products: true, agreements: { where: { status: "ACTIVE" } } } } }, orderBy: [{ status: "asc" }, { createdAt: "desc" }] }),
     db.shop.count(),
-    db.order.aggregate({ where: { status: "DELIVERED", updatedAt: { gte: since } }, _count: true, _sum: { deliveredTotal: true } }),
+    db.order.aggregate({ where: { status: "DELIVERED", deliveredAt: { gte: since } }, _count: true, _sum: { deliveredTotal: true } }),
     loadSubscriptions(q),
     storageUsage(),
   ]);

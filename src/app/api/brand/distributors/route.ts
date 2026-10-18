@@ -13,6 +13,8 @@ export const GET = handle(async (req: Request) => {
   const distributors = await db.distributor.findMany({
     where: {
       status: "ACTIVE",
+      // Demo (App Store tekshiruvi) va haqiqiy tashkilotlar bir-birini ko'rmaydi
+      demo: user.brand.demo,
       ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
       ...(category ? { categories: { has: category } } : {}),
       ...(district ? { districts: { has: district } } : {}),
@@ -24,7 +26,7 @@ export const GET = handle(async (req: Request) => {
     orderBy: { name: "asc" },
     take: 200,
   });
-  const all = await db.distributor.findMany({ where: { status: "ACTIVE" }, select: { categories: true, districts: true } });
+  const all = await db.distributor.findMany({ where: { status: "ACTIVE", demo: user.brand.demo }, select: { categories: true, districts: true } });
   const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b));
   return Response.json({
     categories: uniq(all.flatMap((d) => d.categories)),

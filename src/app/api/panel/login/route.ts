@@ -5,7 +5,9 @@ import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Paneldan chiqish va sinov rejimida xodim tanlab kirish (haqiqiy kirish SMS kod bilan: login-actions.ts)
 export async function POST(req: Request) {
-  const form = await req.formData();
+  // Forma bo'lmagan so'rovda formData() xato tashlaydi: server xatosi (500) o'rniga 400
+  const form = await req.formData().catch(() => null);
+  if (!form) return new Response("So'rov noto'g'ri", { status: 400 });
   const store = await cookies();
 
   if (form.get("action") === "logout") {

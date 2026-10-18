@@ -12,6 +12,8 @@ export const GET = handle(async (req: Request) => {
   const brands = await db.brand.findMany({
     where: {
       status: "ACTIVE",
+      // Demo (App Store tekshiruvi) va haqiqiy tashkilotlar bir-birini ko'rmaydi
+      demo: staff.distributor.demo,
       ...(category ? { categories: { has: category } } : {}),
       ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { products: { some: { active: true, name: { contains: q, mode: "insensitive" } } } }] } : {}),
     },
@@ -22,7 +24,7 @@ export const GET = handle(async (req: Request) => {
     orderBy: { name: "asc" },
     take: 200,
   });
-  const all = await db.brand.findMany({ where: { status: "ACTIVE" }, select: { categories: true } });
+  const all = await db.brand.findMany({ where: { status: "ACTIVE", demo: staff.distributor.demo }, select: { categories: true } });
   return Response.json({
     categories: [...new Set(all.flatMap((b) => b.categories))].sort((a, b) => a.localeCompare(b)),
     brands: brands.map((b) => {

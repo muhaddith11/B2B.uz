@@ -15,9 +15,9 @@ const registerInput = z.object({
   phone: z.string().optional(),
 });
 
-// Ro'yxatdan o'tish formasi uchun: distribyutorlar yetkazadigan hududlar
+// Ro'yxatdan o'tish formasi uchun: distribyutorlar yetkazadigan hududlar (demo distribyutornikisiz)
 export async function GET() {
-  const rows = await db.distributor.findMany({ where: { status: "ACTIVE" }, select: { districts: true } });
+  const rows = await db.distributor.findMany({ where: { status: "ACTIVE", demo: false }, select: { districts: true } });
   return Response.json({ districts: [...new Set(rows.flatMap((r) => r.districts))].sort((a, b) => a.localeCompare(b)) });
 }
 
@@ -53,7 +53,8 @@ export const POST = handle(async (req: Request) => {
           name: ownerName,
           phone,
           role: "OWNER",
-          shop: { create: { name: shopName, address, district, ...trialPeriod() } },
+          // Raqam SMS kod bilan tasdiqlangan: do'kon egasining o'zi ro'yxatdan o'tmoqda
+          shop: { create: { name: shopName, address, district, confirmedAt: new Date(), ...trialPeriod() } },
         },
       })
     );

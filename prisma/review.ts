@@ -3,8 +3,10 @@
 // Kod SMS'siz, har doim REVIEW_CODE (src/lib/otp.ts). Ishlatish: REVIEW_PHONE va REVIEW_CODE ni .env ga yozib, keyin
 //   npm run db:review
 // Vercel'da har deployda `--if-configured` bilan ishlaydi (vercel-build): ikkalasi yozilmagan bo'lsa jim o'tadi,
-// xato bo'lsa deployni to'xtatmaydi. Qayta ishga tushirilsa hech narsa o'zgarmaydi (bu raqamda biror hisob bo'lsa to'xtaydi).
-// Boshqa ma'lumotlarga tegmaydi.
+// xato bo'lsa deployni to'xtatmaydi. Qayta ishga tushirilsa yangi hisob yaratilmaydi (bu raqamda biror hisob bo'lsa).
+// Demo tashkilotlar `demo` belgisi bilan: haqiqiy do'kon, distribyutor va tovar egalari ularni ko'rmaydi va ular bilan
+// ulana olmaydi (tekshiruvchi kodi hammaga ma'lum, u haqiqiy foydalanuvchilarning ma'lumotini ko'rmasligi kerak).
+// Boshqa ma'lumotlarga faqat demo va haqiqiy tashkilot orasida qolgan ulanish va kelishuvlar uchun tegadi (separate()).
 import { PrismaClient } from "@prisma/client";
 import { normalizePhone } from "../src/lib/phone";
 import { trialPeriod } from "../src/lib/subscription";
@@ -13,6 +15,39 @@ const db = new PrismaClient();
 const ifConfigured = process.argv.includes("--if-configured");
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
+const NAMES = { distributor: "Captar Demo Distribyutor", shop: "Captar Demo Do'kon", brand: "Captar Demo Brend" };
+
+// Oldingi versiya `demo` belgisisiz yaratgan demo tashkilotlarni belgilaydi (shu raqamga bog'langan va demo nomli)
+async function markExisting(phone: string) {
+  const [d, s, b] = await Promise.all([
+    db.distributor.updateMany({ where: { name: NAMES.distributor, demo: false, staff: { some: { phone } } }, data: { demo: true } }),
+    db.shop.updateMany({ where: { name: NAMES.shop, demo: false, users: { some: { phone } } }, data: { demo: true } }),
+    db.brand.updateMany({ where: { name: NAMES.brand, demo: false, users: { some: { phone } } }, data: { demo: true } }),
+  ]);
+  if (d.count + s.count + b.count > 0) console.log(`Demo belgisi qo'yildi: ${d.count} distribyutor, ${s.count} do'kon, ${b.count} tovar egasi.`);
+}
+
+// Demo va haqiqiy tashkilot orasida (belgi qo'yilishidan oldin) paydo bo'lgan aloqalar: kutilayotgan so'rov va takliflar
+// o'chiriladi (qarz yozuvi bo'lmasa), faol ulanish bloklanadi (qarz ko'rinib turadi), kelishuvlar yopiladi
+async function separate() {
+  const now = new Date();
+  await db.$transaction(async (tx) => {
+    const links = { OR: [{ distributor: { demo: true }, shop: { demo: false } }, { distributor: { demo: false }, shop: { demo: true } }] };
+    const removed = await tx.shopLink.deleteMany({
+      where: { ...links, status: { in: ["REQUESTED", "INVITED"] }, ledger: { none: {} }, orders: { none: {} }, onlinePayments: { none: {} } },
+    });
+    const blocked = await tx.shopLink.updateMany({ where: { ...links, status: "ACTIVE" }, data: { status: "BLOCKED" } });
+    const agreements = { OR: [{ brand: { demo: true }, distributor: { demo: false } }, { brand: { demo: false }, distributor: { demo: true } }] };
+    const rejected = await tx.agreement.updateMany({ where: { ...agreements, status: "PROPOSED" }, data: { status: "REJECTED", respondedAt: now } });
+    const active = await tx.agreement.findMany({ where: { ...agreements, status: "ACTIVE" } });
+    for (const a of active) {
+      await tx.agreement.update({ where: { id: a.id }, data: { status: "ENDED", endedAt: now } });
+      await tx.product.updateMany({ where: { distributorId: a.distributorId, brandProduct: { brandId: a.brandId } }, data: { active: false } });
+    }
+    const total = removed.count + blocked.count + rejected.count + active.length;
+    if (total > 0) console.log(`Demo va haqiqiy tashkilotlar ajratildi: ${removed.count} so'rov o'chirildi, ${blocked.count} ulanish bloklandi, ${rejected.count + active.length} kelishuv yopildi.`);
+  }, { maxWait: 20_000, timeout: 60_000 });
+}
 
 const PRODUCTS: [sku: string, name: string, brand: string, category: string, packSize: number, price: number][] = [
   ["D-001", "Gazlangan ichimlik, limon, 1,5 l", "Demo Salqin", "Ichimliklar", 6, 9_800],
@@ -40,14 +75,17 @@ async function main() {
     (await db.staff.findFirst({ where: { phone } })) ??
     (await db.brandUser.findFirst({ where: { phone } }));
   if (existing) {
-    console.log(`${phone} raqamida hisob allaqachon bor. Demo hisoblar o'zgartirilmadi.`);
+    await markExisting(phone);
+    await separate();
+    console.log(`${phone} raqamida hisob allaqachon bor. Yangi demo hisob yaratilmadi.`);
     return;
   }
 
   await db.$transaction(async (tx) => {
     const dist = await tx.distributor.create({
       data: {
-        name: "Captar Demo Distribyutor",
+        name: NAMES.distributor,
+        demo: true,
         districts: ["Toshkent shahri"],
         categories: ["Ichimliklar", "Sut mahsulotlari", "Shirinliklar"],
         minOrder: 200_000,
@@ -72,9 +110,11 @@ async function main() {
 
     const shop = await tx.shop.create({
       data: {
-        name: "Captar Demo Do'kon",
+        name: NAMES.shop,
         address: "Toshkent shahri, Amir Temur ko'chasi, 1",
         district: "Toshkent shahri",
+        demo: true,
+        confirmedAt: new Date(),
         ...trialPeriod(),
         users: { create: { name: "Demo do'konchi", phone, role: "OWNER" } },
       },
@@ -133,7 +173,8 @@ async function main() {
 
     const brand = await tx.brand.create({
       data: {
-        name: "Captar Demo Brend",
+        name: NAMES.brand,
+        demo: true,
         categories: ["Sharbat"],
         description: "Demo tovar egasi (ishlab chiqaruvchi)",
         status: "ACTIVE",
