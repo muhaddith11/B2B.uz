@@ -40,14 +40,15 @@ Bitta ilovada uch tomon: do'konchi bir savatda bir nechta distribyutordan buyurt
 
 - Bozor: O'zbekiston. Pul birligi: so'm.
 - Kirish faqat telefon raqami va SMS kod bilan (TextUP). Bitta raqam bir nechta hisobga bog'lanishi mumkin, unda ilova tanlatadi.
+- Agent qo'shgan yangi do'kon: egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma (2026-10-18): uning roziligisiz nomiga nasiya yoki qarz yozilmaydi.
 - To'lov: naqd, o'tkazma (karta yoki hisobga o'tkazib chek rasmini yuborish), nasiya, Payme va Click orqali onlayn.
 - Har bir muhim hodisada (yangi buyurtma, holat o'zgarishi, to'lov, so'rov, kelishuv) tegishli odamga push bildirishnoma boradi.
 - Yonidagi yuzalar: sayt (`/`), web distribyutor paneli (`/panel`, Excel prays-list), platforma admini (`/admin`), obuna to'lovi (`/obuna`). Telegram Mini App 2026-10-14 da olib tashlandi (foydalanuvchi qarori): do'konlar faqat mobil ilovadan foydalanadi.
 
 ## Capabilities and Constraints
 
-- Stek: Expo SDK 57, Expo Router, TypeScript (`mobile/`); server Next.js (`/api/*`).
-- **Tillar: o'zbek (lotin) va rus**, foydalanuvchi tanlaydi (foydalanuvchi qarori, 2026-10-13). Ilova, server xato matnlari, push bildirishnomalar, sayt va maxfiylik siyosati ikki tilda (2026-10-14). Distribyutor paneli va admin hozircha faqat o'zbekcha.
+- Stek: Expo SDK 58, Expo Router, TypeScript (`mobile/`); server Next.js (`/api/*`).
+- **Tillar: o'zbek (lotin) va rus**, foydalanuvchi tanlaydi (foydalanuvchi qarori, 2026-10-13). Ilova, server xato matnlari, push bildirishnomalar, sayt va maxfiylik siyosati ikki tilda (2026-10-14). Distribyutor paneli ham ikki tilda (2026-10-18); platforma admini (ichki) o'zbekcha.
 - Do'konlarga chiqish uchun majburiy: maxfiylik siyosati (`/maxfiylik`), ilova ichida va saytda hisobni o'chirish (bajarilgan).
 - App Store ko'rib chiqishi uchun demo hisob: `REVIEW_PHONE` / `REVIEW_CODE`; production'da har deployda avtomatik yaratiladi (2026-10-15 yaratilgan), App Store Connect'ga yozish qoldi.
 - Ilova identifikatori `uz.captar.app`; EAS loyihasi `@muhaddith/captar`.

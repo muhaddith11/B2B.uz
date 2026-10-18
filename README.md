@@ -9,7 +9,7 @@ Ikki qism:
 | Mobil ilova (Android, iOS) | Do'kon egasi, distribyutor xodimlari, tovar egasi | `mobile/` |
 | Server va web | API, sayt, distribyutor paneli (Excel prays-list), platforma admini, obuna to'lovi | shu papka (Next.js) |
 
-Ilova ikki tilda: o'zbek (lotin) va rus. Birinchi ochilishda telefon tili olinadi, keyin profil pastidan almashtiriladi. Server xato matnlari va push bildirishnomalar ham tanlangan tilda boradi (ilova `x-lang` sarlavhasini yuboradi, tarjimalar `src/lib/i18n-ru.ts` va `mobile/src/lib/i18n-ru.ts` da). Sayt, maxfiylik siyosati va hisobni o'chirish sahifasi ikki tilda (`?lang=ru`); distribyutor paneli va admin hozircha o'zbekcha.
+Ilova ikki tilda: o'zbek (lotin) va rus. Birinchi ochilishda telefon tili olinadi, keyin profil pastidan almashtiriladi. Server xato matnlari va push bildirishnomalar ham tanlangan tilda boradi (ilova `x-lang` sarlavhasini yuboradi, tarjimalar `src/lib/i18n-ru.ts` va `mobile/src/lib/i18n-ru.ts` da). Sayt, maxfiylik siyosati va hisobni o'chirish sahifasi ikki tilda (`?lang=ru`); distribyutor paneli ham ikki tilda (yuqorida O'zbekcha / Русский, tarjimalar `src/app/panel/texts.ts`); platforma admini o'zbekcha.
 
 ## Kim nima qila oladi
 
@@ -25,7 +25,7 @@ Ilova ikki tilda: o'zbek (lotin) va rus. Birinchi ochilishda telefon tili olinad
 - Admin: hammasi, shu jumladan nasiya shartlari, xodimlar, to'lov usullari (karta, hisob, Payme, Click), kompaniya sozlamalari, tovar egalari bilan kelishuv
 - Operator: buyurtmalarni qabul qilish, rad etish, yetkazuvchiga biriktirib yo'lga chiqarish, tovar, narx va tovar rasmlari (telefon kamerasidan)
 - Hisobchi: chek bilan kelgan to'lovlarni tasdiqlash yoki rad etish
-- Agent: yangi do'kon qo'shish (raqamda do'kon bo'lsa, egasiga taklif boradi), do'kon nomidan buyurtma olish (darhol qabul qilingan bo'ladi), naqd pul qabul qilish
+- Agent: yangi do'kon qo'shish (raqamda do'kon bo'lsa, egasiga taklif boradi), do'kon nomidan buyurtma olish (darhol qabul qilingan bo'ladi), naqd pul qabul qilish. Agent yaratgan yangi do'konga egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi: uning roziligisiz nomiga nasiya yoki qarz yozilmaydi
 - Platforma tasdiqlamaguncha distribyutor katalog, jamoa va sozlamalarni tayyorlaydi, lekin do'kon qo'sha olmaydi va buyurtma ololmaydi
 - Yetkazuvchi: yo'ldagi buyurtmalar, qisman topshirish, naqd olish
 
@@ -95,7 +95,9 @@ Platforma kassalari Vercel env'da: `PLATFORM_PAYME_MERCHANT_ID`, `PLATFORM_PAYME
 
 ## Vercel
 
-Server Vercel'da: `muhaddith11-7435s-projects/b2b-uz` loyihasi, GitHub `main` branchiga har push avtomatik deploy qilinadi. Baza: Vercel Neon (Frankfurt), migratsiyalar har deployda qo'llanadi (`vercel-build`). Cheklar bazada saqlanadi (Blob ombori ulansa, avtomatik Blob'ga o'tadi).
+Server Vercel'da: `muhaddith11-7435s-projects/b2b-uz` loyihasi, GitHub `main` branchiga birlashtirilgan har o'zgarish avtomatik deploy qilinadi (ish tartibi: [CONTRIBUTING.md](CONTRIBUTING.md)). Baza: Vercel Neon (Frankfurt). Build skripti (`scripts/vercel-build.ts`) muhitga qarab ishlaydi: production'da avval sozlamalarni tekshiradi (xato bo'lsa deploy to'xtaydi, yetishmagani ⚠️ bilan logda), keyin migratsiyalarni qo'llaydi; preview'da migratsiya faqat `MIGRATE_ON_BUILD=1` bo'lsa (preview'ga alohida Neon branch ulanganda). Cheklar va rasmlar Blob ombori ulanmaguncha bazada saqlanadi; ulangach yangilari Blob'ga yoziladi, eskilarini `npm run files:to-blob` ko'chiradi.
+
+Ishlatish va hodisalar: [docs/RUNBOOK.md](docs/RUNBOOK.md). Arxitektura: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Xavfsizlik va kalitlarni almashtirish: [docs/SECURITY.md](docs/SECURITY.md).
 
 Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiritadigan o'zgaruvchilar (keyin Redeploy):
 
@@ -109,6 +111,12 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `DATABASE_LIMIT_MB` | Ixtiyoriy: baza tarifining hajm chegarasi, MB (standart 512). `/admin` 80% dan oshganda ogohlantiradi |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
 | `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati sahifasidagi murojaat manzili (App Store va Google Play uchun) |
+| `PAYMENT_KEYS_SECRET` | Payme/Click kalitlarini shifrlash kaliti (kamida 32 belgi). Yozgach bir marta `npm run keys:reencrypt` ([docs/SECURITY.md](docs/SECURITY.md)) |
+| `SESSION_SECRET_PREVIOUS` | Faqat `SESSION_SECRET` ni almashtirish davrida: eski qiymat (foydalanuvchilar chiqib ketmaydi) |
+| `CRON_SECRET` | Kunlik tozalash (eski SMS kodlar, tashlandiq fayllar) uchun: Vercel Cron shu kalit bilan chaqiradi |
+| `SENTRY_DSN` | Xatolar Sentry'ga (server va mobil ilova xatolari) |
+| `ALERT_TELEGRAM_BOT_TOKEN`, `ALERT_TELEGRAM_CHAT_ID` | Jiddiy xato (to'lov tizimi so'rovi yiqildi, baza ishlamayapti, SMS chegarasi to'ldi) haqida Telegram guruhiga darhol xabar |
+| `MIGRATE_ON_BUILD` | Faqat Preview muhitiga, preview'larga alohida Neon branch ulangan bo'lsa: `1` |
 
 `SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
 
@@ -154,8 +162,11 @@ npm run db:review
 
 ## Buyruqlar
 
-- `npm test`: unit testlar (bazasiz, sof funksiyalar)
+- `npm test`: unit testlar (bazasiz, sof funksiyalar va mobil ilova yordamchilari)
 - `npm run test:int`: integratsiya testlari (haqiqiy PostgreSQL'da, pastga qarang)
+- `npm run test:coverage`: unit va integratsiya testlari qamrov bilan (CI chegarasi `vitest.config.mts` da)
+- `npm run keys:reencrypt`: to'lov kalitlarini `PAYMENT_KEYS_SECRET` ga o'tkazish
+- `npm run files:to-blob`: bazadagi fayllarni Vercel Blob'ga ko'chirish
 - `npm run typecheck`: TypeScript tekshiruvi
 - `npm run lint`: ESLint (ogohlantirish ham xato hisoblanadi)
 - `npm run db:studio`: bazani brauzerda ko'rish
@@ -171,4 +182,11 @@ Lokal sozlash (bir marta): PostgreSQL'da `savdo_test` bazasini yarating, `.env` 
 DATABASE_URL="$TEST_DATABASE_URL" DATABASE_URL_UNPOOLED="$TEST_DATABASE_URL" npx prisma migrate deploy
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) har push va pull request'da: server uchun typecheck, lint, unit va integratsiya testlari (vaqtinchalik PostgreSQL bilan), `npm audit`, `next build`; mobil ilova uchun typecheck va lint. Biror qadam o'tmasa, commit qizil belgi oladi.
+GitHub Actions (`.github/workflows/ci.yml`) har push va pull request'da: server uchun migratsiyalar sxemaga mosligi, typecheck, lint, unit va integratsiya testlari qamrov chegarasi bilan (vaqtinchalik PostgreSQL), `npm audit`, `next build`; mobil ilova uchun typecheck, lint, Expo paketlari SDK'ga mosligi va kritik zaifliklar. Biror qadam o'tmasa, PR birlashtirilmaydi. Kutubxonalar yangilanishi: Dependabot (har hafta PR).
+
+## Monitoring
+
+- Har kutilmagan xato bitta qatorli JSON log sifatida (Vercel → Logs, `level`/`area` bo'yicha qidiriladi); `SENTRY_DSN` bo'lsa Sentry'ga ham.
+- Mobil ilova xatolari (ekran yiqilsa yoki JS xatosi) `/api/client-errors` orqali shu yerga keladi; foydalanuvchi oq ekran o'rniga "Qayta urinish" ni ko'radi.
+- Jiddiy hodisalar (to'lov tizimi so'rovi yiqildi, baza ishlamayapti, SMS chegarasi to'ldi) Telegram guruhiga darhol.
+- `/api/health`: tashqi uptime xizmati uchun (server va baza holati, versiya).

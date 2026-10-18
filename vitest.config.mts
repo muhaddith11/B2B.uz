@@ -9,6 +9,14 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   test: {
+    // npm run test:coverage: unit va integratsiya testlari birga. Chegara CI'da: qamrov pasaysa commit qizil bo'ladi
+    coverage: {
+      provider: "v8",
+      include: ["src/lib/**/*.ts", "src/app/api/**/*.ts"],
+      exclude: ["src/**/*.test.ts", "src/test/**"],
+      reporter: ["text-summary", "json-summary"],
+      thresholds: { lines: 80, functions: 78, branches: 70, statements: 78 },
+    },
     projects: [
       {
         extends: true,

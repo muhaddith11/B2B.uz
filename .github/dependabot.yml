@@ -1,0 +1,35 @@
+# Kutubxonalar yangilanishi: har hafta pull request (CI tekshiradi). Mayda yangilanishlar bitta PR'ga guruhlanadi,
+# katta (major) yangilanish alohida: uni o'qib, qo'lda birlashtirasiz. Mobil ilovada Expo SDK paketlari SDK bilan birga
+# yangilanadi (npx expo install --fix), shuning uchun ular bu yerda e'tiborsiz qoldirilgan.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      server-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "expo*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+    groups:
+      mobile-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
