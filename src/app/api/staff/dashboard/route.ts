@@ -16,7 +16,8 @@ export const GET = handle(async (req: Request) => {
     db.order.aggregate({ where: { ...scope, status: "SENT" }, _count: true, _sum: { total: true } }),
     db.order.count({ where: { ...scope, status: "ACCEPTED" } }),
     db.order.count({ where: { ...scope, status: "IN_DELIVERY" } }),
-    db.order.aggregate({ where: { ...scope, status: "DELIVERED", updatedAt: { gte: startOfDay } }, _count: true, _sum: { deliveredTotal: true } }),
+    // Topshirilgan vaqt bo'yicha: updatedAt keyingi har qanday o'zgarishda (masalan, sotuvchi hisobi o'chirilganda) yangilanadi
+    db.order.aggregate({ where: { ...scope, status: "DELIVERED", deliveredAt: { gte: startOfDay } }, _count: true, _sum: { deliveredTotal: true } }),
     db.shopLink.findMany({
       where: { ...linkScope(staff), status: "ACTIVE" },
       select: { id: true },

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { otpSmsText, reviewCodeFor, sendAllowed } from "./otp";
+import { clientIp, ipKey, otpSmsText, reviewCodeFor, sendAllowed } from "./otp";
 import { normalizePhone } from "./phone";
 
 describe("normalizePhone", () => {
@@ -61,5 +61,26 @@ describe("otpSmsText", () => {
     vi.stubEnv("OTP_DELETE_SMS_TEXT", "Captar: hisobni o'chirish kodi {code}");
     expect(otpSmsText("123456", "delete")).toBe("Captar: hisobni o'chirish kodi 123456");
     expect(otpSmsText("123456", "login")).toContain("kirish kodi 123456");
+  });
+});
+
+describe("ipKey", () => {
+  it("IPv4 o'zgarmaydi, IPv6 /64 tarmoqqa keltiriladi", () => {
+    expect(ipKey("203.0.113.7")).toBe("203.0.113.7");
+    expect(ipKey("::ffff:203.0.113.7")).toBe("203.0.113.7");
+    expect(ipKey("2001:db8:aa:bb:1:2:3:4")).toBe("2001:db8:aa:bb::/64");
+    // Bir abonentning /64 tarmog'idagi har xil manzillar bitta kalit: manzilni almashtirib cheklovni aylanib o'tib bo'lmaydi
+    expect(ipKey("2001:db8:aa:bb::9")).toBe("2001:db8:aa:bb::/64");
+    expect(ipKey("2001:0db8:00aa:00bb:ffff::1")).toBe("2001:db8:aa:bb::/64");
+    expect(ipKey("2001:db8::1")).toBe("2001:db8:0:0::/64");
+    expect(ipKey("[2001:db8:aa:bb::1]")).toBe("2001:db8:aa:bb::/64");
+    expect(ipKey("fe80::1%eth0")).toBe("fe80:0:0:0::/64");
+    expect(ipKey("64:ff9b::203.0.113.7")).toBe("64:ff9b:0:0::/64");
+  });
+
+  it("so'rov sarlavhasidan oladi", () => {
+    expect(clientIp(new Headers({ "x-real-ip": "2001:db8:aa:bb::5" }))).toBe("2001:db8:aa:bb::/64");
+    expect(clientIp(new Headers({ "x-forwarded-for": "198.51.100.1, 10.0.0.1" }))).toBe("198.51.100.1");
+    expect(clientIp(new Headers())).toBeNull();
   });
 });

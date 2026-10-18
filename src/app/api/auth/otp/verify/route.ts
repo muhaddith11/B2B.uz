@@ -23,6 +23,8 @@ export const POST = handle(async (req: Request) => {
 
   await verifyOtp(phone, body.code);
   const lang = langOf(req);
+  // Raqam egasi kod bilan kirdi: agent qo'shgan do'konlari endi tasdiqlangan (nasiya, o'tkazma va qarz yozish ochiladi)
+  await db.shop.updateMany({ where: { confirmedAt: null, users: { some: { phone, role: "OWNER" } } }, data: { confirmedAt: new Date() } });
 
   const exp = Math.floor(Date.now() / 1000) + 30 * DAY_SECONDS;
   const [shopUsers, staff, brandUsers] = await Promise.all([

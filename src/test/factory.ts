@@ -41,7 +41,15 @@ export async function makeStaff(distributorId: string, role: StaffRole) {
 
 export async function makeShop(data: Partial<Prisma.ShopCreateInput> = {}) {
   const shop = await db.shop.create({
-    data: { name: `Do'kon ${uid()}`, address: "Bunyodkor ko'chasi 1", district: "Chilonzor", ...trialPeriod(), ...data, users: { create: { name: "Ega", phone: phone(), role: "OWNER" } } },
+    data: {
+      name: `Do'kon ${uid()}`,
+      address: "Bunyodkor ko'chasi 1",
+      district: "Chilonzor",
+      confirmedAt: new Date(),
+      ...trialPeriod(),
+      ...data,
+      users: { create: { name: "Ega", phone: phone(), role: "OWNER" } },
+    },
     include: { users: true },
   });
   const owner = shop.users[0];

@@ -68,7 +68,7 @@ describe("ulanish so'rovi", () => {
     const serving = await makeDistributor({ name: `${tag} C` });
     await makeLink(shop.id, linked.id);
     await requestLink(shop.id, requested.id);
-    const list = await discoverDistributors({ id: shop.id, district: shop.district }, { q: tag, category: "" });
+    const list = await discoverDistributors(shop, { q: tag, category: "" });
     expect(list.map((d) => d.id)).toEqual([serving.id, requested.id]);
     expect(list.map((d) => d.requested)).toEqual([false, true]);
   });
@@ -78,7 +78,7 @@ describe("ulanish so'rovi", () => {
     const shop = await makeShop();
     await Promise.all(Array.from({ length: 101 }, (_, i) => makeDistributor({ name: `${tag} A${String(i).padStart(3, "0")}`, districts: ["Yunusobod"] })));
     const serving = await makeDistributor({ name: `${tag} Z` });
-    const list = await discoverDistributors({ id: shop.id, district: shop.district }, { q: tag, category: "" });
+    const list = await discoverDistributors(shop, { q: tag, category: "" });
     expect(list).toHaveLength(100);
     expect(list[0].id).toBe(serving.id);
   });

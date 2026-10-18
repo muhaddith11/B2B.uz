@@ -83,13 +83,17 @@ export function bearerPayload(req: Request) {
   return bearer(req);
 }
 
-// Panel sahifalari: cookie
+// Web panelga kiradigan rollar. Agent va yetkazuvchi faqat mobil ilovada ishlaydi va o'z do'kon va buyurtmalarini ko'radi
+export const PANEL_ROLES: StaffRole[] = ["ADMIN", "OPERATOR", "ACCOUNTANT"];
+
+// Panel sahifalari: cookie. Rol ham tekshiriladi: ilovadagi token (u /api/auth/otp/verify javobida keladi) cookie'ga
+// qo'yilsa ham agent yoki yetkazuvchi panel orqali butun kompaniyaning buyurtma va qarzlarini ko'ra olmaydi
 export async function getStaff() {
   const store = await cookies();
   const payload = verifyToken(store.get(PANEL_COOKIE)?.value);
   if (!payload || payload.kind !== "staff") return null;
   const staff = await db.staff.findFirst({
-    where: { id: payload.staffId, active: true },
+    where: { id: payload.staffId, active: true, role: { in: PANEL_ROLES } },
     include: { distributor: true },
   });
   return staff && issuedAfter(payload, staff) ? staff : null;

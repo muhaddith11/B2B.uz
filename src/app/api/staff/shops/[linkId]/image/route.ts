@@ -8,7 +8,8 @@ import { linkScope } from "@/lib/staff-data";
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ linkId: string }> }) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR", "AGENT"]);
   const { linkId } = await ctx.params;
-  const link = await db.shopLink.findFirst({ where: { id: linkId, ...linkScope(staff) }, include: { shop: true } });
+  // Faqat ulangan do'kon: hali tasdiqlanmagan so'rov yuborgan do'konning suratini begona distribyutor qo'ymaydi
+  const link = await db.shopLink.findFirst({ where: { AND: [{ id: linkId, status: { in: ["ACTIVE", "BLOCKED"] } }, linkScope(staff)] }, include: { shop: true } });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
   if (link.shop.imageUrl) throw new HttpError(409, "Do'konning surati bor: uni faqat do'kon egasi almashtiradi");
   const imageUrl = await saveImage(req, "logos");

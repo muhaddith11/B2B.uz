@@ -253,11 +253,13 @@ async function respond(load: () => Promise<Cashbox | null>, auth: string | null,
   }
 }
 
-// Distribyutor kassasi: do'konlarning qarz to'lovlari
+// Distribyutor kassasi: do'konlarning qarz to'lovlari. To'lov usuli nofaol qilingan bo'lsa ham javob beriladi:
+// yangi to'lov faqat faol usulga yaratiladi (createOnlinePayment), lekin oldin boshlangan to'lovni Payme bajarishi yoki
+// bekor qilishi kerak, aks holda yechilgan pul qarz daftariga tushmay yoki bekor qilingani qaytmay qolardi
 export function handlePayme(methodId: string, auth: string | null, body: unknown) {
   return respond(
     async () => {
-      const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "PAYME", active: true } });
+      const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "PAYME" } });
       if (!method?.secretKeyEnc) return null;
       return {
         key: decryptSecret(method.secretKeyEnc),

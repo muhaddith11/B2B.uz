@@ -81,9 +81,10 @@ async function respond(box: ClickCashbox | null, stage: "prepare" | "complete", 
   return { ...base, merchant_confirm_id: payment.number, error: 0, error_note: NOTES[0] };
 }
 
-// Distribyutor kassasi: do'konlarning qarz to'lovlari
+// Distribyutor kassasi: do'konlarning qarz to'lovlari. To'lov usuli nofaol qilingan bo'lsa ham oldin boshlangan to'lov
+// yakunlanadi (yangi to'lov faqat faol usulga yaratiladi)
 export async function handleClick(methodId: string, stage: "prepare" | "complete", p: ClickParams) {
-  const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "CLICK", active: true } });
+  const method = await db.paymentMethod.findFirst({ where: { id: methodId, type: "CLICK" } });
   const box = method?.secretKeyEnc && method.serviceId ? { secret: decryptSecret(method.secretKeyEnc), serviceId: method.serviceId, scope: { purpose: "DEBT" as const, paymentMethodId: method.id } } : null;
   return respond(box, stage, p);
 }

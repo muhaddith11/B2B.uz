@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const calls: string[] = [];
 let activeStaffLeft = 0;
 let brandUsersLeft = 0;
-let shopUsersLeft = 1;
+// O'chirilgandan keyin do'konda qolgan foydalanuvchilar
+let shopUsersLeft: { id: string; role: string }[] = [{ id: "su0", role: "OWNER" }];
 
 function model(name: string, extra: Record<string, unknown> = {}) {
   const rec =
@@ -25,7 +26,8 @@ const tx = {
       calls.push(`shopUser.delete ${JSON.stringify(args)}`);
       return { id: "su1", shopId: "s1", avatarUrl: null };
     },
-    count: async () => shopUsersLeft,
+    findUniqueOrThrow: async () => ({ shopId: "s1" }),
+    findMany: async () => shopUsersLeft,
   }),
   shopLink: model("shopLink"),
   staff: model("staff", {
@@ -66,7 +68,7 @@ beforeEach(() => {
   calls.length = 0;
   activeStaffLeft = 0;
   brandUsersLeft = 0;
-  shopUsersLeft = 1;
+  shopUsersLeft = [{ id: "su0", role: "OWNER" }];
 });
 
 describe("hisobni o'chirish", () => {
@@ -80,8 +82,18 @@ describe("hisobni o'chirish", () => {
     ]);
   });
 
+  it("ega o'chsa, qolgan eng eski sotuvchi ega bo'ladi", async () => {
+    shopUsersLeft = [
+      { id: "su2", role: "SELLER" },
+      { id: "su3", role: "SELLER" },
+    ];
+    await deleteAccount({ kind: "shop", id: "su1" });
+    expect(calls).toContain('shopUser.update {"where":{"id":"su2"},"data":{"role":"OWNER"}}');
+    expect(calls.some((c) => c.startsWith("shopLink."))).toBe(false);
+  });
+
   it("do'konning oxirgi foydalanuvchisi: faol ulanishlar bloklanadi, javobsiz so'rov va takliflar o'chadi", async () => {
-    shopUsersLeft = 0;
+    shopUsersLeft = [];
     await deleteAccount({ kind: "shop", id: "su1" });
     expect(calls).toContain('shopLink.deleteMany {"where":{"shopId":"s1","status":{"in":["REQUESTED","INVITED"]}}}');
     expect(calls).toContain('shopLink.updateMany {"where":{"shopId":"s1","status":"ACTIVE"},"data":{"status":"BLOCKED"}}');

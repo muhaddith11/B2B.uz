@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Prisma, type Distributor, type OrderStatus, type PaymentType, type ShopLink } from "@prisma/client";
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
-import { addDays, checkCredit } from "./ledger";
+import { addDays, checkCredit, overdueBlock } from "./ledger";
 import { MAX_LINE_QTY, MAX_ORDER_TOTAL } from "./money";
 import { notifyShop, notifyStaff } from "./push";
 import { assertApproved, HttpError } from "./session";
@@ -41,6 +41,9 @@ const STATUS_TEXT = {
   DELIVERED: "Buyurtmangiz topshirildi",
   CANCELLED: "Buyurtmangiz bekor qilindi",
 } as const satisfies Record<OrderStatus, TextKey>;
+
+// Egasi raqamini SMS kod bilan tasdiqlamagan (agent qo'shgan) do'konga qarz bo'ladigan narsa yozilmaydi
+export const UNCONFIRMED_SHOP: TextKey = "Do'kon egasi hali raqamini tasdiqlamagan: u ilovaga bir marta kirgach nasiya, o'tkazma va qarz yozish ochiladi";
 
 // Bitta buyurtma summasi bazaga sig'ishi kerak (money.ts): oshsa, aniq xato (server xatosi emas)
 export function assertOrderTotal(total: number) {
@@ -99,13 +102,16 @@ export async function createOrderForLink(
   if (prev) return prev;
 
   if (link.status !== "ACTIVE") throw new HttpError(403, "Bu do'kon bilan ulanish faol emas");
+  const shop = await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true, confirmedAt: true } });
+  // Nasiya va o'tkazma topshirilganda qarz bo'lib yoziladi: egasi raqamini tasdiqlamagan do'konga faqat naqd
+  if (input.paymentType !== "CASH" && !shop.confirmedAt) throw new HttpError(403, UNCONFIRMED_SHOP);
   // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi.
   // Platforma tasdig'i olib qo'yilgan (yoki hali berilmagan) distribyutor ham savdo qilmaydi
   if ("staffId" in creator) {
     assertApproved(link.distributor);
     assertTrading(link.distributor, EXPIRED_DISTRIBUTOR);
   } else {
-    assertTrading(await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true } }), EXPIRED_SHOP);
+    assertTrading(shop, EXPIRED_SHOP);
     if (link.distributor.status !== "ACTIVE") throw new HttpError(403, DISTRIBUTOR_PAUSED);
     assertTrading(link.distributor, DISTRIBUTOR_PAUSED);
   }
@@ -156,6 +162,11 @@ export async function createOrderForLink(
                 : L("Nasiya limiti {sum}ga oshib ketdi. Farqini naqd to'lang yoki buyurtmani kamaytiring", { sum: som(check.exceedBy) });
           throw new HttpError(400, msg);
         }
+      } else if (input.paymentType === "TRANSFER") {
+        // O'tkazma ham topshirilganda qarz bo'lib yoziladi: muddati o'tgani uchun yopilgan nasiyani o'tkazma orqali chetlab
+        // o'tib bo'lmaydi (limit tekshirilmaydi: o'tkazma qarzi topshirilgan kuni to'lanadi)
+        const days = overdueBlock(link, await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } }), new Date());
+        if (days !== null) throw new HttpError(400, L("Muddati {days} kun o'tgan qarz bor: avval qarzni to'lang yoki naqd buyurtma bering", { days }));
       }
 
       return tx.order.create({

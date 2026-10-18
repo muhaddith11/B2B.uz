@@ -189,6 +189,7 @@ async function main() {
         name: s.name,
         address: s.address,
         district: "Qo'qon shahri",
+        confirmedAt: new Date(),
         ...trialPeriod(),
         users: { create: { name: s.owner, phone: `+99890000000${i + 1}`, role: "OWNER" } },
       },

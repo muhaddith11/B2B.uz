@@ -5,17 +5,16 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
-import { HttpError, PANEL_COOKIE } from "@/lib/session";
+import { HttpError, PANEL_COOKIE, PANEL_ROLES } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Panelga SMS kod bilan kirish: admin, operator va hisobchilar uchun.
 // Raqam tizimda bormi yoki yo'qmi, kod tasdiqlanmaguncha bildirilmaydi: begona odam raqamlarni sinab, kim xodim ekanini bilib ololmaydi
-const PANEL_ROLES = ["ADMIN", "OPERATOR", "ACCOUNTANT"] as const;
 const back = (params: Record<string, string>) => redirect(`/panel?${new URLSearchParams(params)}`);
 
 async function panelStaff(phone: string) {
-  return db.staff.findFirst({ where: { phone, active: true, role: { in: [...PANEL_ROLES] } }, orderBy: { createdAt: "asc" } });
+  return db.staff.findFirst({ where: { phone, active: true, role: { in: PANEL_ROLES } }, orderBy: { createdAt: "asc" } });
 }
 
 export async function requestPanelCode(form: FormData) {

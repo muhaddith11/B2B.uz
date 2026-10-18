@@ -1,4 +1,6 @@
 import { randomInt, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
+import type { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { L } from "./i18n";
 import { normalizePhone } from "./phone";
@@ -12,7 +14,9 @@ export const MAX_PER_HOUR = 5;
 export const MAX_ATTEMPTS = 5;
 // Bitta IP manzildan bir soatda nechta kod (mobil operatorlarda ko'p abonent bitta IP'dan chiqadi, shuning uchun juda kichik emas)
 export const MAX_PER_IP_HOUR = 20;
-// Butun platforma bo'yicha bir soatda nechta SMS: ko'p raqam va IP'dan hujum SMS hisobini bo'shatib yubormasligi uchun
+// Butun platforma bo'yicha bir soatda hisobi yo'q raqamlarga nechta SMS: ko'p raqam va IP'dan hujum SMS hisobini bo'shatib
+// yubormasligi uchun. Hisobi bor raqamga (kirish, panel, obuna, o'chirish) bu chegara qo'llanmaydi: tasodifiy raqamlarga kod
+// so'rab chegarani to'ldirgan hujum mavjud foydalanuvchilarning kirishini to'xtatib qo'ymaydi (ular raqam va IP bo'yicha cheklanadi)
 const globalHourlyLimit = () => Number(process.env.OTP_HOURLY_LIMIT) || 500;
 // Kod berishni navbatga qo'yuvchi qulf: bir vaqtdagi parallel so'rovlar cheklovni chetlab o'tmasin
 const OTP_LOCK_KEY = 7_204_311;
@@ -39,6 +43,16 @@ export function sendAllowed(recent: Date[], now: Date): { ok: true } | { ok: fal
 
 const hashOf = (phone: string, code: string) => keyedHash(`otp:${phone}:${code}`);
 
+// Raqamga biror hisob (do'kon, faol xodim, tovar egasi) bog'langanmi
+async function hasAccount(tx: Prisma.TransactionClient, phone: string): Promise<boolean> {
+  const [shop, staff, brand] = await Promise.all([
+    tx.shopUser.count({ where: { phone } }),
+    tx.staff.count({ where: { phone, active: true } }),
+    tx.brandUser.count({ where: { phone } }),
+  ]);
+  return shop + staff + brand > 0;
+}
+
 // Cheklovlar: raqam bo'yicha (sendAllowed), IP bo'yicha va butun platforma bo'yicha.
 // Tekshiruv va yozuv bitta qulf ostida: parallel so'rovlar bir-birini ko'rmay o'tib ketmaydi.
 export async function issueOtp(phone: string, ip: string | null, now = new Date(), fixedCode?: string, purpose: OtpPurpose = "login"): Promise<string> {
@@ -54,22 +68,44 @@ export async function issueOtp(phone: string, ip: string | null, now = new Date(
     if (!allowed.ok) throw new HttpError(429, L("Yangi kodni {sec} soniyadan keyin so'rang", { sec: allowed.retryInSec }));
 
     const fromIp = ip ? await tx.otpCode.count({ where: { ip, createdAt: { gt: hourAgo } } }) : 0;
-    const total = await tx.otpCode.count({ where: { createdAt: { gt: hourAgo } } });
     if (fromIp >= MAX_PER_IP_HOUR) throw new HttpError(429, "Bu tarmoqdan juda ko'p kod so'raldi. Birozdan keyin urinib ko'ring");
-    if (total >= globalHourlyLimit()) {
-      console.error(`OTP: soatlik umumiy chegara (${globalHourlyLimit()}) to'ldi`);
-      throw new HttpError(429, "Kod yuborish vaqtincha cheklangan. Birozdan keyin urinib ko'ring");
+    // Hisobni o'chirish va admin kodi faqat mavjud hisobga so'raladi; kirish kodi yangi raqamga ham (ro'yxatdan o'tish)
+    const newPhone = purpose === "login" && !(await hasAccount(tx, phone));
+    if (newPhone) {
+      const total = await tx.otpCode.count({ where: { newPhone: true, createdAt: { gt: hourAgo } } });
+      if (total >= globalHourlyLimit()) {
+        console.error(`OTP: yangi raqamlar uchun soatlik umumiy chegara (${globalHourlyLimit()}) to'ldi`);
+        throw new HttpError(429, "Kod yuborish vaqtincha cheklangan. Birozdan keyin urinib ko'ring");
+      }
     }
 
-    await tx.otpCode.create({ data: { phone, ip, purpose, codeHash: hashOf(phone, code), expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
+    await tx.otpCode.create({ data: { phone, ip, purpose, newPhone, codeHash: hashOf(phone, code), expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
   });
   return code;
 }
 
+// IP bo'yicha cheklov kaliti: IPv4 manzilning o'zi, IPv6 uchun /64 tarmoq. Bitta abonentga odatda butun /64 tarmoq beriladi:
+// har so'rovda manzilni almashtirib (IPv6 da bu tekin) cheklovni aylanib o'tib bo'lmaydi
+export function ipKey(raw: string): string {
+  const ip = raw.trim().replace(/^\[|\]$/g, "").replace(/%.*$/, "");
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped) return mapped[1];
+  if (isIP(ip) !== 6) return ip.slice(0, 64);
+  const [head, tail] = ip.split("::");
+  const groups = (s: string | undefined) => (s ? s.split(":") : []);
+  // Oxirida IPv4 yozuvi bo'lsa (masalan, 64:ff9b::1.2.3.4), u ikki guruh o'rnida
+  const size = (s: string | undefined) => groups(s).reduce((n, g) => n + (g.includes(".") ? 2 : 1), 0);
+  const full = tail === undefined ? groups(head) : [...groups(head), ...Array<string>(8 - size(head) - size(tail)).fill("0"), ...groups(tail)];
+  return `${full
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(":")}::/64`;
+}
+
 // So'rov kelgan IP: Vercel x-real-ip va x-forwarded-for sarlavhalarini o'zi qo'yadi (mijoz yuborganini almashtiradi)
 export function clientIp(headers: Headers): string | null {
-  const ip = headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0];
-  return ip?.trim().slice(0, 64) || null;
+  const ip = (headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0])?.trim();
+  return ip ? ipKey(ip) : null;
 }
 
 // Ilova, panel va admin uchun bitta matn: SMS xizmatida (TextUP) bitta shablon tasdiqlatiladi.

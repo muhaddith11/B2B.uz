@@ -41,8 +41,10 @@ export const recordPaymentInput = z.object({
 });
 
 export async function recordPayment(staff: { id: string; distributorId: string; role: StaffRole }, input: z.infer<typeof recordPaymentInput>) {
-  // Agent faqat o'z do'konlaridan, yetkazuvchi faqat o'zi yetkazadigan do'konlardan to'lov oladi
-  const link = await db.shopLink.findFirst({ where: { id: input.linkId, ...linkScope(staff) } });
+  // Agent faqat o'z do'konlaridan, yetkazuvchi faqat o'zi yetkazadigan do'konlardan to'lov oladi.
+  // Faqat faol yoki bloklangan ulanishga: hali tasdiqlanmagan so'rovga yozilgan to'lov do'konga ko'rinmas va so'rovni
+  // rad etish yoki do'kon hisobini o'chirishni buzar edi
+  const link = await db.shopLink.findFirst({ where: { AND: [{ id: input.linkId, status: { in: ["ACTIVE", "BLOCKED"] } }, linkScope(staff)] } });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
 
   const clientKey = input.clientKey ? `${staff.id}:${input.clientKey}` : null;

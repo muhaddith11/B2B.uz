@@ -8,7 +8,7 @@ export const GET = handle(async (req: Request) => {
   const params = new URL(req.url).searchParams;
   const parsed = discoverQuery.safeParse({ q: params.get("q") ?? undefined, category: params.get("category") ?? undefined });
   if (!parsed.success) throw new HttpError(400, "Qidiruv so'rovi noto'g'ri");
-  const [distributors, categories] = await Promise.all([discoverDistributors(user.shop, parsed.data), allCategories()]);
+  const [distributors, categories] = await Promise.all([discoverDistributors(user.shop, parsed.data), allCategories(user.shop.demo)]);
   return Response.json({ district: user.shop.district, categories, distributors });
 });
 

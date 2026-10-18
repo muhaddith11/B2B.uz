@@ -223,4 +223,9 @@ export const RU = {
     "На этом номере несколько магазинов. Укажите название точно так, как в приложении владельца",
   "Do'kon o'zi ulanishni so'ragan: uni admin narx va nasiya shartlari bilan tasdiqlaydi":
     "Магазин сам запросил подключение: его подтверждает администратор с ценами и условиями рассрочки",
+  "Bu raqamga do'kon qo'shib bo'lmaydi": "Магазин с этим номером добавить нельзя",
+  "Do'kon egasi hali raqamini tasdiqlamagan: u ilovaga bir marta kirgach nasiya, o'tkazma va qarz yozish ochiladi":
+    "Владелец магазина ещё не подтвердил номер: после его первого входа в приложение откроются рассрочка, перевод и запись долга",
+  "Muddati {days} kun o'tgan qarz bor: avval qarzni to'lang yoki naqd buyurtma bering":
+    "Есть долг, просроченный на {days} дн.: сначала погасите его или оформите заказ за наличные",
 } as const;

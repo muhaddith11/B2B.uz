@@ -7,7 +7,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   const staff = await requireStaff(req, ["ADMIN"]);
   assertApproved(staff.distributor);
   const { id } = await ctx.params;
-  const brand = await db.brand.findFirst({ where: { id, status: "ACTIVE" }, include: { products: { where: { active: true }, orderBy: [{ category: "asc" }, { name: "asc" }] } } });
+  const brand = await db.brand.findFirst({ where: { id, status: "ACTIVE", demo: staff.distributor.demo }, include: { products: { where: { active: true }, orderBy: [{ category: "asc" }, { name: "asc" }] } } });
   if (!brand) throw new HttpError(404, "Tovar egasi topilmadi");
 
   const agreement = await db.agreement.findFirst({ where: { brandId: id, distributorId: staff.distributorId }, orderBy: { createdAt: "desc" } });

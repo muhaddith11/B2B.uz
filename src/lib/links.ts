@@ -45,10 +45,12 @@ const DISCOVER_LIMIT = 100;
 
 // Do'kon hali ulanmagan faol distribyutorlar. Qidiruv nomi, tovar nomi va brend bo'yicha.
 // Natija cheklangan, shuning uchun avval do'kon hududiga yetkazadiganlar olinadi, qolgan joyga boshqalari.
-export async function discoverDistributors(shop: { id: string; district: string }, opts: z.infer<typeof discoverQuery>) {
+// Demo (App Store tekshiruvi) va haqiqiy tashkilotlar bir-birini ko'rmaydi
+export async function discoverDistributors(shop: { id: string; district: string; demo: boolean }, opts: z.infer<typeof discoverQuery>) {
   const { q, category } = opts;
   const where: Prisma.DistributorWhereInput = {
     status: "ACTIVE",
+    demo: shop.demo,
     links: { none: { shopId: shop.id, status: { in: ["ACTIVE", "BLOCKED"] } } },
     ...(category ? { categories: { has: category } } : {}),
     ...(q
@@ -105,14 +107,15 @@ export async function discoverDistributors(shop: { id: string; district: string 
 }
 
 // Filtr uchun: faol distribyutorlardagi barcha toifalar
-export async function allCategories() {
-  const rows = await db.distributor.findMany({ where: { status: "ACTIVE" }, select: { categories: true } });
+export async function allCategories(demo = false) {
+  const rows = await db.distributor.findMany({ where: { status: "ACTIVE", demo }, select: { categories: true } });
   return [...new Set(rows.flatMap((r) => r.categories))].sort((a, b) => a.localeCompare(b));
 }
 
 export async function requestLink(shopId: string, distributorId: string) {
-  const dist = await db.distributor.findUnique({ where: { id: distributorId } });
-  if (!dist || dist.status !== "ACTIVE") throw new HttpError(404, "Distribyutor topilmadi");
+  const [dist, shop] = await Promise.all([db.distributor.findUnique({ where: { id: distributorId } }), db.shop.findUniqueOrThrow({ where: { id: shopId }, select: { demo: true } })]);
+  // Haqiqiy do'kon demo distribyutorga (va aksincha) ulana olmaydi: demo hisob haqiqiy do'kon egalarining ma'lumotini ko'rmasin
+  if (!dist || dist.status !== "ACTIVE" || dist.demo !== shop.demo) throw new HttpError(404, "Distribyutor topilmadi");
 
   const existing = await db.shopLink.findUnique({ where: { shopId_distributorId: { shopId, distributorId } } });
   if (existing?.status === "ACTIVE") throw new HttpError(400, "Bu distribyutorga allaqachon ulangansiz");
