@@ -82,11 +82,13 @@ export type StaffLedger = {
 export type ShopDetail = {
   linkId: string;
   status: 'ACTIVE' | 'BLOCKED';
-  shop: { id: string; name: string; imageUrl: string | null; address: string; district: string; inn: string | null };
+  shop: { id: string; name: string; imageUrl: string | null; address: string; district: string; inn: string | null; ownerVerified: boolean };
   users: { name: string; phone: string; role: string; avatarUrl: string | null }[];
   terms: { priceGroup: { id: string; name: string } | null; creditLimit: number; creditDays: number; blockAfterDays: number | null; agent: { id: string; name: string } | null };
   summary: Summary;
   ledger: StaffLedger[];
+  // Keyingi (eskiroq) yozuvlar sahifasi: /api/staff/shops/<linkId>/ledger?cursor=
+  ledgerCursor?: string | null;
   orders: StaffOrder[];
 };
 

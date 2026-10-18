@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { AuthImage } from '@/components/auth-image';
 import { PicEdit } from '@/components/pic-edit';
 import { CallLink, CashForm, OrderCard } from '@/components/staff';
-import { AbrBar, Badge, Banner, Button, Card, Chip, ErrorState, Field, Loading, Money, Pic, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { AbrBar, Badge, Banner, Button, Card, Chip, ErrorState, Field, Loading, LoadMore, Money, Pic, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
@@ -16,6 +16,9 @@ import { formatAmount, formatDate, formatSom } from '@/lib/money';
 import { newRequestKey } from '@/lib/net';
 import { channelLabel, type ShopDetail, type StaffLedger } from '@/lib/staff-types';
 import { useLoad } from '@/lib/use-load';
+import { useMore } from '@/lib/use-paged';
+
+const pickLedger = (r: { entries: StaffLedger[]; nextCursor?: string | null }) => r.entries;
 
 // Do'kon kartasi: qarz, shartlar, buyurtma olish, to'lov qabul qilish, qarz daftari
 export default function StaffShopScreen() {
@@ -23,6 +26,8 @@ export default function StaffShopScreen() {
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const { can } = useStaff();
   const { data, error, refreshing, reload, retry } = useLoad<ShopDetail>(`/api/staff/shops/${linkId}`);
+  // Kartada eng yangi 100 ta yozuv; eskilari "Yana ko'rsatish" bilan (qoldiq va muddat baribir butun daftar bo'yicha)
+  const ledger = useMore(data, data?.ledger ?? null, data?.ledgerCursor, `/api/staff/shops/${linkId}/ledger`, pickLedger);
   const [panel, setPanel] = useState<'cash' | 'terms' | 'adjust' | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
   // Qarz daftarini tuzatish (admin va hisobchi): bekor qilinayotgan yozuv
@@ -52,6 +57,9 @@ export default function StaffShopScreen() {
           </T>
         </View>
       </View>
+      {!data.shop.ownerVerified && (
+        <Banner tone="info">{t("Do'kon egasi hali ilovaga kirmagan. Raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi, nasiya va o'tkazma yopiq")}</Banner>
+      )}
       <Card style={{ gap: 4 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <T size="small" tone="hint">
@@ -138,12 +146,12 @@ export default function StaffShopScreen() {
 
       <SectionTitle>{t('Qarz daftari')}</SectionTitle>
       <Card style={{ gap: 8 }}>
-        {data.ledger.length === 0 && (
+        {ledger.items?.length === 0 && (
           <T size="small" tone="hint">
             {t("Yozuv yo'q")}
           </T>
         )}
-        {data.ledger.map((e) => (
+        {ledger.items?.map((e) => (
           <View key={e.id} style={{ gap: 2, opacity: e.status === 'REJECTED' || e.reversed ? 0.5 : 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
               <T size="small" tone="hint" num style={{ flex: 1 }}>
@@ -194,6 +202,7 @@ export default function StaffShopScreen() {
           </View>
         ))}
       </Card>
+      <LoadMore onPress={ledger.more} loading={ledger.loadingMore} error={ledger.moreError} />
     </Screen>
   );
 }

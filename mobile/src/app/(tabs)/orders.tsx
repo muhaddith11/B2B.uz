@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
-import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, StatusBadge, StatusSteps, T } from '@/components/ui';
+import { Banner, Button, Card, Divider, Empty, ErrorState, Loading, LoadMore, Money, Pic, StatusBadge, StatusSteps, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { confirm } from '@/lib/confirm';
@@ -11,12 +11,15 @@ import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import { formatDate } from '@/lib/money';
 import { paymentLabel, type ShopOrder } from '@/lib/types';
-import { useLoad } from '@/lib/use-load';
+import { usePaged } from '@/lib/use-paged';
+
+type OrdersPage = { orders: ShopOrder[]; nextCursor?: string | null };
+const pickOrders = (r: OrdersPage) => r.orders;
 
 export default function OrdersScreen() {
   const c = usePalette();
   const { setQty, api } = useSession();
-  const { data, error, refreshing, reload, retry } = useLoad<{ orders: ShopOrder[] }>('/api/shop/orders');
+  const { items, error, refreshing, reload, retry, more, loadingMore, moreError } = usePaged('/api/shop/orders', pickOrders);
   const [open, setOpen] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -42,8 +45,8 @@ export default function OrdersScreen() {
     }
   }
 
-  if (error && !data) return <ErrorState message={error} onRetry={retry} />;
-  if (!data) return <Loading />;
+  if (error && !items) return <ErrorState message={error} onRetry={retry} />;
+  if (!items) return <Loading />;
 
   // Takrorlash: oldingi buyurtmani savatga qaytaradi; narx savatda yangi prays bo'yicha hisoblanadi
   function repeat(o: ShopOrder) {
@@ -54,8 +57,12 @@ export default function OrdersScreen() {
   return (
     <FlatList
       style={{ backgroundColor: c.bg }}
-      data={data.orders}
+      data={items}
       keyExtractor={(o) => o.id}
+      // Ro'yxat oxiriga yetganda keyingi sahifa o'zi yuklanadi; tugma esa ekran o'quvchi va sekin internet uchun
+      onEndReached={() => more?.()}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={<LoadMore onPress={more} loading={loadingMore} error={moreError} />}
       contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={c.accent} colors={[c.accent]} />}
       ListEmptyComponent={

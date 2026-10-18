@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { cursorArgs, pageOf, readPage } from "@/lib/paging";
 import { handle, requireShopUser } from "@/lib/session";
 import { linkSummaries } from "@/lib/shop-summary";
 
@@ -7,14 +8,17 @@ export const GET = handle(async (req: Request) => {
   const user = await requireShopUser(req);
   // Bloklangan distribyutor ham: qarz ko'rinib turadi va to'lanadi
   const summaries = await linkSummaries(user.shopId, ["ACTIVE", "BLOCKED"]);
-  const entries = await db.ledgerEntry.findMany({
+  const page = readPage(new URL(req.url), 200);
+  const rows = await db.ledgerEntry.findMany({
     where: { shopLink: { shopId: user.shopId } },
     include: { order: { select: { number: true } }, reversedBy: { select: { id: true } } },
-    orderBy: { date: "desc" },
-    take: 200,
+    orderBy: [{ date: "desc" }, { id: "desc" }],
+    ...cursorArgs(page),
   });
+  const { items: entries, nextCursor } = pageOf(rows, page);
   return Response.json({
     links: summaries,
+    nextCursor,
     entries: entries.map((e) => ({
       id: e.id,
       linkId: e.shopLinkId,

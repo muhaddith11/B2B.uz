@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
-import { Badge, Button, Card, Empty, Field, Loading, Money, ORDER_TONE, Pic, SearchInput, StatusBadge, T } from '@/components/ui';
+import { Badge, Button, Card, Empty, Field, Loading, LoadMore, Money, ORDER_TONE, Pic, SearchInput, StatusBadge, T } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
@@ -84,32 +84,63 @@ export function ShopCard({ s, orderAction, hideAgent }: { s: StaffShop; orderAct
 }
 
 // Do'konlar ro'yxati qidiruv bilan (agentning bosh sahifasi va do'konlar tabi)
+const SHOP_PAGE = 50;
+type ShopPage = { shops: StaffShop[]; total: number; totalDebt: number; nextOffset: number | null };
+
 export function ShopList({ header, orderAction, hideAgent }: { header?: React.ReactNode; orderAction?: boolean; hideAgent?: boolean }) {
   const { api } = useSession();
   const [q, setQ] = useState('');
   const [shops, setShops] = useState<StaffShop[] | null>(null);
+  // Jami soni va umumiy qarz butun ro'yxat bo'yicha (server hisoblaydi), ro'yxat esa sahifalab keladi
+  const [totals, setTotals] = useState<{ total: number; totalDebt: number; nextOffset: number | null }>({ total: 0, totalDebt: 0, nextOffset: null });
   const [err, setErr] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const page = useCallback(
+    (offset: number) => api<ShopPage>(`/api/staff/shops?q=${encodeURIComponent(q.trim())}&limit=${SHOP_PAGE}&offset=${offset}`),
+    [api, q],
+  );
 
   useEffect(() => {
+    let live = true;
     const timer = setTimeout(() => {
-      api<{ shops: StaffShop[] }>(`/api/staff/shops?q=${encodeURIComponent(q.trim())}`)
+      page(0)
         .then((d) => {
+          if (!live) return;
           setShops(d.shops);
+          setTotals({ total: d.total, totalDebt: d.totalDebt, nextOffset: d.nextOffset });
           setErr(null);
         })
-        .catch((e) => setErr(e.message));
+        .catch((e) => live && setErr(e.message));
     }, 250);
-    return () => clearTimeout(timer);
-  }, [api, q]);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [page]);
 
-  const totalDebt = shops?.reduce((s, x) => s + x.debt, 0) ?? 0;
+  async function more() {
+    if (totals.nextOffset === null || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const d = await page(totals.nextOffset);
+      setShops((prev) => [...(prev ?? []), ...d.shops.filter((s) => !prev?.some((x) => x.linkId === s.linkId))]);
+      setTotals({ total: d.total, totalDebt: d.totalDebt, nextOffset: d.nextOffset });
+      setErr(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   return (
     <View style={{ gap: 8 }}>
       {header}
       <SearchInput value={q} onChangeText={setQ} placeholder={t("Do'kon nomi yoki manzili")} />
       {shops && shops.length > 0 && (
         <T size="small" tone="hint" num>
-          {t("{n} ta do'kon · umumiy qarz {sum}", { n: shops.length, sum: formatSom(totalDebt) })}
+          {t("{n} ta do'kon · umumiy qarz {sum}", { n: totals.total, sum: formatSom(totals.totalDebt) })}
         </T>
       )}
       {err && (
@@ -119,6 +150,7 @@ export function ShopList({ header, orderAction, hideAgent }: { header?: React.Re
       )}
       {!shops && !err && <Loading rows={4} inline />}
       {shops?.map((s) => <ShopCard key={s.linkId} s={s} orderAction={orderAction} hideAgent={hideAgent} />)}
+      <LoadMore onPress={totals.nextOffset !== null ? more : null} loading={loadingMore} />
       {shops?.length === 0 && <Empty icon="storefront-outline">{q ? t('Hech narsa topilmadi') : t("Hali do'kon yo'q")}</Empty>}
     </View>
   );

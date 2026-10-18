@@ -1,16 +1,18 @@
 import { useState } from 'react';
 
 import { OrderCard } from '@/components/staff';
-import { Banner, Empty, ErrorState, Loading, Screen, Segmented, StickyBar } from '@/components/ui';
+import { Banner, Empty, ErrorState, Loading, LoadMore, Screen, Segmented, StickyBar } from '@/components/ui';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 import type { StaffOrder } from '@/lib/staff-types';
 import type { OrderStatus } from '@/lib/types';
-import { useLoad } from '@/lib/use-load';
+import { usePaged } from '@/lib/use-paged';
 
 type Tab = OrderStatus | 'ALL';
+type OrdersPage = { orders: StaffOrder[]; nextCursor?: string | null };
+const pickOrders = (r: OrdersPage) => r.orders;
 
 export default function StaffOrders() {
   const { api } = useSession();
@@ -18,7 +20,7 @@ export default function StaffOrders() {
   const agent = can('AGENT');
   const manager = can('ADMIN', 'OPERATOR');
   const [status, setStatus] = useState<Tab>(agent ? 'ALL' : 'SENT');
-  const { data, error, refreshing, reload, retry } = useLoad<{ orders: StaffOrder[] }>(`/api/staff/orders${status === 'ALL' ? '' : `?status=${status}`}`);
+  const { data, items, error, refreshing, reload, retry, more, loadingMore, moreError } = usePaged(`/api/staff/orders${status === 'ALL' ? '' : `?status=${status}`}`, pickOrders);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -56,10 +58,11 @@ export default function StaffOrders() {
       </StickyBar>
       {err && <Banner tone="danger">{err}</Banner>}
       {!data && <Loading inline />}
-      {data?.orders.map((o) => (
+      {items?.map((o) => (
         <OrderCard key={o.id} o={o} onAccept={manager && o.status === 'SENT' ? () => accept(o) : undefined} accepting={accepting === o.id} />
       ))}
-      {data?.orders.length === 0 && (
+      <LoadMore onPress={more} loading={loadingMore} error={moreError} />
+      {items?.length === 0 && (
         <Empty icon="receipt-outline">{status === 'SENT' ? t("Yangi buyurtma yo'q. Kelganda bildirishnoma keladi.") : t("Bu holatda buyurtma yo'q")}</Empty>
       )}
     </Screen>

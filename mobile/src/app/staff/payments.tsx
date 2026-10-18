@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { AuthImage } from '@/components/auth-image';
-import { Badge, Banner, Button, Card, Empty, ErrorState, Field, Loading, Screen, SectionTitle, T } from '@/components/ui';
+import { Badge, Banner, Button, Card, Empty, ErrorState, Field, Loading, LoadMore, Screen, SectionTitle, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
@@ -12,13 +12,16 @@ import { haptic } from '@/lib/haptics';
 import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
 import { channelLabel, type StaffPayment } from '@/lib/staff-types';
-import { useLoad } from '@/lib/use-load';
+import { usePaged } from '@/lib/use-paged';
 
-// Chek bilan kelgan to'lovlarni tasdiqlash va oxirgi to'lovlar
+type PaymentsPage = { pending: StaffPayment[]; recent: StaffPayment[]; nextCursor?: string | null };
+const pickRecent = (r: PaymentsPage) => r.recent;
+
+// Chek bilan kelgan to'lovlarni tasdiqlash (hammasi) va oxirgi to'lovlar (sahifalab)
 export default function StaffPayments() {
-  const { data, error, refreshing, reload, retry } = useLoad<{ pending: StaffPayment[]; recent: StaffPayment[] }>('/api/staff/payments');
+  const { data, items: recent, error, refreshing, reload, retry, more, loadingMore, moreError } = usePaged('/api/staff/payments', pickRecent);
   if (error && !data) return <ErrorState message={error} onRetry={retry} />;
-  if (!data) return <Loading rows={2} />;
+  if (!data || !recent) return <Loading rows={2} />;
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
       <SectionTitle>{t('Tasdiq kutayotganlar')}</SectionTitle>
@@ -28,7 +31,7 @@ export default function StaffPayments() {
       {data.pending.length === 0 && <Empty icon="document-text-outline">{t("Tasdiq kutayotgan to'lov yo'q")}</Empty>}
 
       <SectionTitle>{t("Oxirgi to'lovlar")}</SectionTitle>
-      {data.recent.map((p) => (
+      {recent.map((p) => (
         <Card key={p.id} style={{ gap: 2, opacity: p.status === 'REJECTED' ? 0.6 : 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <T size="small" bold style={{ flex: 1 }} accessibilityRole="link" onPress={() => router.push(`/staff/shop/${p.linkId}`)}>
@@ -45,6 +48,7 @@ export default function StaffPayments() {
           </T>
         </Card>
       ))}
+      <LoadMore onPress={more} loading={loadingMore} error={moreError} />
     </Screen>
   );
 }

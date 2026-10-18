@@ -2,26 +2,31 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AbrBar, Badge, Banner, Button, Card, Divider, Empty, ErrorState, Loading, Money, Pic, Screen, T } from '@/components/ui';
+import { AbrBar, Badge, Banner, Button, Card, Divider, Empty, ErrorState, Loading, LoadMore, Money, Pic, Screen, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { t, txNote } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
 import { channelLabel } from '@/lib/staff-types';
 import type { LedgerItem, LinkSummary } from '@/lib/types';
-import { useLoad } from '@/lib/use-load';
+import { usePaged } from '@/lib/use-paged';
+
+type DebtsPage = { links: LinkSummary[]; entries: LedgerItem[]; nextCursor?: string | null };
+const pickEntries = (r: DebtsPage) => r.entries;
 
 export default function DebtsScreen() {
-  const { data, error, refreshing, reload, retry } = useLoad<{ links: LinkSummary[]; entries: LedgerItem[] }>('/api/shop/debts');
+  const { data, items, error, refreshing, reload, retry, more, loadingMore, moreError } = usePaged('/api/shop/debts', pickEntries);
 
   if (error && !data) return <ErrorState message={error} onRetry={retry} />;
-  if (!data) return <Loading />;
+  if (!data || !items) return <Loading />;
 
   return (
     <Screen refreshing={refreshing} onRefresh={reload}>
       {data.links.length === 0 && <Empty icon="wallet-outline">{t("Hali distribyutorlarga qarzingiz yo'q")}</Empty>}
       {data.links.map((l) => (
-        <DebtCard key={l.linkId} l={l} entries={data.entries.filter((e) => e.linkId === l.linkId)} />
+        <DebtCard key={l.linkId} l={l} entries={items.filter((e) => e.linkId === l.linkId)} />
       ))}
+      {/* Eski yozuvlar: qoldiq va muddat serverda butun daftar bo'yicha hisoblangan, bu faqat tarix */}
+      <LoadMore onPress={more} loading={loadingMore} error={moreError} />
     </Screen>
   );
 }

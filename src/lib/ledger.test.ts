@@ -115,3 +115,22 @@ describe("bekor qilingan yozuvlar", () => {
     expect(openDebts(entries)).toEqual([{ date: d("2026-10-01"), dueDate: d("2026-10-25"), remaining: 50_000 }]);
   });
 });
+
+describe("katta daftar", () => {
+  // Har kuni buyurtma va to'lov qilgan do'konning ~14 yillik tarixi: hisob tez qolishi kerak (nasiya tekshiruvi qulf ostida ishlaydi)
+  it("10 000 qarz va 10 000 to'lovli daftar 200 ms dan tez hisoblanadi", () => {
+    const day = 24 * 3600 * 1000;
+    const start = new Date("2020-01-01T00:00:00Z").getTime();
+    const entries: LedgerLike[] = [];
+    for (let i = 0; i < 10_000; i++) {
+      entries.push({ id: `d${i}`, amount: 100_000, date: new Date(start + i * day), dueDate: new Date(start + (i + 14) * day), status: "CONFIRMED", orderId: `o${i}` });
+      // Yarmi topshirishda olingan naqd (buyurtmaga bog'langan): avval o'sha buyurtma qarzini yopadi
+      entries.push({ id: `p${i}`, amount: -95_000, date: new Date(start + (i + 1) * day), dueDate: null, status: "CONFIRMED", orderId: i % 2 ? `o${i}` : null });
+    }
+    const t0 = performance.now();
+    const result = checkCredit({ creditLimit: 1_000_000_000, blockAfterDays: 7 }, entries, 0, new Date(start + 10_010 * day));
+    const ms = performance.now() - t0;
+    expect(result.ok).toBe(false); // eng eski ochiq qarz muddati ancha o'tgan
+    expect(ms).toBeLessThan(200);
+  });
+});

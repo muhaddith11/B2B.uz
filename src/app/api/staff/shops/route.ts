@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { L } from "@/lib/i18n";
+import { readOffset } from "@/lib/paging";
 import { normalizePhone } from "@/lib/phone";
 import { notifyShop } from "@/lib/push";
 import { lockRegistration } from "@/lib/registration";
@@ -10,8 +11,9 @@ import { shopList } from "@/lib/staff-data";
 
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR", "ACCOUNTANT", "AGENT"]);
-  const q = (new URL(req.url).searchParams.get("q") ?? "").trim().slice(0, 100);
-  return Response.json({ shops: await shopList(staff, q) });
+  const url = new URL(req.url);
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+  return Response.json(await shopList(staff, q, readOffset(url, 500)));
 });
 
 const newShopInput = z.object({
