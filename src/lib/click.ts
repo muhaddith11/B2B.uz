@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { decryptSecret } from "./crypto";
 import { db } from "./db";
@@ -18,6 +18,14 @@ export function clickSign(p: ClickParams, secret: string, stage: "prepare" | "co
       ? [p.click_trans_id, p.service_id, secret, p.merchant_trans_id, p.amount, p.action, p.sign_time]
       : [p.click_trans_id, p.service_id, secret, p.merchant_trans_id, p.merchant_prepare_id, p.amount, p.action, p.sign_time];
   return createHash("md5").update(parts.map((x) => x ?? "").join("")).digest("hex");
+}
+
+// Imzo solishtirish doimiy vaqtda: javob vaqtidan imzoni bayt-baytlab taxmin qilib bo'lmaydi
+export function signMatches(given: string | undefined, expected: string): boolean {
+  if (!given) return false;
+  const a = Buffer.from(given.toLowerCase());
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 const NOTES: Record<number, string> = {
@@ -40,7 +48,7 @@ async function respond(box: ClickCashbox | null, stage: "prepare" | "complete", 
   const fail = (code: number) => ({ ...base, error: code, error_note: NOTES[code] });
 
   if (!box) return fail(-8);
-  if (!p.sign_string || p.sign_string !== clickSign(p, box.secret, stage)) return fail(-1);
+  if (!signMatches(p.sign_string, clickSign(p, box.secret, stage))) return fail(-1);
   if (p.service_id !== box.serviceId) return fail(-8);
   if (p.action !== (stage === "prepare" ? "0" : "1")) return fail(-3);
 

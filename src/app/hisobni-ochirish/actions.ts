@@ -6,6 +6,7 @@ import { accountsForPhone, assertDeletable, deleteAccountsForPhone } from "@/lib
 import { render, type Lang } from "@/lib/i18n";
 import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
+import { reportError } from "@/lib/monitoring";
 import { HttpError } from "@/lib/session";
 import { exposeCode } from "@/lib/sms";
 
@@ -45,7 +46,7 @@ export async function confirmDeletion(form: FormData) {
     await verifyOtp(phone, String(form.get("code") ?? ""), new Date(), "delete");
     count = await deleteAccountsForPhone(phone);
   } catch (e) {
-    if (!(e instanceof HttpError)) console.error("hisobni o'chirish:", e);
+    if (!(e instanceof HttpError)) reportError(e, { area: "account-delete-web" });
     return back(lang, { phone, error: errorText(e, "Hisobni o'chirib bo'lmadi. Qayta urinib ko'ring", lang) });
   }
   back(lang, { done: String(count) });

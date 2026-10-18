@@ -15,7 +15,7 @@ const back = (params: Record<string, string>) => redirect(`/admin?${new URLSearc
 
 async function setSession(phone: string) {
   const store = await cookies();
-  store.set(ADMIN_COOKIE, signToken({ kind: "admin", phone, exp: Math.floor(Date.now() / 1000) + DAY_SECONDS }), {
+  store.set(ADMIN_COOKIE, signToken({ kind: "admin", phone, exp: Math.floor(Date.now() / 1000) + DAY_SECONDS }, "admin"), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

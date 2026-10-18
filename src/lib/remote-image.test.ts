@@ -3,7 +3,7 @@ import { fetchRemoteImage, imageTypeOf, isPublicAddress } from "./remote-image";
 
 describe("isPublicAddress", () => {
   it("ichki tarmoq, localhost va maxsus manzillarni rad etadi", () => {
-    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.5", "192.168.1.10", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1", "nomi.uz"]) {
+    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.5", "192.168.1.10", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1", "64:ff9b::a9fe:a9fe", "2002:c0a8:0101::1", "nomi.uz"]) {
       expect(isPublicAddress(ip), ip).toBe(false);
     }
   });

@@ -1,5 +1,6 @@
 // Integratsiya testlari uchun ma'lumot yaratish. Har chaqiruv yangi, noyob yozuvlar yaratadi:
 // testlar bir-biriga xalaqit bermaydi va bazani tozalash shart emas.
+import { randomBytes } from "node:crypto";
 import type { PaymentType, Prisma, StaffRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { trialPeriod } from "@/lib/subscription";
@@ -10,6 +11,18 @@ export const uid = () => `${Date.now().toString(36)}${(seq++).toString(36)}${Mat
 
 // Har test o'z raqamini oladi: raqam bo'yicha cheklovlar (SMS, ro'yxatdan o'tish) testlararo aralashmasin
 export const phone = () => `+99899${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
+
+// Yuklash testlari uchun: fayl turi birinchi baytlardan aniqlanadi (file-type.ts), dumi tasodifiy (har biri noyob xesh)
+const MAGIC: Record<string, number[]> = {
+  "image/jpeg": [0xff, 0xd8, 0xff, 0xe0],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/webp": [...Buffer.from("RIFF"), 0, 0, 0, 0, ...Buffer.from("WEBP")],
+  "image/heic": [0, 0, 0, 0x18, ...Buffer.from("ftypheic")],
+  "application/pdf": [...Buffer.from("%PDF-1.7")],
+};
+export function fileBytes(type: string, size = 64): Uint8Array<ArrayBuffer> {
+  return new Uint8Array(Buffer.concat([Buffer.from(MAGIC[type] ?? []), randomBytes(size)]));
+}
 
 const exp = () => Math.floor(Date.now() / 1000) + 3600;
 export const tokens = {
@@ -41,7 +54,7 @@ export async function makeStaff(distributorId: string, role: StaffRole) {
 
 export async function makeShop(data: Partial<Prisma.ShopCreateInput> = {}) {
   const shop = await db.shop.create({
-    data: { name: `Do'kon ${uid()}`, address: "Bunyodkor ko'chasi 1", district: "Chilonzor", ...trialPeriod(), ...data, users: { create: { name: "Ega", phone: phone(), role: "OWNER" } } },
+    data: { name: `Do'kon ${uid()}`, address: "Bunyodkor ko'chasi 1", district: "Chilonzor", ...trialPeriod(), verifiedAt: new Date(), ...data, users: { create: { name: "Ega", phone: phone(), role: "OWNER" } } },
     include: { users: true },
   });
   const owner = shop.users[0];

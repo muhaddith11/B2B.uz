@@ -190,6 +190,8 @@ async function main() {
         address: s.address,
         district: "Qo'qon shahri",
         ...trialPeriod(),
+        // Demo egalari raqamini tasdiqlagan: nasiya va o'tkazma bilan sinash mumkin
+        verifiedAt: new Date(),
         users: { create: { name: s.owner, phone: `+99890000000${i + 1}`, role: "OWNER" } },
       },
       include: { users: true },

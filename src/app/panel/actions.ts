@@ -4,18 +4,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { OrderStatus } from "@prisma/client";
 import { approveInput, approveLink, rejectLink } from "@/lib/links";
+import { render } from "@/lib/i18n";
 import { changeOrderStatus } from "@/lib/orders";
+import { reportError } from "@/lib/monitoring";
 import { getStaff, HttpError } from "@/lib/session";
+import { panelT } from "./panel-lang";
 
 // Amal bajarilmasa (masalan, buyurtmani boshqa xodim allaqachon qabul qilgan) sahifaga sababi bilan qaytamiz:
 // production'da server xatosining matni ko'rinmaydi, shuning uchun xato sahifasi o'rniga xabar ko'rsatiladi
 async function run(page: string, task: () => Promise<void>) {
+  const { lang, t } = await panelT();
   let error: string | null = null;
   try {
     await task();
   } catch (e) {
-    if (!(e instanceof HttpError)) console.error("panel:", e);
-    error = e instanceof HttpError ? e.message : "Amalni bajarib bo'lmadi. Qayta urinib ko'ring";
+    if (!(e instanceof HttpError)) reportError(e, { area: "panel" });
+    error = e instanceof HttpError ? render(e.text, lang) : t("Amalni bajarib bo'lmadi. Qayta urinib ko'ring");
   }
   revalidatePath("/panel", "layout");
   if (error) redirect(`${page}?${new URLSearchParams({ error })}`);

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { lookup, type LookupAddress } from "node:dns";
 import { request } from "node:https";
 import { BlockList, isIP } from "node:net";
+import { sniffType } from "./file-type";
 import type { PreparedUpload } from "./uploads";
 
 // Prays-listdagi "Rasm havolasi": internetdagi rasm serverga yuklab olinib, o'z omborimizda saqlanadi.
@@ -35,6 +36,10 @@ for (const [net, prefix] of [
   ["fc00::", 7],
   ["fe80::", 10],
   ["ff00::", 8],
+  // IPv4 manzilni ichiga olgan IPv6 o'tish tarmoqlari (NAT64, 6to4): ular orqali ichki IPv4 ga yetib bo'lmasin
+  ["64:ff9b::", 96],
+  ["64:ff9b:1::", 48],
+  ["2002::", 16],
 ] as const)
   PRIVATE.addSubnet(net, prefix, "ipv6");
 
@@ -51,12 +56,10 @@ export function isPublicAddress(ip: string): boolean {
   return !PRIVATE.check(ip, "ipv4");
 }
 
-// Fayl haqiqatan rasmmi: birinchi baytlar turiga mos kelishi kerak (sarlavhadagi content-type ga ishonilmaydi)
+// Fayl haqiqatan rasmmi (JPG, PNG yoki WEBP): birinchi baytlar bo'yicha (file-type.ts), sarlavhadagi content-type ga ishonilmaydi
 export function imageTypeOf(buf: Buffer): string | null {
-  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
-  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
-  if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "image/webp";
-  return null;
+  const type = sniffType(buf);
+  return type && type in TYPES ? type : null;
 }
 
 // Ulanish faqat ochiq manzilga: DNS javobidagi har bir manzil tekshiriladi

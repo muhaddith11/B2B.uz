@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { db } from "./db";
 import { createOnlinePayment, recordPayment, reviewPayment, submitReceipt } from "./payments";
-import { balanceOf, makeOrder, makeWorld, settle, uid } from "@/test/factory";
+import { balanceOf, fileBytes, makeOrder, makeWorld, settle, uid } from "@/test/factory";
 
 function receiptForm(distributorId: string, bytes: Uint8Array<ArrayBuffer>, amount = 50_000) {
   const f = new FormData();
@@ -10,7 +10,7 @@ function receiptForm(distributorId: string, bytes: Uint8Array<ArrayBuffer>, amou
   f.set("receipt", new File([bytes], "chek.png", { type: "image/png" }));
   return f;
 }
-const randomBytes = () => new TextEncoder().encode(`chek-${uid()}`);
+const randomBytes = () => fileBytes("image/png");
 
 describe("naqd va o'tkazma to'lov", () => {
   it("qarzni kamaytiradi", async () => {
@@ -108,9 +108,24 @@ describe("chek bilan to'lov", () => {
     const w = await makeWorld();
     const user = { id: w.owner.id, shopId: w.shop.id };
     const bad = receiptForm(w.dist.id, randomBytes());
-    bad.set("receipt", new File([randomBytes()], "a.exe", { type: "application/x-msdownload" }));
+    bad.set("receipt", new File([new TextEncoder().encode("MZ\x90\x00 dastur")], "a.exe", { type: "application/x-msdownload" }));
     await expect(submitReceipt(user, bad)).rejects.toMatchObject({ status: 400 });
     await expect(submitReceipt(user, receiptForm(w.dist.id, randomBytes(), 0))).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("rasm deb e'lon qilingan boshqa faylni (HTML) baytlariga qarab rad etadi, turi baytlardan olinadi", async () => {
+    const w = await makeWorld();
+    const user = { id: w.owner.id, shopId: w.shop.id };
+    const html = receiptForm(w.dist.id, randomBytes());
+    html.set("receipt", new File([new TextEncoder().encode("<html><script>alert(1)</script></html>")], "chek.jpg", { type: "image/jpeg" }));
+    await expect(submitReceipt(user, html)).rejects.toMatchObject({ status: 400 });
+    expect(await db.storedFile.count({ where: { data: { equals: Buffer.from("<html><script>alert(1)</script></html>") } } })).toBe(0);
+
+    // Telefon turini xato yozgan haqiqiy PNG: qabul qilinadi va PNG sifatida saqlanadi
+    const png = receiptForm(w.dist.id, randomBytes());
+    png.set("receipt", new File([randomBytes()], "chek.jpg", { type: "image/jpeg" }));
+    const entry = await submitReceipt(user, png);
+    expect(entry.receiptUrl).toMatch(/\.png$/);
   });
 });
 

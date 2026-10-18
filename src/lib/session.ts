@@ -2,11 +2,14 @@ import { cookies } from "next/headers";
 import type { StaffRole } from "@prisma/client";
 import { db } from "./db";
 import { langOf, render, type Lang, type Text } from "./i18n";
+import { reportError } from "./monitoring";
 import { normalizePhone } from "./phone";
 import { verifyToken, type SessionPayload } from "./token";
 
 export const PANEL_COOKIE = "panel_session";
 export const ADMIN_COOKIE = "admin_session";
+// Web panelga kiradigan rollar: agent va yetkazuvchi faqat mobil ilovada ishlaydi
+export const PANEL_ROLES = ["ADMIN", "OPERATOR", "ACCOUNTANT"] as const satisfies readonly StaffRole[];
 
 // Xato matni o'zbekcha (message) va so'rov tilida (render: text): ilova ruscha bo'lsa, javob ham ruscha
 export class HttpError extends Error {
@@ -18,9 +21,10 @@ export class HttpError extends Error {
   }
 }
 
+// Faqat ilova uchun berilgan token (aud "app"): panel yoki admin cookie'si sarlavhaga qo'yilsa ham qabul qilinmaydi
 function bearer(req: Request) {
   const header = req.headers.get("authorization") ?? "";
-  return verifyToken(header.replace(/^Bearer\s+/i, ""));
+  return verifyToken(header.replace(/^Bearer\s+/i, ""), "app");
 }
 
 // Hisob egasi "Barcha qurilmalardan chiqish" qilgan bo'lsa, undan oldin berilgan tokenlar ishlamaydi
@@ -83,13 +87,14 @@ export function bearerPayload(req: Request) {
   return bearer(req);
 }
 
-// Panel sahifalari: cookie
+// Panel sahifalari: cookie. Faqat panel uchun berilgan token (aud "panel") va panel rollari:
+// agent yoki yetkazuvchi ilova tokenini cookie'ga qo'yib, butun distribyutor buyurtmalarini ko'ra olmaydi
 export async function getStaff() {
   const store = await cookies();
-  const payload = verifyToken(store.get(PANEL_COOKIE)?.value);
+  const payload = verifyToken(store.get(PANEL_COOKIE)?.value, "panel");
   if (!payload || payload.kind !== "staff") return null;
   const staff = await db.staff.findFirst({
-    where: { id: payload.staffId, active: true },
+    where: { id: payload.staffId, active: true, role: { in: [...PANEL_ROLES] } },
     include: { distributor: true },
   });
   return staff && issuedAfter(payload, staff) ? staff : null;
@@ -105,7 +110,7 @@ export function platformAdminPhones(): string[] {
 
 export async function getAdmin() {
   const store = await cookies();
-  const payload = verifyToken(store.get(ADMIN_COOKIE)?.value);
+  const payload = verifyToken(store.get(ADMIN_COOKIE)?.value, "admin");
   if (!payload || payload.kind !== "admin") return null;
   // Sinov rejimidagi kirish ("dev") yoki ro'yxatda hozir ham bor raqam
   if (payload.phone === "dev" ? !devAuthEnabled() : !platformAdminPhones().includes(payload.phone)) return null;
@@ -116,9 +121,10 @@ export function devAuthEnabled(): boolean {
   return process.env.DEV_AUTH === "1" && process.env.NODE_ENV !== "production";
 }
 
-export function errorResponse(e: unknown, lang: Lang = "uz"): Response {
+// Kutilgan xato (HttpError) foydalanuvchiga matni bilan qaytadi; kutilmagani monitoringga yoziladi va umumiy matn qaytadi
+export function errorResponse(e: unknown, lang: Lang = "uz", req?: Request): Response {
   if (e instanceof HttpError) return Response.json({ error: render(e.text, lang) }, { status: e.status });
-  console.error(e);
+  reportError(e, { area: "api", method: req?.method, path: req ? new URL(req.url).pathname : undefined });
   return Response.json({ error: render("Serverda xato", lang) }, { status: 500 });
 }
 
@@ -128,7 +134,7 @@ export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response
     try {
       return await fn(...args);
     } catch (e) {
-      return errorResponse(e, langOf(args[0]));
+      return errorResponse(e, langOf(args[0]), args[0] instanceof Request ? args[0] : undefined);
     }
   };
 }

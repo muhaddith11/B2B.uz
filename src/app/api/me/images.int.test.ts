@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { ctx, makeWorld, phone, tokens, uid } from "@/test/factory";
+import { ctx, fileBytes, makeWorld, phone, tokens, uid } from "@/test/factory";
 import * as brandLogo from "../brand/logo/route";
 import * as file from "../files/[folder]/[name]/route";
 import * as shopImage from "../shop/image/route";
@@ -12,7 +12,7 @@ import * as avatar from "./avatar/route";
 
 function upload(token: string, type = "image/jpeg") {
   const form = new FormData();
-  form.set("image", new File([randomBytes(64)], "rasm.jpg", { type }));
+  form.set("image", new File([fileBytes(type)], "rasm.jpg", { type }));
   return new Request("http://test.local/x", { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form });
 }
 const remove = (token: string) => new Request("http://test.local/x", { method: "DELETE", headers: { authorization: `Bearer ${token}` } });

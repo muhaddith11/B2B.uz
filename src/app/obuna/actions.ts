@@ -35,7 +35,7 @@ export async function verifySubscriptionCode(form: FormData) {
   } catch (e) {
     return back({ phone, error: message(e, "Kod noto'g'ri") });
   }
-  (await cookies()).set(SUBSCRIPTION_COOKIE, signToken({ kind: "phone", phone, exp: Math.floor(Date.now() / 1000) + SUBSCRIPTION_SESSION_SECONDS }), {
+  (await cookies()).set(SUBSCRIPTION_COOKIE, signToken({ kind: "phone", phone, exp: Math.floor(Date.now() / 1000) + SUBSCRIPTION_SESSION_SECONDS }, "obuna"), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

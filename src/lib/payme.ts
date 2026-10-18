@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { OnlinePayment, Prisma } from "@prisma/client";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { db } from "./db";
+import { reportError } from "./monitoring";
 import { applyOnlinePayment, notifyOnlinePaid, reverseOnlinePayment } from "./payments";
 import { platformPayme } from "./subscription";
 
@@ -248,7 +249,8 @@ async function respond(load: () => Promise<Cashbox | null>, auth: string | null,
     return { id, result: await dispatch(box, req.method, req.params as Params) };
   } catch (e) {
     if (e instanceof PaymeError) return { id, error: { code: e.code, message: MESSAGES[e.code] ?? MESSAGES[-32400], data: e.data } };
-    console.error("payme:", e);
+    // To'lov tizimi so'rovi yiqildi: pul do'konning hisobidan yechilgan bo'lishi mumkin, darhol ko'rish kerak
+    reportError(e, { area: "payme", method: req.method, rpcId: req.id }, "fatal");
     return { id, error: { code: -32400, message: MESSAGES[-32400] } };
   }
 }

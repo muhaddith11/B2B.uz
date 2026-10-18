@@ -1,7 +1,8 @@
 import type { PushOwner, StaffRole } from "@prisma/client";
-import { after } from "next/server";
+import { runAfterResponse } from "./background";
 import { db } from "./db";
 import { isLang, render, type Text } from "./i18n";
+import { reportError } from "./monitoring";
 import type { AccountRef } from "./session";
 
 // Mobil ilovaga push bildirishnoma: Expo push xizmati orqali. Token bo'lmasa, hech narsa yuborilmaydi.
@@ -46,15 +47,9 @@ async function tokensFor(ownerKind: PushOwner, ownerIds: string[]): Promise<Devi
   return db.pushToken.findMany({ where: { ownerKind, ownerId: { in: ownerIds } }, select: { token: true, lang: true } });
 }
 
-// Javob qaytgandan keyin yuboriladi. Vercel'da funksiya javobdan keyin to'xtatilishi mumkin, shuning uchun after()
-// platformaga bu ish tugashini kutishni aytadi. So'rovdan tashqarida (skript, test) after() ishlamaydi: unda darhol yuboriladi.
+// Javob qaytgandan keyin yuboriladi (background.ts): bildirishnoma kechiksa yoki ketmasa ham asosiy amal bajarilgan bo'ladi
 function fire(task: () => Promise<void>) {
-  const run = () => task().catch((e) => console.error("push:", e));
-  try {
-    after(run);
-  } catch {
-    void run();
-  }
+  runAfterResponse(task, (e) => reportError(e, { area: "push" }, "warning"));
 }
 
 export function notifyShop(shopId: string, msg: Message) {

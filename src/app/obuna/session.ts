@@ -6,6 +6,6 @@ export const SUBSCRIPTION_COOKIE = "obuna_session";
 export const SUBSCRIPTION_SESSION_SECONDS = 30 * 60;
 
 export async function subscriptionPhone(): Promise<string | null> {
-  const payload = verifyToken((await cookies()).get(SUBSCRIPTION_COOKIE)?.value);
+  const payload = verifyToken((await cookies()).get(SUBSCRIPTION_COOKIE)?.value, "obuna");
   return payload?.kind === "phone" ? payload.phone : null;
 }

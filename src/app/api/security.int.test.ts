@@ -1,12 +1,11 @@
 // Xavfsizlik tuzatishlari: do'konni faqat roziligi bilan ulash, tasdiqlanmagan distribyutor, chiqish va sessiyalar,
 // buyurtma summasi chegarasi, rasm keshi va eski rasmlarni tozalash
-import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { MAX_LINE_QTY } from "@/lib/money";
 import { applyPriceList } from "@/lib/price-list-apply";
 import { signToken } from "@/lib/token";
-import { ctx, makeDistributor, makeLink, makeOrder, makeProduct, makeShop, makeStaff, makeWorld, phone, req, tokens, uid } from "@/test/factory";
+import { ctx, fileBytes, makeDistributor, makeLink, makeOrder, makeProduct, makeShop, makeStaff, makeWorld, phone, req, tokens, uid } from "@/test/factory";
 import * as logout from "./auth/logout/route";
 import * as brandProductImage from "./brand/products/[id]/image/route";
 import * as file from "./files/[folder]/[name]/route";
@@ -27,7 +26,7 @@ const shopBody = (p: string) => ({ shopName: "Kiritilgan nom", address: "Bunyodk
 
 function upload(token: string) {
   const form = new FormData();
-  form.set("image", new File([randomBytes(64)], "rasm.jpg", { type: "image/jpeg" }));
+  form.set("image", new File([fileBytes("image/jpeg")], "rasm.jpg", { type: "image/jpeg" }));
   return new Request("http://test.local/x", { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form });
 }
 const removeReq = (token: string) => new Request("http://test.local/x", { method: "DELETE", headers: { authorization: `Bearer ${token}` } });

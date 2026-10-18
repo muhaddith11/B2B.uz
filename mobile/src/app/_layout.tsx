@@ -6,19 +6,32 @@ import { Unbounded_500Medium } from '@expo-google-fonts/unbounded/500Medium';
 import { Unbounded_600SemiBold } from '@expo-google-fonts/unbounded/600SemiBold';
 import { Unbounded_700Bold } from '@expo-google-fonts/unbounded/700Bold';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, type Href } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, type ErrorBoundaryProps, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useStackOptions } from '@/components/nav';
+import { ErrorState } from '@/components/ui';
 import { FONT, usePalette } from '@/constants/theme';
 import { LanguageKeyed, LanguageProvider, useLanguage } from '@/context/language';
 import { SessionProvider, useSession } from '@/context/session';
+import { installCrashReporter, reportCrash } from '@/lib/crash';
 import { t } from '@/lib/i18n';
 import { onNotificationTap, registerForPush } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
+// Render'dan tashqaridagi kutilmagan xatolar ham serverga (Sentry) boradi
+installCrashReporter();
+
+// Ekran chizishda yiqilsa: oq ekran o'rniga tushunarli xabar va qayta urinish; xato serverga yuboriladi.
+// Faqat props va oddiy hook'lar: bu ekran navigatsiya konteksti buzilganda ham chizilishi kerak (qaysi ekran — stack'da ko'rinadi)
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportCrash(error, { screen: 'root', fatal: true });
+  }, [error]);
+  return <ErrorState message={t("Kutilmagan xato yuz berdi. Biz bu haqda xabar oldik. Qayta urinib ko'ring.")} onRetry={retry} />;
+}
 
 export default function RootLayout() {
   const scheme = useColorScheme();

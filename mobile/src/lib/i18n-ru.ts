@@ -16,6 +16,8 @@ export const RU = {
   'Qayta urinish': 'Повторить',
   Yuklanmoqda: 'Загрузка',
   'Hech narsa topilmadi': 'Ничего не найдено',
+  "Yana ko'rsatish": 'Показать ещё',
+  "Kutilmagan xato yuz berdi. Biz bu haqda xabar oldik. Qayta urinib ko'ring.": 'Произошла непредвиденная ошибка. Мы уже получили сообщение о ней. Попробуйте ещё раз.',
   Hammasi: 'Все',
   Saqlash: 'Сохранить',
   Saqlandi: 'Сохранено',
@@ -617,6 +619,12 @@ export const RU = {
   'Olib tashlash': 'Удалить',
   '{name} olib tashlansinmi?': 'Удалить {name}?',
   'Sotuvchi ilovaga kira olmaydi. Uning buyurtmalari tarixda qoladi.': 'Продавец не сможет войти в приложение. Его заказы останутся в истории.',
+
+  // Agent qo'shgan do'kon: egasi raqamini tasdiqlamaguncha
+  "Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi":
+    'Пока владелец не войдёт в приложение и не подтвердит номер, принимаются только заказы за наличные',
+  "Do'kon egasi hali ilovaga kirmagan. Raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi, nasiya va o'tkazma yopiq":
+    'Владелец магазина ещё не входил в приложение. Пока он не подтвердит номер, принимаются только заказы за наличные, рассрочка и перевод закрыты',
 } as const satisfies Record<string, string | readonly [string, string, string]>;
 
 export type Key = keyof typeof RU;

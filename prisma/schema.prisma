@@ -183,7 +183,7 @@ model Staff {
 }
 
 model Shop {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   address     String
   district    String
@@ -194,7 +194,10 @@ model Shop {
   // Obuna: do'kon (barcha sotuvchilari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
   trialEndsAt DateTime
   paidUntil   DateTime
-  createdAt   DateTime @default(now())
+  // Egasi raqamini SMS kod bilan tasdiqlagan vaqt (o'zi ro'yxatdan o'tganda yoki ilovaga birinchi kirganda).
+  // Agent qo'shgan, egasi hali kirmagan do'konga faqat naqd buyurtma olinadi: uning roziligisiz nomiga qarz yozilmaydi
+  verifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
 
   users                ShopUser[]
   links                ShopLink[]
@@ -580,22 +583,25 @@ model StoredFile {
 
 // SMS orqali kirish kodi: kodning o'zi emas, HMAC xeshi saqlanadi
 model OtpCode {
-  id        String    @id @default(cuid())
-  phone     String
-  codeHash  String
-  expiresAt DateTime
-  attempts  Int       @default(0)
-  usedAt    DateTime?
-  ip        String? // so'rov kelgan IP: bitta manzildan ko'p raqamga kod so'rashni cheklash uchun
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  usedAt     DateTime?
+  ip         String? // so'rov kelgan IP: bitta manzildan ko'p raqamga kod so'rashni cheklash uchun
   // Kod nima uchun: "login" (ilova, panel, obuna sahifasi), "admin" (platforma admini), "delete" (hisobni o'chirish).
   // Bir maqsadga so'ralgan kod boshqasida ishlamaydi
-  purpose   String    @default("login")
-  createdAt DateTime  @default(now())
+  purpose    String    @default("login")
+  // Raqamga biror hisob bog'langanmi: umumiy soatlik chegara faqat hisobi yo'q raqamlarga qo'llanadi (otp.ts)
+  knownPhone Boolean   @default(false)
+  createdAt  DateTime  @default(now())
 
   @@index([phone, createdAt])
   @@index([phone, purpose, createdAt])
   @@index([ip, createdAt])
   @@index([createdAt])
+  @@index([knownPhone, createdAt])
 }
 
 model AuditLog {

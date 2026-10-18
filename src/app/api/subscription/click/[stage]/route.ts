@@ -1,4 +1,5 @@
 import { handlePlatformClick } from "@/lib/click";
+import { reportError } from "@/lib/monitoring";
 
 // Platformaning Click xizmati (obuna to'lovlari): .../prepare va .../complete (form-urlencoded)
 export async function POST(req: Request, ctx: { params: Promise<{ stage: string }> }) {
@@ -12,7 +13,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ stage: string 
   try {
     return Response.json(await handlePlatformClick(stage, params));
   } catch (e) {
-    console.error("click (obuna):", e);
+    reportError(e, { area: "click-subscription", stage, merchantTransId: params.merchant_trans_id }, "fatal");
     return Response.json({ click_trans_id: params.click_trans_id ?? null, merchant_trans_id: params.merchant_trans_id ?? null, error: -8, error_note: "Error in request from click" });
   }
 }
