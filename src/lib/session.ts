@@ -37,6 +37,11 @@ export async function requireShopUser(req: Request) {
   const user = await db.shopUser.findUnique({ where: { id: payload.shopUserId }, include: { shop: true } });
   if (!user) throw new HttpError(401, "Foydalanuvchi topilmadi");
   if (!issuedAfter(payload, user)) throw new HttpError(401, closedMsg);
+  // Egasining tokeni faqat SMS kod bilan tasdiqlangan raqamga beriladi (kirish, ro'yxatdan o'tish yoki shundan yangilangan):
+  // u ilovadan foydalanayotgan bo'lsa, do'kon tasdiqlangan (masalan, tasdiq ustuni paydo bo'lishidan oldin kirgan ega)
+  if (user.role === "OWNER" && !user.shop.confirmedAt) {
+    await db.shop.updateMany({ where: { id: user.shopId, confirmedAt: null }, data: { confirmedAt: new Date() } });
+  }
   return user;
 }
 

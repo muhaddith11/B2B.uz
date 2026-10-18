@@ -134,6 +134,15 @@ describe("4. Agent qo'shgan do'kon: egasi raqamini tasdiqlamaguncha faqat naqd",
     expect((await adjust(50_000)).status).toBe(200);
   });
 
+  it("egasi sessiyasi bilan ilovadan foydalansa do'kon tasdiqlanadi, sotuvchi sessiyasi bilan esa yo'q", async () => {
+    const shop = await makeShop({ confirmedAt: null });
+    const seller = await db.shopUser.create({ data: { shopId: shop.id, name: "S", phone: phone(), role: "SELLER" } });
+    expect((await shopTeam.GET(req("/api/shop/team", { token: tokens.shop(seller.id) }))).status).toBe(403);
+    expect((await db.shop.findUniqueOrThrow({ where: { id: shop.id } })).confirmedAt).toBeNull();
+    expect((await shopTeam.GET(req("/api/shop/team", { token: shop.owner.token }))).status).toBe(200);
+    expect((await db.shop.findUniqueOrThrow({ where: { id: shop.id } })).confirmedAt).not.toBeNull();
+  });
+
   it("do'konning o'zi ro'yxatdan o'tsa darhol tasdiqlangan", async () => {
     const p = phone();
     const res = await json(
