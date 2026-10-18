@@ -58,7 +58,8 @@
             "ru"
           ]
         }
-      ]
+      ],
+      "expo-image"
     ],
     "locales": {
       "uz": "./locales/uz.json",
