@@ -19,6 +19,7 @@ Sifat bo'yicha to'liq tekshiruvdan keyingi tuzatishlar: xavfsizlik, mahsulot qoi
 - Bir raqam yangi do'kon yoki distribyutor ochib tekin davrni cho'za olmaydi: keyingi tashkilot birinchisi bilan birga tugaydi (kamida 1 oy).
 - Distribyutor paneli ikki tilda (o'zbek / rus), prays-list xatolari ham.
 - Mobil ilova: Expo SDK 58 barqaror versiyasi (58.0.14) va mos paketlar; keraksiz shablon fayllari olib tashlandi.
+- Android: reklama identifikatori ruxsati (`AD_ID`) kutubxonalar orqali ham kirmaydi — ilova reklama va kuzatuv ishlatmaydi (Play Console: Advertising ID — No).
 
 ### Tuzatildi
 - Xodimning to'lovlar ekranida 100 dan ortiq tasdiqlangan to'lov bo'lsa, tasdiq kutayotgan cheklar ro'yxatdan tushib qolardi.
