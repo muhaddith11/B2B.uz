@@ -68,7 +68,20 @@ Umumiy tartib: **ta'sirni aniqlash → to'xtatish (rollback) → sababini topish
 | Har oy | Neon zaxirasidan sinov tiklash (yangi branchga) va ilovani unga ulab ko'rish; `/admin` hajm ko'rsatkichi |
 | Har Expo SDK chiqqanda | `cd mobile && npx expo install expo@latest && npx expo install --fix`, keyin to'liq sinov va EAS build |
 
-## 4. Foydali buyruqlar
+## 4. Mobil ilova build'i
+
+Build'lar EAS'da (Expo bulutida), GitHub Actions orqali: Actions → **Mobil build (EAS)** → Run workflow (`all`, `android`, `ios`). Tayyor fayllar havolasi: o'sha workflow, `status`.
+
+| Maxfiy kalit (repo Settings → Secrets → Actions) | Qachon kerak |
+| --- | --- |
+| `EXPO_TOKEN` (expo.dev → Account settings → Access tokens) | har doim |
+| `ASC_API_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `APPLE_TEAM_ID` | iOS sertifikati EAS'da hali yo'q bo'lsa (App Store Connect → Users and Access → Integrations → API, rol Admin) |
+
+- Android imzolash kalitini EAS birinchi build'da yaratadi va saqlaydi. Google Play'ga birinchi `.aab` qo'lda yuklanadi, Play App Signing yoqiladi.
+- Versiya raqamini EAS o'zi oshiradi (`appVersionSource: remote`). Foydalanuvchiga ko'rinadigan versiya `mobile/app.json` → `version`.
+- Build'dan oldin server tomoni production'da bo'lsin: ilova `https://b2b-uz.vercel.app` ga ulanadi.
+
+## 5. Foydali buyruqlar
 
 ```bash
 npm run keys:reencrypt   # to'lov kalitlarini PAYMENT_KEYS_SECRET ga o'tkazish

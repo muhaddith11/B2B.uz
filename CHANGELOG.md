@@ -33,6 +33,7 @@ Sifat bo'yicha to'liq tekshiruvdan keyingi tuzatishlar: xavfsizlik, mahsulot qoi
 - Kunlik tozalash (Vercel Cron): bir kundan eski SMS kodlar, tashlandiq fayllar.
 - Build muhitga qarab: production'da sozlamalar tekshiriladi, preview'da migratsiya faqat `MIGRATE_ON_BUILD=1` bilan.
 - Sayt shriftlari repoda (`src/app/fonts`): Google Fonts ishlamay qolsa ham build to'xtamaydi.
+- Mobil build GitHub Actions'dan EAS'da: Android `.aab` va iOS, imzolash kalitlari EAS'da (`.github/workflows/eas-build.yml`).
 - CI: migratsiyalar sxemaga mosligi, qamrov chegarasi, Expo paketlari mosligi; Dependabot; PR shabloni, CONTRIBUTING, docs/ (arxitektura, xavfsizlik, runbook).
 
 ## 0.1.0 — 2026-10-16

@@ -1,0 +1,105 @@
+# Mobil ilova build'i EAS'da (Expo bulutida): Android .aab (Google Play) va iOS .ipa (App Store).
+# Ishga tushirish: Actions → "Mobil build (EAS)" → Run workflow. Yoki `mobile-build-*` tegini push qilish (platform: all).
+# Kerakli maxfiy kalitlar (Settings → Secrets and variables → Actions):
+#   EXPO_TOKEN                — expo.dev → Account settings → Access tokens
+#   iOS sertifikati EAS'da hali yo'q bo'lsa (birinchi iOS build), App Store Connect API kaliti:
+#   ASC_API_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID, APPLE_TEAM_ID (+ ixtiyoriy APPLE_TEAM_TYPE, odatiy INDIVIDUAL)
+# Android imzolash kalitini EAS birinchi build'da o'zi yaratadi va saqlaydi.
+# Build'lar navbatda kutmasdan yuboriladi; tayyor fayllar havolasi uchun platform: status bilan qayta ishga tushiring.
+name: Mobil build (EAS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Qaysi platforma (status: oxirgi build'lar va yuklab olish havolalari)"
+        type: choice
+        options: [all, android, ios, status]
+        default: all
+  push:
+    tags: ["mobile-build-*"]
+
+concurrency:
+  group: eas-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  eas:
+    name: EAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      PLATFORM: ${{ inputs.platform || 'all' }}
+    steps:
+      - name: EXPO_TOKEN bormi
+        working-directory: .
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN yo'q: expo.dev → Account settings → Access tokens, keyin repo Settings → Secrets → Actions"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+
+      # Kalit faqat sertifikat yoki provisioning profil yaratish kerak bo'lganda ishlatiladi
+      - name: App Store Connect API kaliti
+        if: env.PLATFORM == 'all' || env.PLATFORM == 'ios'
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_TEAM_TYPE: ${{ secrets.APPLE_TEAM_TYPE }}
+        run: |
+          if [ -z "$ASC_API_KEY_P8" ]; then
+            echo "ASC kaliti yo'q: iOS faqat EAS'da saqlangan sertifikat bilan build qilinadi"
+            exit 0
+          fi
+          printf '%s\n' "$ASC_API_KEY_P8" > "$RUNNER_TEMP/asc.p8"
+          {
+            echo "EXPO_ASC_API_KEY_PATH=$RUNNER_TEMP/asc.p8"
+            echo "EXPO_ASC_KEY_ID=$ASC_KEY_ID"
+            echo "EXPO_ASC_ISSUER_ID=$ASC_ISSUER_ID"
+            echo "EXPO_APPLE_TEAM_ID=$APPLE_TEAM_ID"
+            echo "EXPO_APPLE_TEAM_TYPE=${APPLE_TEAM_TYPE:-INDIVIDUAL}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build
+        if: env.PLATFORM != 'status'
+        run: |
+          eas build --platform "$PLATFORM" --profile production --non-interactive --no-wait --json > builds.json
+          OWNER=$(node -p "require('./app.json').expo.owner")
+          SLUG=$(node -p "require('./app.json').expo.slug")
+          {
+            echo "### Build'lar navbatga qo'yildi"
+            node -e "for (const b of require('./builds.json')) console.log('- ' + b.platform + ': https://expo.dev/accounts/$OWNER/projects/$SLUG/builds/' + b.id)"
+            echo
+            echo "Tayyor bo'lgach yuklab olish havolasi: shu workflow'ni platform: status bilan ishga tushiring."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Oxirgi build'lar
+        if: env.PLATFORM == 'status'
+        run: |
+          eas build:list --limit 6 --non-interactive --json > builds.json
+          {
+            echo "| Platforma | Versiya | Holat | Fayl |"
+            echo "| --- | --- | --- | --- |"
+            node -e "for (const b of require('./builds.json')) console.log('| ' + [b.platform, b.appVersion + ' (' + (b.appBuildVersion ?? '-') + ')', b.status, b.artifacts?.buildUrl ?? '-'].join(' | ') + ' |')"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
