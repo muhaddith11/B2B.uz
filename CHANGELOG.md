@@ -26,6 +26,7 @@ Sifat bo'yicha to'liq tekshiruvdan keyingi tuzatishlar: xavfsizlik, mahsulot qoi
 - Ro'yxatlar jim kesilardi (100 buyurtma, 500 do'kon, 200 qarz yozuvi): endi sahifalanadi (ilovada "Yana ko'rsatish", panelda "Keyingi sahifa"); do'konlar soni va umumiy qarz butun ro'yxat bo'yicha.
 - Vercel Blob keyin ulansa, undan oldin bazaga yozilgan cheklar va rasmlar ko'rinmay qolardi: endi bazadan o'qiladi, `npm run files:to-blob` ko'chiradi.
 - Katta qarz daftarida (buyurtmaga bog'langan ko'p naqd to'lov) hisob kvadratik sekinlashardi: chiziqli.
+- Distribyutorning buyurtma ekranida ruscha "Отклонить" tugmasi 360 dp telefonda qirqilib "Отклон..." bo'lib qolardi.
 
 ### Ishlatish
 - Monitoring: JSON log, Sentry (`SENTRY_DSN`), jiddiy hodisalar Telegram'ga, mobil ilova xatolari serverga, `/api/health`.
