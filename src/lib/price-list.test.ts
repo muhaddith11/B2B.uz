@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { render, type Text } from "./i18n";
 import { diffPriceList, normalizeHeader, parseAmount, parsePriceList } from "./price-list";
+
+// Xato matni panel tilida: tekshiruv o'zbekcha va ruscha ko'rinishida
+const uz = (t: Text) => render(t, "uz");
 
 const header = ["Artikul", "Nomi", "Brend", "Toifa", "O'lchov birligi", "Yashikda nechta", "Narx, so'm", "Shtrix-kod", "Qoldiq", "Katta do'kon"];
 
@@ -58,12 +62,13 @@ describe("parsePriceList", () => {
       ["Oddiy"],
     );
     expect(items.map((i) => i.imageUrl)).toEqual(["https://example.com/r.jpg", null]);
-    expect(errors).toEqual([{ row: 4, message: expect.stringContaining("Rasm havolasi") }]);
+    expect(errors.map((e) => ({ row: e.row, message: uz(e.message) }))).toEqual([{ row: 4, message: expect.stringContaining("Rasm havolasi") }]);
   });
 
   it("majburiy ustun bo'lmasa butun faylni rad etadi", () => {
     const { errors } = parsePriceList(["Artikul", "Nomi"], [["A", "B"]], []);
-    expect(errors[0].message).toContain("Majburiy ustun yo'q");
+    expect(uz(errors[0].message)).toContain("Majburiy ustun yo'q");
+    expect(render(errors[0].message, "ru")).toContain("Нет обязательного столбца: ");
   });
 
   it("qoldiqni yo'q va son ko'rinishida tushunadi", () => {
@@ -119,10 +124,11 @@ describe("chegaralar", () => {
       ["Ulgurji"],
     );
     expect(errors.map((e) => e.row)).toEqual([2, 3, 4, 5, 6]);
-    expect(errors[0].message).toContain("Narx juda katta");
-    expect(errors[1].message).toContain("nomi (200 belgigacha)");
-    expect(errors[3].message).toContain("https://");
-    expect(errors[4].message).toContain("Ulgurji");
+    expect(uz(errors[0].message)).toContain("Narx juda katta");
+    expect(uz(errors[1].message)).toContain("nomi ≤ 200");
+    expect(render(errors[1].message, "ru")).toContain("Слишком длинный текст");
+    expect(uz(errors[3].message)).toContain("https://");
+    expect(uz(errors[4].message)).toContain("Ulgurji");
     expect(items).toEqual([expect.objectContaining({ sku: "A-6", price: 100_000_000, extraPrices: { Ulgurji: 90_000_000 } })]);
   });
 });

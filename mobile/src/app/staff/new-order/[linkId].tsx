@@ -16,6 +16,8 @@ type StaffCatalog = {
   shop: { linkId: string; name: string };
   distributor: { id: string; name: string; minOrder: number };
   creditLimit: number;
+  // Egasi ilovaga kirib raqamini tasdiqlamagan bo'lsa, server faqat naqd buyurtmani qabul qiladi
+  ownerVerified: boolean;
   products: CatalogProduct[];
 };
 
@@ -141,11 +143,12 @@ export default function StaffNewOrder() {
           {minLeft > 0 && <Banner tone="warn">{t('Minimal buyurtmagacha yana {sum}', { sum: formatSom(minLeft) })}</Banner>}
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {(['CASH', 'TRANSFER', 'CREDIT'] as const)
-              .filter((type) => type !== 'CREDIT' || data.creditLimit > 0)
+              .filter((type) => (data.ownerVerified ? type !== 'CREDIT' || data.creditLimit > 0 : type === 'CASH'))
               .map((type) => (
                 <Chip key={type} label={paymentLabel(type)} active={payment === type} onPress={() => setPayment(type)} />
               ))}
           </View>
+          {!data.ownerVerified && <Banner tone="info">{t("Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi")}</Banner>}
           {err && <Banner tone="danger">{err}</Banner>}
           <Button title={t('Buyurtmani yuborish')} icon="paper-plane-outline" onPress={submit} loading={busy} disabled={minLeft > 0} />
         </View>

@@ -3,6 +3,8 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { del, get, put } from "@vercel/blob";
 import { db } from "./db";
+import { sniffType } from "./file-type";
+import { reportError } from "./monitoring";
 import { HttpError } from "./session";
 
 // Yuklangan fayllar: to'lov cheklari, tovar rasmlari, logolar (distribyutor, tovar egasi, do'kon surati) va avatarlar.
@@ -15,8 +17,9 @@ const ROOT = path.resolve(process.env.UPLOAD_DIR || "uploads");
 // Vercel funksiyasi 4,5 MB dan katta so'rov tanasini qabul qilmaydi
 const MAX_BYTES = 4 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "application/pdf": "pdf" };
+const ALL_TYPES: ReadonlySet<string> = new Set(Object.keys(TYPES));
 // Rasmlar barcha telefonlarda ko'rinishi kerak: HEIC va PDF emas
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "image/webp"]);
 export type UploadFolder = "receipts" | "products" | "logos" | "avatars";
 export type ImageFolder = Exclude<UploadFolder, "receipts">;
 
@@ -28,19 +31,19 @@ function backend(): "blob" | "db" | "disk" {
 
 export type PreparedUpload = { buf: Buffer<ArrayBuffer>; type: string; ext: string; hash: string };
 
-// Faylni tekshirib o'qiydi va xeshini hisoblaydi, lekin hali saqlamaydi (masalan, takroriy chekni saqlashdan oldin rad etish uchun)
-export async function prepareUpload(file: File): Promise<PreparedUpload> {
+// Faylni tekshirib o'qiydi va xeshini hisoblaydi, lekin hali saqlamaydi (masalan, takroriy chekni saqlashdan oldin rad etish uchun).
+// Turi faylning birinchi baytlaridan aniqlanadi (file-type.ts): telefon yuborgan content-type xato yoki soxta bo'lishi mumkin
+export async function prepareUpload(file: File, allowed: ReadonlySet<string> = ALL_TYPES, message = "Faqat rasm (JPG, PNG, WEBP, HEIC) yoki PDF yuklang"): Promise<PreparedUpload> {
   if (file.size === 0) throw new HttpError(400, "Fayl bo'sh");
   if (file.size > MAX_BYTES) throw new HttpError(400, "Fayl 4 MB dan katta bo'lmasin");
-  const ext = TYPES[file.type];
-  if (!ext) throw new HttpError(400, "Faqat rasm (JPG, PNG, WEBP, HEIC) yoki PDF yuklang");
   const buf = Buffer.from(await file.arrayBuffer());
-  return { buf, type: file.type, ext, hash: createHash("sha256").update(buf).digest("hex") };
+  const type = sniffType(buf);
+  if (!type || !allowed.has(type)) throw new HttpError(400, message);
+  return { buf, type, ext: TYPES[type], hash: createHash("sha256").update(buf).digest("hex") };
 }
 
 export async function prepareImage(file: File): Promise<PreparedUpload> {
-  if (file.size > 0 && !IMAGE_TYPES.has(file.type)) throw new HttpError(400, "Faqat rasm (JPG, PNG, WEBP) yuklang");
-  return prepareUpload(file);
+  return prepareUpload(file, IMAGE_TYPES, "Faqat rasm (JPG, PNG, WEBP) yuklang");
 }
 
 export async function storeUpload(folder: UploadFolder, file: PreparedUpload): Promise<{ url: string; hash: string }> {
@@ -61,19 +64,23 @@ export async function readUpload(folder: string, name: string): Promise<{ data: 
   if (!/^[a-z]+$/.test(folder) || !/^[a-f0-9]{32}\.[a-z]+$/.test(name)) return null;
   const ext = name.split(".")[1];
   const type = Object.entries(TYPES).find(([, e]) => e === ext)?.[0] ?? "application/octet-stream";
+  const fromDb = async () => {
+    const f = await db.storedFile.findUnique({ where: { path: `${folder}/${name}` } });
+    return f ? { data: Buffer.from(f.data), type: f.type } : null;
+  };
   try {
     const where = backend();
     if (where === "blob") {
       const res = await get(`${folder}/${name}`, { access: "private" });
-      if (!res || res.statusCode !== 200) return null;
-      return { data: Buffer.from(await new Response(res.stream).arrayBuffer()), type: res.blob.contentType || type };
+      if (res && res.statusCode === 200) return { data: Buffer.from(await new Response(res.stream).arrayBuffer()), type: res.blob.contentType || type };
+      // Blob ombori keyin ulangan bo'lsa, undan oldin yuklangan fayllar bazada qoladi (npm run files:to-blob ko'chiradi)
+      return await fromDb();
     }
-    if (where === "db") {
-      const f = await db.storedFile.findUnique({ where: { path: `${folder}/${name}` } });
-      return f ? { data: Buffer.from(f.data), type: f.type } : null;
-    }
+    if (where === "db") return await fromDb();
     return { data: await readFile(path.join(ROOT, folder, name)), type };
-  } catch {
+  } catch (e) {
+    // Fayl yo'qligi oddiy holat; ombor xatosi esa ko'rinishi kerak
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") reportError(e, { area: "uploads", action: "read", path: `${folder}/${name}` });
     return null;
   }
 }
@@ -101,11 +108,14 @@ async function removeStored(folder: string, name: string): Promise<void> {
   const key = `${folder}/${name}`;
   try {
     const where = backend();
-    if (where === "blob") await del(key);
-    else if (where === "db") await db.storedFile.deleteMany({ where: { path: key } });
+    if (where === "blob") {
+      await del(key);
+      // Blob'dan oldingi davrda bazaga yozilgan nusxa ham qolmasin
+      await db.storedFile.deleteMany({ where: { path: key } });
+    } else if (where === "db") await db.storedFile.deleteMany({ where: { path: key } });
     else await unlink(path.join(ROOT, folder, name));
   } catch (e) {
-    console.error("fayl o'chirilmadi:", key, e);
+    reportError(e, { area: "uploads", action: "remove", path: key }, "warning");
   }
 }
 

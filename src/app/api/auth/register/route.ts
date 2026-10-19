@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { lockRegistration } from "@/lib/registration";
 import { devAuthEnabled, handle, HttpError, readJson } from "@/lib/session";
-import { trialPeriod } from "@/lib/subscription";
+import { boundedTrial } from "@/lib/subscription";
 import { DAY_SECONDS, signToken, verifyToken } from "@/lib/token";
 
 const registerInput = z.object({
@@ -46,17 +46,17 @@ export const POST = handle(async (req: Request) => {
     const existing = verifiedPhone
       ? await tx.shopUser.findFirst({ where: { phone: verifiedPhone, role: "OWNER", shop: { name: { equals: shopName, mode: "insensitive" } } } })
       : null;
-    return (
-      existing ??
-      tx.shopUser.create({
-        data: {
-          name: ownerName,
-          phone,
-          role: "OWNER",
-          shop: { create: { name: shopName, address, district, ...trialPeriod() } },
-        },
-      })
-    );
+    if (existing) return existing;
+    const others = await tx.shop.findMany({ where: { users: { some: { phone, role: "OWNER" } } }, select: { trialEndsAt: true } });
+    return tx.shopUser.create({
+      data: {
+        name: ownerName,
+        phone,
+        role: "OWNER",
+        // O'zi SMS kod bilan ro'yxatdan o'tgan ega: raqami tasdiqlangan
+        shop: { create: { name: shopName, address, district, verifiedAt: verifiedPhone ? new Date() : null, ...boundedTrial(others.map((s) => s.trialEndsAt)) } },
+      },
+    });
   });
 
   const ttl = verifiedPhone ? 30 * DAY_SECONDS : DAY_SECONDS;

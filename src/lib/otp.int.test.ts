@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "./db";
 import { issueOtp, MAX_ATTEMPTS, MAX_PER_IP_HOUR, verifyOtp } from "./otp";
-import { phone, settle, uid } from "@/test/factory";
+import { makeDistributor, makeShop, makeStaff, phone, settle, uid } from "@/test/factory";
 
 const ip = () => `10.${uid()}`;
 
@@ -57,11 +57,25 @@ describe("SMS kod", () => {
     expect(await db.otpCode.count({ where: { ip: shared } })).toBe(MAX_PER_IP_HOUR);
   });
 
-  it("butun platforma bo'yicha soatlik chegara", async () => {
-    const lastHour = await db.otpCode.count({ where: { createdAt: { gt: new Date(Date.now() - 3600_000) } } });
+  it("hisobi yo'q raqamlar uchun umumiy soatlik chegara; hisobi bor raqamlar chegara to'lganda ham kod oladi", async () => {
+    const lastHour = await db.otpCode.count({ where: { knownPhone: false, createdAt: { gt: new Date(Date.now() - 3600_000) } } });
     process.env.OTP_HOURLY_LIMIT = String(lastHour + 2);
-    const r = await settle([1, 2, 3, 4].map(() => issueOtp(phone(), ip())));
-    expect(r.ok).toHaveLength(2);
+    await issueOtp(phone(), ip());
+    await issueOtp(phone(), ip());
+    await expect(issueOtp(phone(), ip())).rejects.toMatchObject({ status: 429 });
+    // Hujumchi tasodifiy raqamlarga kod so'rab chegarani to'ldirdi: mavjud do'kon egasi va xodim baribir kiradi
+    const shop = await makeShop();
+    await expect(issueOtp(shop.owner.phone, ip())).resolves.toMatch(/^\d{6}$/);
+    const dist = await makeDistributor();
+    const staff = await makeStaff(dist.id, "AGENT");
+    await expect(issueOtp(staff.phone, ip())).resolves.toMatch(/^\d{6}$/);
+    expect(await db.otpCode.findFirst({ where: { phone: shop.owner.phone }, select: { knownPhone: true } })).toEqual({ knownPhone: true });
+  });
+
+  it("bir raqamga parallel so'rovlar navbat bilan: bir daqiqada faqat bitta kod", async () => {
+    const p = phone();
+    const r = await settle([1, 2, 3, 4].map(() => issueOtp(p, ip())));
+    expect(r.ok).toHaveLength(1);
     expect(r.errors.every((e) => e.status === 429)).toBe(true);
   });
 });

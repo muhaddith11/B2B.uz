@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import type { Lang } from "@/lib/i18n";
+import { panelText } from "../texts";
 import { removeProductImage, setProductImage } from "./image-actions";
 import { shrinkImage } from "./shrink-image";
 
 // Jadval qatoridagi tovar rasmi: bosilsa fayl tanlanadi, darhol yuklanadi; bor rasmni almashtirish yoki olib tashlash
-export function ImageCell({ productId, imageUrl, name }: { productId: string; imageUrl: string | null; name: string }) {
+export function ImageCell({ productId, imageUrl, name, lang }: { productId: string; imageUrl: string | null; name: string; lang: Lang }) {
+  const t = panelText(lang);
   const input = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +40,8 @@ export function ImageCell({ productId, imageUrl, name }: { productId: string; im
         type="button"
         onClick={() => input.current?.click()}
         disabled={pending}
-        aria-label={imageUrl ? `${name}: rasmni almashtirish` : `${name}: rasm qo'shish`}
-        title={imageUrl ? "Rasmni almashtirish" : "Rasm qo'shish"}
+        aria-label={imageUrl ? t("{name}: rasmni almashtirish", { name }) : t("{name}: rasm qo'shish", { name })}
+        title={imageUrl ? t("Rasmni almashtirish") : t("Rasm qo'shish")}
         className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-field text-lg text-hint hover:border-accent">
         {/* eslint-disable-next-line @next/next/no-img-element -- rasm /api/files dan, o'lchami kichik */}
         {imageUrl ? <img src={imageUrl} alt="" className="size-full object-cover" /> : "+"}
@@ -46,7 +49,7 @@ export function ImageCell({ productId, imageUrl, name }: { productId: string; im
       </button>
       {imageUrl && !pending && (
         <button type="button" onClick={remove} className="text-xs text-hint hover:text-danger">
-          Olib tashlash
+          {t("Olib tashlash")}
         </button>
       )}
       {error && <span className="text-xs text-danger">{error}</span>}

@@ -24,7 +24,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "uz.captar.app"
+      "package": "uz.captar.app",
+      "blockedPermissions": ["com.google.android.gms.permission.AD_ID"]
     },
     "web": {
       "output": "static",
@@ -58,7 +59,8 @@
             "ru"
           ]
         }
-      ]
+      ],
+      "expo-image"
     ],
     "locales": {
       "uz": "./locales/uz.json",

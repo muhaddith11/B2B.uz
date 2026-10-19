@@ -2,18 +2,20 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Empty, ErrorState, Loading, Pic, PressCard, Screen, Segmented, StickyBar, T } from '@/components/ui';
+import { Badge, Empty, ErrorState, Loading, LoadMore, Pic, PressCard, Screen, Segmented, StickyBar, T } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { formatDate, formatSom } from '@/lib/money';
 import { brandOrderLabel, type BrandOrderRow, type BrandOrderStatus } from '@/lib/staff-types';
-import { useLoad } from '@/lib/use-load';
+import { usePaged } from '@/lib/use-paged';
 
 type Tab = BrandOrderStatus | 'ALL';
+type OrdersPage = { orders: BrandOrderRow[]; nextCursor?: string | null };
+const pickOrders = (r: OrdersPage) => r.orders;
 
 // Distribyutorlarning xarid buyurtmalari
 export default function BrandOrders() {
   const [status, setStatus] = useState<Tab>('SENT');
-  const { data, error, refreshing, reload, retry } = useLoad<{ orders: BrandOrderRow[] }>(`/api/brand/orders${status === 'ALL' ? '' : `?status=${status}`}`);
+  const { data, items, error, refreshing, reload, retry, more, loadingMore, moreError } = usePaged(`/api/brand/orders${status === 'ALL' ? '' : `?status=${status}`}`, pickOrders);
   const tabs: { value: Tab; label: string }[] = [
     { value: 'SENT', label: t('Yangi') },
     { value: 'ACCEPTED', label: t('Qabul qilingan') },
@@ -30,7 +32,7 @@ export default function BrandOrders() {
         <Segmented value={status} options={tabs} onChange={setStatus} />
       </StickyBar>
       {!data && <Loading inline />}
-      {data?.orders.map((o) => (
+      {items?.map((o) => (
         <PressCard key={o.id} onPress={() => router.push(`/brand/order/${o.id}`)}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <Pic uri={o.distributorLogoUrl} name={o.distributor} size={36} />
@@ -50,7 +52,8 @@ export default function BrandOrders() {
           </T>
         </PressCard>
       ))}
-      {data?.orders.length === 0 && <Empty icon="receipt-outline">{t("Bu holatda buyurtma yo'q")}</Empty>}
+      <LoadMore onPress={more} loading={loadingMore} error={moreError} />
+      {items?.length === 0 && <Empty icon="receipt-outline">{t("Bu holatda buyurtma yo'q")}</Empty>}
     </Screen>
   );
 }

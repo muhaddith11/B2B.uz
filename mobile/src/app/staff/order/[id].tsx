@@ -187,8 +187,9 @@ export default function StaffOrderScreen() {
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, gap: 8, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border }}>
           {order.status === 'SENT' && manager && !rejecting && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button title={t('Rad etish')} kind="danger" onPress={() => setRejecting(true)} style={{ flex: 1 }} />
-              <Button title={t('Qabul qilish')} icon="checkmark" loading={busy === 'ACCEPTED'} onPress={() => move('ACCEPTED')} style={{ flex: 2 }} />
+              {/* Matni kengligicha: ruscha "Отклонить" 360 dp ekranda 1/3 ga sig'mas edi */}
+              <Button title={t('Rad etish')} kind="danger" onPress={() => setRejecting(true)} />
+              <Button title={t('Qabul qilish')} icon="checkmark" loading={busy === 'ACCEPTED'} onPress={() => move('ACCEPTED')} style={{ flex: 1 }} />
             </View>
           )}
           {order.status === 'ACCEPTED' && manager && (

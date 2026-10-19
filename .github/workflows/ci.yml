@@ -1,4 +1,5 @@
-# Har push va pull request'da: server (typecheck, lint, unit va integratsiya testlari, zaifliklar, build) va mobil ilova (typecheck, lint)
+# Har push va pull request'da: server (typecheck, lint, unit va integratsiya testlari qamrov chegarasi bilan, migratsiya mosligi,
+# zaifliklar, build) va mobil ilova (typecheck, lint, Expo paketlari mosligi, zaifliklar)
 name: CI
 
 on:
@@ -10,10 +11,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   server:
     name: Server
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17
@@ -31,7 +36,9 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
       DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/savdo_test?schema=public
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/savdo_shadow?schema=public
       SESSION_SECRET: ci-only-session-secret-0123456789abcdef
+      NEXT_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,11 +47,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      # schema.prisma o'zgartirilib, migratsiya yozilmagan bo'lsa: production bazasi kod kutgan holatda bo'lmaydi
+      - name: Migratsiyalar sxemaga mos
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE savdo_shadow"
+          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
       - run: npx prisma migrate deploy
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
-      - run: npm run test:int
+      - name: Testlar (unit, mobil yordamchilar, integratsiya) va qamrov chegarasi
+        run: |
+          npx vitest run --project mobile
+          npm run test:coverage
       - name: Zaifliklar (ishlab chiqarish kutubxonalari)
         run: npm audit --omit=dev
       - run: npx next build
@@ -52,6 +66,7 @@ jobs:
   mobile:
     name: Mobil ilova
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: mobile
@@ -65,6 +80,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npx eslint src --max-warnings=0
+      # Expo SDK bilan mos kelmaydigan native paket versiyasi build'ni (EAS) buzadi: oldindan ko'rinadi
+      - name: Expo paketlari SDK'ga mos
+        run: npx expo install --check
       # Qolgan "high" topilmalar yig'ish vositalarida (metro > braces, expo cli > node-forge): tuzatilgan versiyasi chiqmagan,
       # ilova ichiga kirmaydi. Kritiklari to'xtatadi
       - name: Zaifliklar (kritik)

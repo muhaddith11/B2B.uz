@@ -1,4 +1,5 @@
 import { handleClick } from "@/lib/click";
+import { reportError } from "@/lib/monitoring";
 
 // Click SHOP API: .../prepare va .../complete (form-urlencoded)
 export async function POST(req: Request, ctx: { params: Promise<{ methodId: string; stage: string }> }) {
@@ -12,7 +13,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ methodId: stri
   try {
     return Response.json(await handleClick(methodId, stage, params));
   } catch (e) {
-    console.error("click:", e);
+    reportError(e, { area: "click", stage, merchantTransId: params.merchant_trans_id }, "fatal");
     return Response.json({ click_trans_id: params.click_trans_id ?? null, merchant_trans_id: params.merchant_trans_id ?? null, error: -8, error_note: "Error in request from click" });
   }
 }

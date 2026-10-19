@@ -63,3 +63,31 @@ describe("TextUP orqali SMS", () => {
     expect(exposeCode()).toBe(false);
   });
 });
+
+describe("demo rejimi va production", () => {
+  beforeEach(() => {
+    vi.stubEnv("TEXTUP_EMAIL", "");
+    vi.stubEnv("ESKIZ_EMAIL", "");
+    vi.stubEnv("DEV_AUTH", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("DEMO_OTP asosiy serverda (Vercel production) ishlamaydi: SMS sozlamasi o'chib qolsa ham kod ekranga chiqmaydi", () => {
+    vi.stubEnv("DEMO_OTP", "1");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(exposeCode()).toBe(true);
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(exposeCode()).toBe(false);
+  });
+
+  it("production'da SMS xizmati yo'q bo'lsa, kod logga yozilmaydi: aniq xato", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DEMO_OTP", "");
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    await expect(sendSms("+998901234567", "Kod: 123456")).rejects.toThrow(/sozlanmagan/);
+    expect(log).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+});

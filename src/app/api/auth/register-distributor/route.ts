@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { distributorRegistration, lockRegistration, phoneFromToken } from "@/lib/registration";
 import { handle, readJson } from "@/lib/session";
-import { trialPeriod } from "@/lib/subscription";
+import { boundedTrial } from "@/lib/subscription";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Distribyutor o'zi ro'yxatdan o'tadi. Platforma tasdiqlaguncha (status PENDING) do'konlar uni ko'rmaydi.
@@ -16,8 +16,10 @@ export const POST = handle(async (req: Request) => {
       where: { phone, role: "ADMIN", active: true, distributor: { name: { equals: input.companyName, mode: "insensitive" } } },
     });
     if (existing) return existing;
+    // Shu raqam admin bo'lgan boshqa distribyutorlar: yangi kompaniya ochib tekin davrni cho'zib bo'lmaydi (boundedTrial)
+    const others = await tx.distributor.findMany({ where: { staff: { some: { phone, role: "ADMIN", active: true } } }, select: { trialEndsAt: true } });
     const dist = await tx.distributor.create({
-      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING", ...trialPeriod() },
+      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING", ...boundedTrial(others.map((d) => d.trialEndsAt)) },
     });
     await tx.priceGroup.create({ data: { distributorId: dist.id, name: "Oddiy", isDefault: true } });
     return tx.staff.create({ data: { distributorId: dist.id, name: input.adminName, phone, role: "ADMIN" } });

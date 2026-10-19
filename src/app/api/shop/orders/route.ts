@@ -1,19 +1,23 @@
 import { db } from "@/lib/db";
 import { createOrder, createOrderInput } from "@/lib/orders";
+import { cursorArgs, pageOf, readPage } from "@/lib/paging";
 import { handle, readJson, requireShopUser } from "@/lib/session";
 
 export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
-    const orders = await db.order.findMany({
+    const page = readPage(new URL(req.url), 50);
+    const rows = await db.order.findMany({
       where: { shopLink: { shopId: user.shopId } },
       include: {
         shopLink: { include: { distributor: { select: { name: true, logoUrl: true } } } },
         items: { include: { product: { select: { name: true, packSize: true } } } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...cursorArgs(page),
     });
+    const { items: orders, nextCursor } = pageOf(rows, page);
     return Response.json({
+      nextCursor,
       orders: orders.map((o) => ({
         id: o.id,
         number: o.number,

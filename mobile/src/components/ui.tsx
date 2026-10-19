@@ -573,6 +573,17 @@ export function Screen({
   );
 }
 
+// Sahifalangan ro'yxat oxirida keyingi sahifa tugmasi (usePaged). Keyingi sahifa bo'lmasa hech narsa ko'rinmaydi
+export function LoadMore({ onPress, loading, error }: { onPress: (() => void) | null; loading?: boolean; error?: string | null }) {
+  if (!onPress) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      {error && <Banner tone="danger">{error}</Banner>}
+      <Button title={t("Yana ko'rsatish")} icon="chevron-down" kind="ghost" onPress={onPress} loading={loading} />
+    </View>
+  );
+}
+
 // Yopishqoq sarlavha foni: ostidan o'tayotgan ro'yxat ko'rinmasin (ekran chekkasigacha)
 export function StickyBar({ children, gap = 8 }: { children: React.ReactNode; gap?: number }) {
   const c = usePalette();

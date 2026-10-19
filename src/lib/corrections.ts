@@ -78,8 +78,13 @@ export const adjustInput = z.object({
 });
 
 export async function adjustLedger(staff: { id: string; distributorId: string }, input: z.infer<typeof adjustInput>) {
-  const link = await db.shopLink.findFirst({ where: { id: input.linkId, distributorId: staff.distributorId, status: { in: ["ACTIVE", "BLOCKED"] } } });
+  const link = await db.shopLink.findFirst({
+    where: { id: input.linkId, distributorId: staff.distributorId, status: { in: ["ACTIVE", "BLOCKED"] } },
+    include: { shop: { select: { verifiedAt: true } } },
+  });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
+  // Qarzni oshiruvchi tuzatish ham qarz yozish: egasi raqamini tasdiqlamagan do'konga yo'q (kamaytirish mumkin)
+  if (input.amount > 0 && !link.shop.verifiedAt) throw new HttpError(400, "Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha qarz yozilmaydi");
   const clientKey = input.clientKey ? `${staff.id}:${input.clientKey}` : null;
   const already = async () => {
     const prev = clientKey ? await db.ledgerEntry.findUnique({ where: { clientKey } }) : null;

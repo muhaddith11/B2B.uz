@@ -6,6 +6,7 @@ import { addDays, checkCredit } from "./ledger";
 import { MAX_LINE_QTY, MAX_ORDER_TOTAL } from "./money";
 import { notifyShop, notifyStaff } from "./push";
 import { assertApproved, HttpError } from "./session";
+import { ledgerCalcSelect } from "./shop-summary";
 import { assertTrading, DISTRIBUTOR_PAUSED, EXPIRED_DISTRIBUTOR, EXPIRED_SHOP } from "./subscription";
 
 const itemsSchema = z
@@ -41,6 +42,13 @@ const STATUS_TEXT = {
   DELIVERED: "Buyurtmangiz topshirildi",
   CANCELLED: "Buyurtmangiz bekor qilindi",
 } as const satisfies Record<OrderStatus, TextKey>;
+
+// Agent qo'shgan, egasi hali ilovaga kirib raqamini tasdiqlamagan do'kon: uning roziligisiz nomiga qarz yozilmaydi.
+// Naqd buyurtma qarz qoldirmaydi (topshirishda to'lanadi), nasiya va o'tkazma esa qarz yozadi
+export const unverifiedShopMsg = "Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi";
+export function assertShopConsents(shop: { verifiedAt: Date | null }, paymentType: PaymentType) {
+  if (!shop.verifiedAt && paymentType !== "CASH") throw new HttpError(400, unverifiedShopMsg);
+}
 
 // Bitta buyurtma summasi bazaga sig'ishi kerak (money.ts): oshsa, aniq xato (server xatosi emas)
 export function assertOrderTotal(total: number) {
@@ -99,16 +107,18 @@ export async function createOrderForLink(
   if (prev) return prev;
 
   if (link.status !== "ACTIVE") throw new HttpError(403, "Bu do'kon bilan ulanish faol emas");
+  const shop = await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true, verifiedAt: true } });
   // Obuna (imtiyoz muddati ham) tugagan bo'lsa yangi buyurtma yo'q: do'kon o'zi bera olmaydi, distribyutor qabul qila olmaydi.
   // Platforma tasdig'i olib qo'yilgan (yoki hali berilmagan) distribyutor ham savdo qilmaydi
   if ("staffId" in creator) {
     assertApproved(link.distributor);
     assertTrading(link.distributor, EXPIRED_DISTRIBUTOR);
   } else {
-    assertTrading(await db.shop.findUniqueOrThrow({ where: { id: link.shopId }, select: { paidUntil: true } }), EXPIRED_SHOP);
+    assertTrading(shop, EXPIRED_SHOP);
     if (link.distributor.status !== "ACTIVE") throw new HttpError(403, DISTRIBUTOR_PAUSED);
     assertTrading(link.distributor, DISTRIBUTOR_PAUSED);
   }
+  assertShopConsents(shop, input.paymentType);
   const groupId = await priceGroupFor(link);
 
   const products = await db.product.findMany({
@@ -140,7 +150,8 @@ export async function createOrderForLink(
       if (input.paymentType === "CREDIT") {
         // Bir do'konning nasiyali buyurtmalari navbat bilan tekshiriladi: bir vaqtda kelgan ikki buyurtma birgalikda limitdan oshmaydi
         await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
-        const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
+        // Faqat hisob uchun kerakli ustunlar (izoh, chek havolasi va h.k. emas): yillik tarixda ham qulf qisqa turadi
+        const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id }, select: ledgerCalcSelect });
         // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
         const pending = await tx.order.aggregate({
           where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },

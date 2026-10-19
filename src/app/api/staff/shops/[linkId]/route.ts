@@ -2,7 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { handle, HttpError, readJson, requireStaff } from "@/lib/session";
 import { factsFrom, ledgerCalcSelect, PENDING_STATUSES, summarize } from "@/lib/shop-summary";
-import { linkScope, orderInclude, orderScope, serializeOrder } from "@/lib/staff-data";
+import { ledgerPage, linkScope, orderInclude, orderScope, serializeOrder } from "@/lib/staff-data";
 
 // Do'kon kartasi: qarz, nasiya shartlari, qarz daftari va oxirgi buyurtmalar
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: string }> }) => {
@@ -20,7 +20,7 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
     },
   });
   if (!link) throw new HttpError(404, "Do'kon topilmadi");
-  const [pending, orders, recent] = await Promise.all([
+  const [pending, orders, ledger] = await Promise.all([
     db.order.findMany({ where: { shopLinkId: link.id, status: { in: [...PENDING_STATUSES] } }, select: { total: true, paymentType: true } }),
     db.order.findMany({
       where: { shopLinkId: link.id, ...(staff.role === "COURIER" ? orderScope(staff) : {}) },
@@ -28,36 +28,18 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ linkId: 
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
-    // Ekranda ko'rsatiladigan oxirgi yozuvlar
-    db.ledgerEntry.findMany({
-      where: { shopLinkId: link.id },
-      include: { order: { select: { number: true } }, reversedBy: { select: { id: true } } },
-      orderBy: { date: "desc" },
-      take: 100,
-    }),
+    // Ekranda ko'rsatiladigan oxirgi yozuvlar; qolgani /ledger?cursor= orqali
+    ledgerPage(link.id, { limit: 100, cursor: null }),
   ]);
   return Response.json({
     linkId: link.id,
     status: link.status,
-    shop: { id: link.shop.id, name: link.shop.name, imageUrl: link.shop.imageUrl, address: link.shop.address, district: link.shop.district, inn: link.shop.inn },
+    shop: { id: link.shop.id, name: link.shop.name, imageUrl: link.shop.imageUrl, address: link.shop.address, district: link.shop.district, inn: link.shop.inn, ownerVerified: link.shop.verifiedAt !== null },
     users: link.shop.users.map((u) => ({ name: u.name, phone: u.phone, role: u.role, avatarUrl: u.avatarUrl })),
     terms: { priceGroup: link.priceGroup, creditLimit: link.creditLimit, creditDays: link.creditDays, blockAfterDays: link.blockAfterDays, agent: link.agent },
     summary: summarize(factsFrom(link.ledger), pending, link.creditLimit),
-    ledger: recent.map((e) => ({
-      id: e.id,
-      type: e.type,
-      amount: e.amount,
-      date: e.date,
-      dueDate: e.dueDate,
-      status: e.status,
-      channel: e.channel,
-      note: e.note,
-      receiptUrl: e.receiptUrl,
-      orderNumber: e.order?.number ?? null,
-      // Tuzatish: bu yozuv qaysi yozuvni bekor qilgan va o'zi bekor qilinganmi
-      reversesId: e.reversesId,
-      reversed: e.reversedBy !== null,
-    })),
+    ledger: ledger.entries,
+    ledgerCursor: ledger.nextCursor,
     orders: orders.map(serializeOrder),
   });
 });

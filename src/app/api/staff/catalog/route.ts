@@ -17,6 +17,8 @@ export const GET = handle(async (req: Request) => {
     shop: { linkId: link.id, name: link.shop.name },
     distributor: { id: link.distributor.id, name: link.distributor.name, minOrder: link.distributor.minOrder },
     creditLimit: link.creditLimit,
+    // Egasi raqamini tasdiqlamagan (agent qo'shgan) do'kon: faqat naqd buyurtma (orders.ts, assertShopConsents)
+    ownerVerified: link.shop.verifiedAt !== null,
     products: products
       .filter((p) => p.prices.length > 0)
       .map((p) => ({ id: p.id, name: p.name, brand: p.brand, category: p.category, unit: p.unit, packSize: p.packSize, minOrderPacks: p.minOrderPacks, inStock: p.inStock, marked: p.marked, imageUrl: p.imageUrl, price: p.prices[0].price })),

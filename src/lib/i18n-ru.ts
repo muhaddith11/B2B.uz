@@ -223,4 +223,26 @@ export const RU = {
     "На этом номере несколько магазинов. Укажите название точно так, как в приложении владельца",
   "Do'kon o'zi ulanishni so'ragan: uni admin narx va nasiya shartlari bilan tasdiqlaydi":
     "Магазин сам запросил подключение: его подтверждает администратор с ценами и условиями рассрочки",
+
+  // Prays-list (distribyutor paneli)
+  "Majburiy ustun yo'q: {cols}": "Нет обязательного столбца: {cols}",
+  "Bo'sh majburiy ustun: {cols}": "Пустой обязательный столбец: {cols}",
+  "Matn juda uzun (belgilar soni chegarasi): {cols}": "Слишком длинный текст (лимит символов): {cols}",
+  "Artikul {sku} takrorlangan ({row}-qatorda ham bor)": "Артикул {sku} повторяется (есть и в строке {row})",
+  "Narx nol, manfiy yoki son emas": "Цена нулевая, отрицательная или не число",
+  "Narx juda katta: bir dona narxi 100 000 000 so'mdan oshmasin": "Слишком большая цена: за штуку не более 100 000 000 сум",
+  "Yashikdagi soni 1 dan 10 000 gacha butun son bo'lishi kerak": "Количество в коробке — целое число от 1 до 10 000",
+  "Minimal buyurtma 1 dan 1000 yashikkacha bo'lishi kerak": "Минимальный заказ — от 1 до 1000 коробок",
+  'Qoldiq: "bor", "yo\'q" yoki son bo\'lishi kerak': "Остаток: «bor», «yo'q» или число",
+  "Rasm havolasi https:// bilan boshlanadigan manzil bo'lsin": "Ссылка на фото должна начинаться с https://",
+  "Narx juda katta: {groups}": "Слишком большая цена: {groups}",
+  "bir yuklashda ko'pi bilan {n} ta yangi rasm: faylni yana bir bor qo'llang": "за одну загрузку не более {n} новых фото: примените файл ещё раз",
+  "vaqt tugadi: faylni yana bir bor qo'llang": "время вышло: примените файл ещё раз",
+  "rasm olinmadi ({reason})": "фото не загружено ({reason})",
+  "rasm olinmadi": "фото не загружено",
+
+  // Agent qo'shgan do'kon: egasi tasdiqlamaguncha
+  "Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha faqat naqd buyurtma olinadi":
+    "Пока владелец не войдёт в приложение и не подтвердит номер, принимаются только заказы за наличные",
+  "Do'kon egasi ilovaga kirib raqamini tasdiqlamaguncha qarz yozilmaydi": "Пока владелец не войдёт в приложение и не подтвердит номер, долг не записывается",
 } as const;

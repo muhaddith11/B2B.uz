@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const staff = await db.staff.findUnique({ where: { id: String(form.get("staffId") ?? "") } });
   if (!staff) return new Response("Topilmadi", { status: 404 });
 
-  store.set(PANEL_COOKIE, signToken({ kind: "staff", staffId: staff.id, exp: Math.floor(Date.now() / 1000) + 7 * DAY_SECONDS }), {
+  store.set(PANEL_COOKIE, signToken({ kind: "staff", staffId: staff.id, exp: Math.floor(Date.now() / 1000) + 7 * DAY_SECONDS }, "panel"), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

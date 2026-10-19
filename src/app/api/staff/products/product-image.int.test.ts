@@ -1,14 +1,13 @@
 // Tovar rasmi: xodim yuklaydi, katalogda hamma ko'radi (token kerak emas), boshqa distribyutor tovariga yuklab bo'lmaydi
-import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { ctx, makeWorld } from "@/test/factory";
+import { ctx, fileBytes, makeWorld } from "@/test/factory";
 import * as file from "../../files/[folder]/[name]/route";
 import * as image from "./[id]/image/route";
 
 function upload(token: string, type = "image/png") {
   const form = new FormData();
-  form.set("image", new File([randomBytes(64)], "tovar.png", { type }));
+  form.set("image", new File([fileBytes(type)], "tovar.png", { type }));
   return new Request("http://test.local/api/staff/products/x/image", { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form });
 }
 

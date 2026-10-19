@@ -6,6 +6,8 @@
 const TEXTUP_AUTH_URL = "https://api-auth.textup.uz/v1";
 const TEXTUP_SMS_URL = "https://sms-api.textup.uz/v1";
 let textupSession: { token: string; userId: string; until: number } | null = null;
+// SMS xizmati javob bermasa, foydalanuvchi butun funksiya vaqti (Vercel'da 10+ soniya) kutib qolmasin
+const SMS_TIMEOUT_MS = 8_000;
 
 function textupConfigured(): boolean {
   return Boolean(process.env.TEXTUP_EMAIL && process.env.TEXTUP_PASSWORD);
@@ -27,6 +29,7 @@ async function textupLogin(): Promise<{ token: string; userId: string }> {
   if (textupSession && textupSession.until - 60_000 > Date.now()) return textupSession;
   const res = await fetch(`${TEXTUP_AUTH_URL}/login`, {
     method: "POST",
+    signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email: process.env.TEXTUP_EMAIL, password: process.env.TEXTUP_PASSWORD }),
   });
@@ -47,6 +50,7 @@ async function textupSend(phone: string, text: string): Promise<void> {
   const send = async ({ token, userId }: { token: string; userId: string }) =>
     fetch(`${TEXTUP_SMS_URL}/send`, {
       method: "POST",
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
       body: JSON.stringify({
         message: text,
@@ -81,7 +85,7 @@ async function eskizLogin(): Promise<string> {
   const form = new FormData();
   form.set("email", process.env.ESKIZ_EMAIL ?? "");
   form.set("password", process.env.ESKIZ_PASSWORD ?? "");
-  const res = await fetch(`${ESKIZ_URL}/auth/login`, { method: "POST", body: form });
+  const res = await fetch(`${ESKIZ_URL}/auth/login`, { method: "POST", body: form, signal: AbortSignal.timeout(SMS_TIMEOUT_MS) });
   const data = (await res.json().catch(() => ({}))) as { data?: { token?: string } };
   if (!res.ok || !data.data?.token) throw new Error(`Eskiz login: ${res.status}`);
   // Token 30 kun amal qiladi; ehtiyot uchun 25 kundan keyin yangilanadi
@@ -95,7 +99,7 @@ async function eskizSend(phone: string, text: string): Promise<void> {
     form.set("mobile_phone", phone.replace(/^\+/, ""));
     form.set("message", text);
     form.set("from", process.env.ESKIZ_FROM || "4546");
-    return fetch(`${ESKIZ_URL}/message/sms/send`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form });
+    return fetch(`${ESKIZ_URL}/message/sms/send`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form, signal: AbortSignal.timeout(SMS_TIMEOUT_MS) });
   };
   let res = await send(await eskizLogin());
   if (res.status === 401) {
@@ -111,16 +115,25 @@ export function smsConfigured(): boolean {
   return textupConfigured() || eskizConfigured();
 }
 
+// Asosiy (haqiqiy foydalanuvchilar bilan) server: Vercel production. Unda kodni ekranga chiqaradigan rejimlar hech qachon ishlamaydi
+export function isLiveProduction(): boolean {
+  return process.env.VERCEL_ENV === "production";
+}
+
 // SMS xizmati yo'q va sinov (DEV_AUTH) yoki demo (DEMO_OTP=1) rejimi: kirish kodi javobda/ekranda qaytadi.
-// DEMO_OTP faqat demo ma'lumotli server uchun: istalgan raqam bilan kirish mumkin bo'ladi.
+// DEMO_OTP faqat demo ma'lumotli server uchun: istalgan raqam bilan kirish mumkin bo'ladi. Shuning uchun asosiy serverda
+// (Vercel production) u e'tiborsiz qoldiriladi: SMS sozlamasi tasodifan o'chib qolsa ham begona hisobga kirib bo'lmaydi
 export function exposeCode(): boolean {
   if (smsConfigured()) return false;
-  return (process.env.DEV_AUTH === "1" && process.env.NODE_ENV !== "production") || process.env.DEMO_OTP === "1";
+  if (process.env.DEV_AUTH === "1" && process.env.NODE_ENV !== "production") return true;
+  return process.env.DEMO_OTP === "1" && !isLiveProduction();
 }
 
 export async function sendSms(phone: string, text: string): Promise<void> {
   if (textupConfigured()) return textupSend(phone, text);
   if (eskizConfigured()) return eskizSend(phone, text);
+  // Production'da kod logga yozilmaydi (loglarni ko'radigan har kim begona hisobga kira olardi): xizmat sozlanmagani aniq xato
+  if (process.env.NODE_ENV === "production" && !exposeCode()) throw new Error("SMS xizmati sozlanmagan (TEXTUP_EMAIL/TEXTUP_PASSWORD)");
   console.log(`[SMS sinov] ${phone}: ${text}`);
 }
 

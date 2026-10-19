@@ -76,6 +76,7 @@ async function main() {
         address: "Toshkent shahri, Amir Temur ko'chasi, 1",
         district: "Toshkent shahri",
         ...trialPeriod(),
+        verifiedAt: new Date(),
         users: { create: { name: "Demo do'konchi", phone, role: "OWNER" } },
       },
       include: { users: true },

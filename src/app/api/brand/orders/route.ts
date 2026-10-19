@@ -1,5 +1,6 @@
 import type { BrandOrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { cursorArgs, pageOf, readPage } from "@/lib/paging";
 import { handle, requireBrandUser } from "@/lib/session";
 
 const STATUSES: BrandOrderStatus[] = ["SENT", "ACCEPTED", "SHIPPED", "DELIVERED", "REJECTED", "CANCELLED"];
@@ -7,15 +8,20 @@ const STATUSES: BrandOrderStatus[] = ["SENT", "ACCEPTED", "SHIPPED", "DELIVERED"
 // Distribyutorlarning xarid buyurtmalari
 export const GET = handle(async (req: Request) => {
   const user = await requireBrandUser(req);
-  const raw = new URL(req.url).searchParams.get("status");
+  const url = new URL(req.url);
+  const raw = url.searchParams.get("status");
   const status = STATUSES.includes(raw as BrandOrderStatus) ? (raw as BrandOrderStatus) : null;
-  const orders = await db.brandOrder.findMany({
+  const page = readPage(url, 100);
+  const dir = status === "SENT" ? "asc" : "desc";
+  const rows = await db.brandOrder.findMany({
     where: { brandId: user.brandId, ...(status ? { status } : {}) },
     include: { distributor: { select: { name: true, logoUrl: true } }, items: { include: { brandProduct: { select: { name: true, packSize: true, unit: true } } } } },
-    orderBy: { createdAt: status === "SENT" ? "asc" : "desc" },
-    take: 100,
+    orderBy: [{ createdAt: dir }, { id: dir }],
+    ...cursorArgs(page),
   });
+  const { items: orders, nextCursor } = pageOf(rows, page);
   return Response.json({
+    nextCursor,
     orders: orders.map((o) => ({
       id: o.id,
       number: o.number,

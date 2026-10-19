@@ -36,6 +36,18 @@ export function trialPeriod(now = new Date()) {
   return { trialEndsAt: end, paidUntil: end };
 }
 
+// Bitta raqam har yili yangi tashkilot ochib tekin davrni cheksiz cho'za olmasin: shu raqamning boshqa tashkiloti bo'lsa,
+// yangisining tekin davri o'sha (eng eski) tashkilotniki bilan bir vaqtda tugaydi, lekin kamida MIN_EXTRA_TRIAL_MONTHS.
+// Ikkinchi do'konni ochgan halol egaga ham bir oy bor: distribyutorlarga ulanib, ishni boshlab oladi
+export const MIN_EXTRA_TRIAL_MONTHS = 1;
+export function boundedTrial(existingTrialEnds: Date[], now = new Date()) {
+  const full = trialPeriod(now);
+  if (existingTrialEnds.length === 0) return full;
+  const earliest = Math.min(...existingTrialEnds.map((d) => d.getTime()));
+  const end = new Date(Math.min(full.trialEndsAt.getTime(), Math.max(earliest, addMonths(now, MIN_EXTRA_TRIAL_MONTHS).getTime())));
+  return { trialEndsAt: end, paidUntil: end };
+}
+
 export function subscriptionState(paidUntil: Date, now = new Date()): SubscriptionState {
   if (now < paidUntil) return "ACTIVE";
   if (now.getTime() < paidUntil.getTime() + GRACE_DAYS * DAY_MS) return "GRACE";

@@ -35,10 +35,13 @@ export function openDebts(entries: LedgerLike[]): OpenDebt[] {
     .filter((e) => e.amount > 0)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .map((e) => ({ date: e.date, dueDate: e.dueDate, remaining: e.amount, orderId: e.orderId ?? null }));
+  // Buyurtma bo'yicha qidiruv: har to'lov uchun butun ro'yxatni aylanib chiqmaslik uchun (aks holda katta daftarda n² bo'lardi)
+  const byOrder = new Map<string, typeof debts>();
+  for (const d of debts) if (d.orderId) byOrder.set(d.orderId, [...(byOrder.get(d.orderId) ?? []), d]);
   let credit = 0;
   for (const p of confirmed.filter((e) => e.amount < 0)) {
     let left = -p.amount;
-    const own = p.orderId ? debts.find((d) => d.orderId === p.orderId && d.remaining > 0) : undefined;
+    const own = p.orderId ? byOrder.get(p.orderId)?.find((d) => d.remaining > 0) : undefined;
     if (own) {
       const used = Math.min(left, own.remaining);
       own.remaining -= used;
