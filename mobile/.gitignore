@@ -18,6 +18,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase (Android push). Repo ochiq: ichidagi API kalitini botlar yig'ib oladi, shuning uchun commit qilinmaydi.
+# EAS build'ga GOOGLE_SERVICES_JSON fayl o'zgaruvchisi orqali boradi (app.config.ts, PUSH_SETUP.md)
+google-services.json
+# FCM V1 service account kaliti: maxfiy, faqat EAS'ga yuklanadi
+*firebase-adminsdk*.json
+
 # Metro
 .metro-health-check*
 

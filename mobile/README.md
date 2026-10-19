@@ -55,6 +55,8 @@ npx eas-cli@latest submit --platform all
 
 Ilova identifikatori: `uz.captar.app` (`app.json`). Ilova nomi, ikonka va splash `app.json` va `assets/` da.
 
+Push bildirishnomalar haqiqiy telefonlarda ishlashi uchun Firebase (Android) va APNs (iOS) kalitlari kerak: [PUSH_SETUP.md](PUSH_SETUP.md). Android build'ga `google-services.json` kerak (`app.config.ts`), u repoga kirmaydi.
+
 ## Buyruqlar
 
 - `npm run typecheck`: TypeScript tekshiruvi
