@@ -90,6 +90,7 @@ Har bir distribyutor va do'kon (tashkilot) uchun alohida obuna, uning barcha xod
 - **To'lov:** saytda, `/obuna` sahifasida. Distribyutor admini yoki do'kon egasi SMS kod bilan kiradi, 1, 3, 6 yoki 12 oy tanlab Payme yoki Click orqali **platformaning o'z kassasiga** to'laydi. Bank o'tkazmasi bilan to'laganlar uchun admin `/admin` dan qo'lda uzaytiradi.
 - **Ilovada** faqat holat ko'rinadi (muddat, 14 kun qolganda eslatma). Narx, to'lov tugmasi va saytga havola yo'q: App Store va Google Play ilova ichidagi to'lovni o'z tizimi orqali talab qiladi. App Review uchun izoh: ilova B2B, obuna tashkilotlarga ilovadan tashqarida sotiladi (Apple 3.1.3(c)).
 - **To'lanmasa:** 7 kun imtiyoz, keyin "faqat ko'rish": do'kon yangi buyurtma bera olmaydi, distribyutor yangi buyurtma ololmaydi va qabul qila olmaydi. Boshlangan yetkazish, qarz daftari va to'lovlar ishlayveradi.
+- **SMS eslatma:** har kuni Toshkent vaqti bilan 10:00 da (Vercel Cron, `/api/cron/subscription-reminders`) distribyutor adminiga va do'kon egasiga, har bosqichda bir marta: muddat tugashiga 14 kun qolganda, muddat tugaganda va yangi buyurtmalar yopilganda. Matnlar TextUP'da tasdiqlangan shablonlar (`src/lib/reminders.ts`): bir harf o'zgarsa SMS ketmaydi, shuning uchun o'zgartirishdan oldin yangi matnni TextUP'da tasdiqlating. SMS ketmasa (masalan, balans tugasa), ertasi kuni qayta urinadi. Kerak: Vercel'da `CRON_SECRET`.
 
 Platforma kassalari Vercel env'da: `PLATFORM_PAYME_MERCHANT_ID`, `PLATFORM_PAYME_KEY`, `PLATFORM_CLICK_SERVICE_ID`, `PLATFORM_CLICK_MERCHANT_ID`, `PLATFORM_CLICK_SECRET_KEY`. Kabinetga kiritiladigan manzillar `/admin` → Obuna bo'limida ko'rsatiladi.
 
@@ -108,6 +109,8 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `OTP_DELETE_SMS_TEXT` | Ixtiyoriy: hisobni o'chirish kodi uchun alohida SMS matni (TextUP'da alohida shablon tasdiqlangach). Bo'sh bo'lsa umumiy matn |
 | `DATABASE_LIMIT_MB` | Ixtiyoriy: baza tarifining hajm chegarasi, MB (standart 512). `/admin` 80% dan oshganda ogohlantiradi |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
+| `CRON_SECRET` | Kunlik obuna eslatmasi (Vercel Cron) uchun maxfiy kalit, istalgan uzun tasodifiy satr. Bo'lmasa eslatmalar yuborilmaydi |
+| `TEXTUP_TEMPLATE_SOON`, `TEXTUP_TEMPLATE_GRACE`, `TEXTUP_TEMPLATE_EXPIRED` | Ixtiyoriy: TextUP talab qilsa, obuna eslatmasi shablonlarining ID'si |
 | `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati va ommaviy oferta sahifalaridagi murojaat manzili (App Store, Google Play, Payme, Click uchun) |
 | `COMPANY_NAME`, `COMPANY_INN`, `COMPANY_ADDRESS`, `COMPANY_BANK` | Ommaviy oferta (`/oferta`) dagi ijrochi rekvizitlari: korxona yoki YaTT nomi, STIR, yuridik manzil, bank rekvizitlari (h/r, bank, MFO) bir qatorda. Payme va Click kassa ulashda shu sahifani so'raydi |
 

@@ -1,4 +1,4 @@
-// SMS yuborish (kirish kodi). Xizmat: TextUP (asosiy) yoki Eskiz.uz (zaxira).
+// SMS yuborish: kirish kodi va obuna eslatmasi. Xizmat: TextUP (asosiy) yoki Eskiz.uz (zaxira).
 // Hech biri sozlanmagan bo'lsa (lokal sinov), matn server logiga chiqadi.
 
 // ---- TextUP: https://api-auth.textup.uz (login), https://sms-api.textup.uz (yuborish) ----
@@ -43,7 +43,12 @@ async function textupLogin(): Promise<{ token: string; userId: string }> {
   return textupSession;
 }
 
-async function textupSend(phone: string, text: string): Promise<void> {
+// Kirish kodi (odatiy) yoki xabar (obuna eslatmasi). TextUP matnni kabinetda tasdiqlangan shablonga solishtiradi;
+// shablon ID'si berilsa, shu shablon bilan. Kirish kodi uchun ID: TEXTUP_TEMPLATE_ID
+export type SmsOptions = { notice?: { name: string; templateId?: string } };
+
+async function textupSend(phone: string, text: string, opts: SmsOptions): Promise<void> {
+  const templateId = opts.notice ? opts.notice.templateId : process.env.TEXTUP_TEMPLATE_ID;
   const send = async ({ token, userId }: { token: string; userId: string }) =>
     fetch(`${TEXTUP_SMS_URL}/send`, {
       method: "POST",
@@ -52,11 +57,11 @@ async function textupSend(phone: string, text: string): Promise<void> {
         message: text,
         userId,
         recipients: [phone],
-        name: "Kirish kodi",
-        isOtp: true,
+        name: opts.notice?.name ?? "Kirish kodi",
+        isOtp: !opts.notice,
         // Alfa-nom (jo'natuvchi nomi) va tasdiqlangan shablon: kabinetda bo'lsa
         ...(process.env.TEXTUP_NICKNAME_ID ? { nicknameId: process.env.TEXTUP_NICKNAME_ID } : {}),
-        ...(process.env.TEXTUP_TEMPLATE_ID ? { templateId: process.env.TEXTUP_TEMPLATE_ID } : {}),
+        ...(templateId ? { templateId } : {}),
       }),
     });
   let res = await send(await textupLogin());
@@ -118,8 +123,8 @@ export function exposeCode(): boolean {
   return (process.env.DEV_AUTH === "1" && process.env.NODE_ENV !== "production") || process.env.DEMO_OTP === "1";
 }
 
-export async function sendSms(phone: string, text: string): Promise<void> {
-  if (textupConfigured()) return textupSend(phone, text);
+export async function sendSms(phone: string, text: string, opts: SmsOptions = {}): Promise<void> {
+  if (textupConfigured()) return textupSend(phone, text, opts);
   if (eskizConfigured()) return eskizSend(phone, text);
   console.log(`[SMS sinov] ${phone}: ${text}`);
 }

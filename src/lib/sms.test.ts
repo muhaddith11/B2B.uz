@@ -40,6 +40,17 @@ describe("TextUP orqali SMS", () => {
     expect(JSON.parse(String(calls[1].init.body))).toEqual({ message: "Kod: 123456", userId: "user-1", recipients: ["+998901234567"], name: "Kirish kodi", isOtp: true });
   });
 
+  it("xabar (obuna eslatmasi) OTP emas va kirish kodi shablonisiz, o'z shabloni bilan ketadi", async () => {
+    vi.stubEnv("TEXTUP_TEMPLATE_ID", "otp-shablon");
+    await sendSms("+998901234567", "Eslatma", { notice: { name: "Obuna eslatmasi" } });
+    await sendSms("+998901234567", "Eslatma", { notice: { name: "Obuna eslatmasi", templateId: "eslatma-1" } });
+    await sendSms("+998901234567", "Kod");
+    const bodies = calls.slice(1).map((c) => JSON.parse(String(c.init.body)));
+    expect(bodies[0]).toEqual({ message: "Eslatma", userId: "user-1", recipients: ["+998901234567"], name: "Obuna eslatmasi", isOtp: false });
+    expect(bodies[1]).toMatchObject({ isOtp: false, templateId: "eslatma-1" });
+    expect(bodies[2]).toMatchObject({ name: "Kirish kodi", isOtp: true, templateId: "otp-shablon" });
+  });
+
   it("alfa-nom berilgan bo'lsa, nicknameId qo'shadi", async () => {
     vi.stubEnv("TEXTUP_NICKNAME_ID", "nick-1");
     await sendSms("+998901234567", "Kod");

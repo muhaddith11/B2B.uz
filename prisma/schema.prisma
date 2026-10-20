@@ -134,6 +134,13 @@ enum PaymentPurpose {
   SUBSCRIPTION // platformaning kassasiga, obuna muddatini uzaytiradi
 }
 
+// Obuna eslatmasi SMS'ining bosqichi
+enum ReminderStage {
+  SOON // muddat tugashiga 14 kun yoki kamroq qoldi
+  GRACE // muddat tugadi, imtiyoz davri: yangi buyurtmalar hali ochiq
+  EXPIRED // imtiyoz ham tugadi: yangi buyurtmalar yopildi
+}
+
 model Distributor {
   id           String            @id @default(cuid())
   name         String
@@ -553,6 +560,19 @@ model PlatformSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Yuborilgan obuna eslatmasi: tashkilotga har bosqichda bir marta (shu muddat oxiri uchun; to'lab uzaytirsa,
+// keyingi muddatda yana eslatiladi). Yozuv SMS'dan oldin yaratiladi: bir vaqtdagi ikki ishga tushirish ikki marta yubormaydi
+model SubscriptionReminder {
+  id        String        @id @default(cuid())
+  orgKind   String // "distributor" yoki "shop"
+  orgId     String
+  stage     ReminderStage
+  paidUntil DateTime
+  createdAt DateTime      @default(now())
+
+  @@unique([orgKind, orgId, stage, paidUntil])
 }
 
 // Mobil ilovaga push bildirishnoma (Expo push token)
