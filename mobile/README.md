@@ -66,10 +66,10 @@ npx eas-cli@latest update --channel production --environment production --messag
 ```
 
 - **Native o'zgarish OTA bilan bormaydi.** Yangi native paket, `app.json` plagini yoki ruxsati, Expo SDK yangilanishi bo'lsa, `app.json` dagi `version` ni oshiring (1.1.0 -> 1.2.0) va yangi build qiling. Update faqat aynan shu `version` li build'larga tushadi (`runtimeVersion: appVersion`), shuning uchun eski build'ga mos kelmaydigan kod bormaydi.
-- **Server manzili EAS env'da bo'lsin.** `eas.json` dagi build `env` update'ga o'tmaydi: update `--environment` dagi EAS o'zgaruvchilari bilan yig'iladi. Bir marta kiriting (production va preview):
+- **Server manzili EAS env'da.** `eas.json` dagi build `env` update'ga o'tmaydi: update `--environment` dagi EAS o'zgaruvchilari bilan yig'iladi. `EXPO_PUBLIC_API_URL` production va preview muhitlarida kiritilgan (2026-10-20). Manzil o'zgarsa (masalan, o'z domen):
 
 ```bash
-npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_API_URL --value https://b2b-uz.vercel.app --visibility plaintext
+npx eas-cli@latest env:set --environment production --environment preview --name EXPO_PUBLIC_API_URL --value https://b2b-uz.vercel.app --visibility plaintext
 ```
 
   U bo'lmasa ham ilova `localhost` ga emas, production serverga ulanadi (`src/lib/api.ts`).

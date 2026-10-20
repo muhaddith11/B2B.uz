@@ -1,0 +1,61 @@
+# Har kuni production bazasining to'liq nusxasi (pg_dump): cheklar va rasmlar ham bazada, ular ham kiradi.
+# Repo ochiq: Actions artefaktini GitHub'ga kirgan har kim yuklab oladi, shuning uchun nusxa BACKUP_PASSPHRASE bilan
+# AES-256 da shifrlanadi. Parolsiz uni ochib bo'lmaydi; parol yo'qolsa, nusxalar ham yaroqsiz. 30 kun saqlanadi.
+# Sozlash va tiklash: README, "Zaxira nusxa"
+name: Zaxira nusxa
+
+on:
+  schedule:
+    - cron: "0 22 * * *" # Toshkent vaqti bilan 03:00
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Bazani nusxalash
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      # pg_dump serverdan eski bo'lmasligi kerak; yangisi eski serverni ham nusxalaydi
+      PG_IMAGE: postgres:18
+    steps:
+      - name: Sirlar kiritilganini tekshirish
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::GitHub -> Settings -> Secrets and variables -> Actions: BACKUP_DATABASE_URL va BACKUP_PASSPHRASE kiritilmagan"
+            exit 1
+          fi
+
+      - name: Nusxa olish
+        run: |
+          name="captar-$(date -u +%Y-%m-%d-%H%M).dump"
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          # Manzil konteynerga env orqali beriladi: buyruq qatorida (va jurnalda) ko'rinmaydi
+          docker run --rm -e DATABASE_URL "$PG_IMAGE" sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges' > "$name"
+          # Nusxa ochiladimi: pg_restore uning mundarijasini o'qiy olsin
+          docker run --rm -v "$PWD:/w" "$PG_IMAGE" pg_restore --list "/w/$name" > toc.txt
+          echo "Hajmi: $(du -h "$name" | cut -f1), jadval ma'lumotlari: $(grep -c 'TABLE DATA' toc.txt)"
+
+      - name: Shifrlash
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$NAME" -out "$NAME.enc" -pass env:BACKUP_PASSPHRASE
+          sha256sum "$NAME.enc" > "$NAME.enc.sha256"
+          rm -f "$NAME" toc.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: |
+            ${{ env.NAME }}.enc
+            ${{ env.NAME }}.enc.sha256
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error

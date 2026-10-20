@@ -113,6 +113,42 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 
 `SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
 
+## Zaxira nusxa
+
+Har kuni Toshkent vaqti bilan 03:00 da GitHub Actions production bazasining to'liq nusxasini oladi, cheklar va rasmlar bilan birga (`.github/workflows/backup.yml`). Nusxa AES-256 bilan shifrlanadi va Actions -> Zaxira nusxa -> har bir ishga tushirish ostida 30 kun saqlanadi. Repo ochiq bo'lgani uchun nusxani faqat parol bilan ochish mumkin.
+
+**Bir martalik sozlash:**
+
+1. Parol yarating va uni parollar menejerida saqlang. Parol yo'qolsa, birorta nusxani ochib bo'lmaydi:
+
+```bash
+openssl rand -base64 32
+```
+
+2. GitHub -> B2B.uz -> Settings -> Secrets and variables -> Actions -> New repository secret. Ikkita sir:
+   - `BACKUP_DATABASE_URL`: Vercel -> Storage -> b2b-uz-db-eu -> `.env.local` bo'limidagi `DATABASE_URL_UNPOOLED` qiymati
+   - `BACKUP_PASSPHRASE`: 1-qadamdagi parol
+3. Actions -> Zaxira nusxa -> Run workflow: birinchi nusxani darhol oling va yashil bo'lganini tekshiring.
+
+Nusxa olinmasa, GitHub elektron pochtaga xabar yuboradi. Repoda 60 kun hech qanday o'zgarish bo'lmasa, GitHub kunlik ishni o'zi o'chirib qo'yadi: Actions sahifasida qayta yoqing.
+
+**Tiklash** (avval yangi, bo'sh bazaga, masalan Neon'dagi yangi branch'ga):
+
+1. Actions -> Zaxira nusxa -> kerakli kun -> Artifacts'dan yuklab oling va zip'ni oching.
+2. Shifrdan oching (parolni so'raydi):
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in captar-2026-10-21-2200.dump.enc -out captar.dump
+```
+
+3. Bazaga yozing. PostgreSQL 18 yoki undan yangi `pg_restore` kerak (nusxa `pg_dump` 18 bilan olinadi):
+
+```bash
+pg_restore --no-owner --no-privileges --dbname "YANGI_BAZA_MANZILI" captar.dump
+```
+
+Ma'lumotlarni tekshirib bo'lgach, Vercel'dagi `DATABASE_URL` va `DATABASE_URL_UNPOOLED` ni yangi bazaga almashtiring.
+
 ## Ishga chiqarish uchun kerak
 
 Kod tayyor; quyidagilar sizning hisoblaringiz va qarorlaringiz:
