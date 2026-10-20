@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — Tungi transport sxemasi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--enamel:#14213D;--enamel-2:#1C2C4F;--porc:#F4F1EA;--red:#E03C31;--cob:#2E6BD9;--amb:#F2A900;--grn:#2BA84A;--dim:#8D9AB5}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--enamel);font-family:Manrope,system-ui,sans-serif;color:var(--porc);position:relative}
+  header{padding:54px 18px 0}
+  .t{display:flex;justify-content:space-between;align-items:center}
+  .t b{font:800 22px/28px Manrope}
+  .t span{font:600 13px Manrope;color:var(--dim)}
+  .kpi{display:flex;gap:10px;margin-top:16px}
+  .k{flex:1;background:var(--enamel-2);border-radius:14px;padding:10px 12px}
+  .k em{display:block;font:600 11px Manrope;font-style:normal;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+  .k b{font:800 20px/26px Manrope;font-variant-numeric:tabular-nums}
+  .route{margin:20px 18px 0;background:var(--enamel-2);border-radius:18px;padding:14px 14px 6px}
+  .rh{display:flex;align-items:center;gap:10px;font:700 15px Manrope}
+  .rh i{width:22px;height:22px;border-radius:50%;background:var(--c);display:grid;place-items:center;font:800 11px Manrope;font-style:normal;color:#fff}
+  .rh span{margin-left:auto;font:600 12px Manrope;color:var(--dim)}
+  .stops{position:relative;margin:12px 0 0 10px;padding-left:22px}
+  .stops:before{content:"";position:absolute;left:0;top:6px;bottom:14px;width:5px;border-radius:3px;background:var(--c)}
+  .s{position:relative;display:flex;justify-content:space-between;padding:0 0 12px}
+  .s:before{content:"";position:absolute;left:-27px;top:2px;width:15px;height:15px;border-radius:50%;background:var(--porc);border:4px solid var(--c);box-sizing:border-box}
+  .s b{font:700 14px/18px Manrope}
+  .s small{display:block;font:500 12px Manrope;color:var(--dim)}
+  .s .v{font:700 14px Manrope;font-variant-numeric:tabular-nums;text-align:right}
+  .s.done{opacity:.5}
+  .s.late:before{border-color:var(--amb);box-shadow:0 0 0 3px rgba(242,169,0,.3)}
+  .s.late .v{color:var(--amb)}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:#0F1A31;border-top:1px solid #23345A;display:grid;grid-template-columns:repeat(4,1fr);padding-top:10px}
+  nav div{text-align:center;font:700 10px/12px Manrope;color:var(--dim)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--porc)}
+</style>
+</head>
+<body>
+<header>
+  <div class="t"><b>Bugungi yetkazish</b><span>15 oktabr</span></div>
+  <div class="kpi"><div class="k"><em>Yo'lda</em><b>14</b></div><div class="k"><em>Topshirildi</em><b>9</b></div><div class="k"><em>Tushum</em><b>18,4 mln</b></div></div>
+</header>
+<section class="route" style="--c:var(--red)">
+  <div class="rh"><i>A</i>Akmal · Damas 01 A 123</div>
+  <div class="stops">
+    <div class="s done"><div><b>Barakat do'koni</b><small>Chilonzor · 09:40</small></div><div class="v">1 248 000</div></div>
+    <div class="s late"><div><b>Ozod market</b><small>Kutilgan 11:00 · 25 daq kechikdi</small></div><div class="v">640 500</div></div>
+    <div class="s"><div><b>Mahalla 24</b><small>Sergeli · ~12:10</small></div><div class="v">2 016 000</div></div>
+  </div>
+</section>
+<section class="route" style="--c:var(--grn)">
+  <div class="rh"><i>B</i>Bobur · Labo 01 B 456</div>
+  <div class="stops">
+    <div class="s"><div><b>Nur do'koni</b><small>Yunusobod · ~11:30</small></div><div class="v">980 400</div></div>
+    <div class="s"><div><b>Diyor savdo</b><small>Olmazor · ~12:40</small></div><div class="v">312 000</div></div>
+  </div>
+</section>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h4a4 4 0 0 0 4-4V8"/></svg>Yetkazish</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16"/></svg>Buyurtmalar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9H4Z"/></svg>Do'konlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Ko'proq</div>
+</nav>
+</body>
+</html>

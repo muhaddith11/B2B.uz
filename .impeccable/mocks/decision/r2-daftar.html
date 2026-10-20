@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — Qarz daftar va muhr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#FBFBF8;--ink:#2B2F38;--pen:#1D3FA8;--stamp:#4B2E83;--seal:#C8302C;--hint:#6D7280;--rule:#E6E4DC;--card:#FFFFFF}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--paper);font-family:Onest,system-ui,sans-serif;color:var(--ink);position:relative}
+  header{padding:56px 20px 0;display:flex;align-items:center;gap:12px}
+  .ava{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6E5B47,#B9946B)}
+  header b{font:700 18px/22px Onest;display:block}
+  header span{font:400 13px/18px Onest;color:var(--hint)}
+  .debt{margin:22px 20px 0;padding-bottom:16px;border-bottom:2px solid var(--ink)}
+  .debt .l{font:600 12px/16px Onest;letter-spacing:.08em;text-transform:uppercase;color:var(--hint)}
+  .debt .n{font:800 40px/46px Onest;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:4px}
+  .debt .n small{font:600 18px Onest;color:var(--hint);margin-left:6px}
+  .debt .m{display:flex;gap:16px;margin-top:6px;font:500 13px/18px Onest;color:var(--hint)}
+  .debt .m b{color:var(--seal)}
+  .ledger{margin:4px 20px 0}
+  .ln{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+  .ln b{font:600 15px/20px Onest}
+  .ln .v{font:700 15px/20px Onest;font-variant-numeric:tabular-nums;text-align:right}
+  .ln span{font:400 12px/16px Onest;color:var(--hint)}
+  .ln .late{color:var(--seal);font-weight:600}
+  .pay{margin:16px 20px 0;height:52px;border-radius:12px;background:var(--pen);color:#fff;font:600 16px/52px Onest;text-align:center}
+  h2{margin:24px 20px 0;font:700 13px/18px Onest;letter-spacing:.08em;text-transform:uppercase;color:var(--hint)}
+  .ord{margin:10px 16px 0;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:14px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px;position:relative}
+  .ord b{font:600 15px/20px Onest}
+  .ord span{font:400 12px/16px Onest;color:var(--hint)}
+  .ord .v{font:700 15px Onest;font-variant-numeric:tabular-nums;text-align:right}
+  .stamp{grid-row:span 2;width:70px;height:70px;border-radius:50%;border:2.5px solid var(--stamp);color:var(--stamp);display:grid;place-items:center;text-align:center;font:800 10px/11px Onest;letter-spacing:.06em;text-transform:uppercase;transform:rotate(-9deg);opacity:.9;box-shadow:inset 0 0 0 4px var(--card),inset 0 0 0 5.5px var(--stamp)}
+  .stamp.go{border-color:#B5651D;color:#B5651D;box-shadow:inset 0 0 0 4px var(--card),inset 0 0 0 5.5px #B5651D;transform:rotate(7deg)}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--paper);border-top:2px solid var(--ink);display:grid;grid-template-columns:repeat(5,1fr);padding-top:10px}
+  nav div{text-align:center;font:600 10px/12px Onest;color:var(--hint)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--pen)}
+</style>
+</head>
+<body>
+<header>
+  <div class="ava"></div>
+  <div><b>Barakat do'koni</b><span>Chilonzor, 9-kvartal</span></div>
+</header>
+<section class="debt">
+  <div class="l">Umumiy qarz</div>
+  <div class="n">4 812 600<small>so'm</small></div>
+  <div class="m"><span>3 distribyutor</span><span><b>1 ta muddati o'tgan</b></span></div>
+</section>
+<section class="ledger">
+  <div class="ln"><b>Salqin Ichimliklar</b><div class="v">2 140 000</div><span>Muddati 18.10 gacha</span><span></span></div>
+  <div class="ln"><b>Toshkent Sut</b><div class="v">1 902 600</div><span class="late">Muddati o'tdi · 3 kun</span><span></span></div>
+  <div class="ln"><b>Non va Shirinlik</b><div class="v">770 000</div><span>Muddati 24.10 gacha</span><span></span></div>
+</section>
+<div class="pay">Qarzni to'lash</div>
+<h2>Buyurtmalar</h2>
+<div class="ord">
+  <div><b>Salqin Ichimliklar</b></div>
+  <div class="stamp go">Yo'lda<br>11:05</div>
+  <div><span>№ 1042 · 18 yashik · </span><span class="v">1 248 000 so'm</span></div>
+</div>
+<div class="ord">
+  <div><b>Toshkent Sut</b></div>
+  <div class="stamp">Qabul<br>qilindi</div>
+  <div><span>№ 1039 · 32 yashik · </span><span class="v">2 016 000 so'm</span></div>
+</div>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4Z"/></svg>Asosiy</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Katalog</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h15l-2 9H7L5 3H2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Savat</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 10h16M8 15h4"/></svg>Qarzlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil</div>
+</nav>
+</body>
+</html>

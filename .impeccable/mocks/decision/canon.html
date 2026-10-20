@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — odatiy ko'rinish</title>
+<style>
+  :root{--bg:#F4F5F7;--card:#FFFFFF;--text:#0F172A;--hint:#586579;--border:#E3E7ED;--accent:#1A64D6;--soft:#E8F0FD;--warn:#B54708;--warn-soft:#FEF2E4;--info:#6941C6;--info-soft:#F1ECFB}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--bg);font-family:-apple-system,"SF Pro Text",Roboto,system-ui,sans-serif;color:var(--text);position:relative}
+  header{padding:56px 16px 0;display:flex;align-items:center;gap:12px}
+  .ava{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6E5B47,#B9946B)}
+  header b{font:700 22px/28px inherit;display:block}
+  header span{font-size:14px;color:var(--hint)}
+  .card{background:var(--card);border-radius:18px;padding:16px;margin:12px 16px 0;box-shadow:0 4px 12px rgba(15,23,42,.06)}
+  .l{font-size:14px;color:var(--hint)}
+  .n{font-weight:700;font-size:30px;line-height:36px;font-variant-numeric:tabular-nums;margin-top:4px}
+  .n small{font-size:17px;font-weight:500;margin-left:4px}
+  .bar{height:6px;border-radius:3px;background:var(--border);margin-top:12px;overflow:hidden}
+  .bar i{display:block;height:6px;width:80%;background:var(--accent)}
+  .m{display:flex;justify-content:space-between;font-size:13px;color:var(--hint);margin-top:6px}
+  .btns{display:flex;gap:10px;margin-top:14px}
+  .btn{flex:1;height:48px;border-radius:14px;background:var(--accent);color:#fff;font-weight:600;font-size:15px;line-height:48px;text-align:center}
+  .btn.s{background:var(--soft);color:var(--accent)}
+  h2{margin:20px 16px 0;font-size:17px;font-weight:600}
+  .row{display:flex;align-items:center;gap:12px}
+  .lg{width:40px;height:40px;border-radius:10px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-weight:700}
+  .t b{font-size:16px;font-weight:600;display:block}
+  .t span{font-size:13px;color:var(--hint)}
+  .v{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;margin-top:10px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px}
+  .steps i{height:6px;border-radius:3px;background:var(--border)}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:#fff;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);padding-top:10px}
+  nav div{text-align:center;font-size:10px;font-weight:600;color:var(--hint)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--accent)}
+</style>
+</head>
+<body>
+<header><div class="ava"></div><div><b>Barakat do'koni</b><span>Chilonzor, 9-kvartal</span></div></header>
+<div class="card">
+  <div class="l">Umumiy qarz</div>
+  <div class="n">4 812 600<small>so'm</small></div>
+  <div class="bar"><i></i></div>
+  <div class="m"><span>Limit 6 000 000</span><span>Qoldi 1 187 400</span></div>
+  <div class="btns"><div class="btn">Qarzni to'lash</div><div class="btn s">Distribyutor topish</div></div>
+</div>
+<h2>Yo'ldagi buyurtmalar</h2>
+<div class="card">
+  <div class="row"><div class="lg">S</div><div class="t"><b>Salqin Ichimliklar</b><span>№ 1042 · 18 yashik</span></div><div class="v">1 248 000 so'm</div></div>
+  <span class="badge" style="background:var(--warn-soft);color:var(--warn)">Yo'lda</span>
+  <div class="steps"><i style="background:var(--warn)"></i><i style="background:var(--warn)"></i><i style="background:var(--warn)"></i><i></i></div>
+</div>
+<div class="card">
+  <div class="row"><div class="lg">T</div><div class="t"><b>Toshkent Sut</b><span>№ 1039 · 32 yashik</span></div><div class="v">2 016 000 so'm</div></div>
+  <span class="badge" style="background:var(--info-soft);color:var(--info)">Qabul qilindi</span>
+  <div class="steps"><i style="background:var(--info)"></i><i style="background:var(--info)"></i><i></i><i></i></div>
+</div>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4Z"/></svg>Asosiy</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Katalog</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h15l-2 9H7L5 3H2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Savat</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 10h16M8 15h4"/></svg>Qarzlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil</div>
+</nav>
+</body>
+</html>

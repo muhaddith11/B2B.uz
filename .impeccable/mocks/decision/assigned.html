@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — Atlas (abr)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--indigo:#23205C;--indigo-2:#2E2A75;--mal:#D11F5E;--saf:#F2B705;--ground:#F6F5FA;--ink:#17152E;--hint:#6B6889;--line:#E4E2EF;--card:#FFFFFF;--ok:#1E8C5A}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--ground);font-family:"Golos Text",system-ui,sans-serif;color:var(--ink);position:relative}
+  .band{background:var(--indigo);color:#fff;padding:54px 20px 22px;border-radius:0 0 28px 28px}
+  .who{display:flex;align-items:center;gap:12px}
+  .ava{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#7E5A3C,#C89B6D);border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 3px var(--mal)}
+  .who b{font:600 17px/22px "Golos Text";display:block}
+  .who span{font:400 13px/18px "Golos Text";color:#C9C6EA}
+  .bell{margin-left:auto;width:40px;height:40px;border-radius:50%;background:var(--indigo-2);display:grid;place-items:center}
+  .lbl{margin-top:22px;font:500 13px/18px "Golos Text";color:#C9C6EA;letter-spacing:.02em}
+  .sum{font:700 34px/42px "Unbounded";letter-spacing:-.01em;margin-top:2px}
+  .sum small{font:500 17px "Unbounded";color:#C9C6EA;margin-left:6px}
+  /* abr band: warp rows end at staggered points = ikat edge */
+  .abr{position:relative;height:14px;border-radius:7px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:16px}
+  .abr i{position:absolute;left:0;height:2px;background:var(--saf);border-radius:0 2px 2px 0}
+  .cap{display:flex;justify-content:space-between;margin-top:8px;font:500 13px/18px "Golos Text";color:#C9C6EA}
+  .cap b{color:#fff;font-weight:600}
+  .acts{display:flex;gap:10px;margin-top:18px}
+  .act{flex:1;height:44px;border-radius:14px;background:#fff;color:var(--indigo);font:600 14px/44px "Golos Text";text-align:center}
+  .act.alt{background:var(--indigo-2);color:#fff}
+  main{padding:20px 16px 0}
+  h2{font:600 17px/24px "Unbounded";letter-spacing:-.01em;display:flex;justify-content:space-between;align-items:baseline}
+  h2 a{font:500 14px "Golos Text";color:var(--indigo);letter-spacing:0}
+  .card{background:var(--card);border-radius:18px;padding:14px;margin-top:12px;box-shadow:0 4px 14px rgba(35,32,92,.07)}
+  .row{display:flex;align-items:center;gap:12px}
+  .logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font:700 15px "Unbounded";color:#fff}
+  .t b{font:600 16px/21px "Golos Text";display:block}
+  .t span{font:400 13px/18px "Golos Text";color:var(--hint)}
+  .amt{margin-left:auto;text-align:right;font:600 16px/21px "Unbounded";font-variant-numeric:tabular-nums}
+  .amt small{display:block;font:400 12px "Golos Text";color:var(--hint)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:14px}
+  .seg{position:relative;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+  .seg.done{background:var(--indigo)}
+  .seg.now i{position:absolute;left:0;height:2px;background:var(--mal)}
+  .names{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;font:500 11px/14px "Golos Text";color:var(--hint)}
+  .names .on{color:var(--mal);font-weight:600}
+  .names em{display:block;font-style:normal;font-variant-numeric:tabular-nums;color:var(--hint);font-weight:400}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-top:10px}
+  nav div{text-align:center;font:600 10px/12px "Golos Text";color:var(--hint)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--mal)}
+  nav .on:after{content:"";display:block;width:22px;height:3px;margin:6px auto 0;border-radius:2px;background:linear-gradient(90deg,var(--mal) 70%,transparent 70% 76%,var(--mal) 76% 84%,transparent 84%)}
+</style>
+</head>
+<body>
+<section class="band">
+  <div class="who">
+    <div class="ava" aria-label="Do'kon rasmi"></div>
+    <div><b>Barakat do'koni</b><span>Chilonzor, 9-kvartal</span></div>
+    <div class="bell"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></div>
+  </div>
+  <div class="lbl">Umumiy qarz · 3 distribyutor</div>
+  <div class="sum">4 812 600<small>so'm</small></div>
+  <div class="abr" aria-label="Limitdan 80% ishlatilgan">
+    <i style="top:0;width:79%"></i><i style="top:2px;width:81.5%"></i><i style="top:4px;width:78%"></i><i style="top:6px;width:82.5%"></i><i style="top:8px;width:80%"></i><i style="top:10px;width:77.5%"></i><i style="top:12px;width:81%"></i>
+  </div>
+  <div class="cap"><span>Limit 6 000 000</span><span>Qoldi <b>1 187 400 so'm</b></span></div>
+  <div class="acts"><div class="act">Qarzni to'lash</div><div class="act alt">Distribyutor topish</div></div>
+</section>
+<main>
+  <h2>Yo'ldagi buyurtmalar <a>Hammasi</a></h2>
+  <div class="card">
+    <div class="row">
+      <div class="logo" style="background:#0E7A8A">S</div>
+      <div class="t"><b>Salqin Ichimliklar</b><span>№ 1042 · 18 yashik</span></div>
+      <div class="amt">1 248 000<small>so'm</small></div>
+    </div>
+    <div class="steps">
+      <div class="seg done"></div><div class="seg done"></div>
+      <div class="seg now"><i style="top:0;width:58%"></i><i style="top:2px;width:64%"></i><i style="top:4px;width:55%"></i><i style="top:6px;width:61%"></i><i style="top:8px;width:57%"></i></div>
+      <div class="seg"></div>
+    </div>
+    <div class="names"><span>Yuborildi<em>09:12</em></span><span>Qabul qilindi<em>09:40</em></span><span class="on">Yo'lda<em>11:05</em></span><span>Topshirildi</span></div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <div class="logo" style="background:#5B3A8E">T</div>
+      <div class="t"><b>Toshkent Sut</b><span>№ 1039 · 32 yashik</span></div>
+      <div class="amt">2 016 000<small>so'm</small></div>
+    </div>
+    <div class="steps">
+      <div class="seg done"></div>
+      <div class="seg now"><i style="top:0;width:34%"></i><i style="top:2px;width:40%"></i><i style="top:4px;width:31%"></i><i style="top:6px;width:38%"></i><i style="top:8px;width:35%"></i></div>
+      <div class="seg"></div><div class="seg"></div>
+    </div>
+    <div class="names"><span>Yuborildi<em>08:30</em></span><span class="on">Qabul qilindi<em>08:52</em></span><span>Yo'lda</span><span>Topshirildi</span></div>
+  </div>
+</main>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4Z"/></svg>Asosiy</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Katalog</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h15l-2 9H7L5 3H2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Savat</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 10h16M8 15h4"/></svg>Qarzlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil</div>
+</nav>
+</body>
+</html>

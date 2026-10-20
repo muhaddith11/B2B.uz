@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:390px;height:844px;overflow:hidden;background:#F5F6F8;font-family:Roboto,system-ui,sans-serif;color:#111827}
+.bar{background:#fff;padding:44px 16px 12px}
+.top{display:flex;align-items:center;gap:12px}
+.back{font-size:24px;color:#2563EB}
+h1{font-size:20px;font-weight:700}
+.search{margin-top:12px;background:#F1F3F6;border-radius:12px;height:44px;padding:0 14px;display:flex;align-items:center;color:#6B7280;font-size:15px}
+.chips{display:flex;gap:8px;padding:12px 16px}
+.chip{height:34px;padding:0 14px;border-radius:17px;background:#fff;display:flex;align-items:center;font-size:14px;color:#374151;white-space:nowrap}
+.chip.on{background:#2563EB;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.card{background:#fff;border-radius:16px;padding:10px;box-shadow:0 1px 3px rgba(17,24,39,.06)}
+.img{height:110px;border-radius:12px;background:linear-gradient(135deg,#E8EEF9,#DCE6F8);margin-bottom:8px}
+.nm{font-size:14px;font-weight:500;line-height:18px;height:36px;overflow:hidden}
+.sub{font-size:12px;color:#6B7280;margin-top:2px}
+.pr{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.pr b{font-size:17px}
+.plus{width:36px;height:36px;border-radius:18px;background:#2563EB;color:#fff;display:grid;place-items:center;font-size:20px}
+.cart{position:absolute;left:16px;right:16px;bottom:92px;height:56px;border-radius:28px;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-weight:700;box-shadow:0 8px 20px rgba(37,99,235,.35)}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:80px;background:#fff;display:flex;justify-content:space-around;padding-top:10px;font-size:12px;color:#9CA3AF;box-shadow:0 -1px 0 #E5E7EB}
+.tabs div{display:flex;flex-direction:column;align-items:center;gap:4px}
+.tabs i{width:24px;height:24px;border-radius:7px;background:currentColor;opacity:.5}
+.tabs .on{color:#2563EB;font-weight:700}
+</style></head><body>
+<div class="bar"><div class="top"><span class="back">‹</span><h1>Vodiy Ichimliklari</h1></div><div class="search">Tovar qidirish</div></div>
+<div class="chips"><div class="chip on">Hammasi</div><div class="chip">Choy</div><div class="chip">Gazli ichimlik</div><div class="chip">Sharbat</div></div>
+<div class="grid">
+  <div class="card"><div class="img"></div><div class="nm">Muzli choy, limonli, 1 l</div><div class="sub">Yashikda 12 dona</div><div class="pr"><b>8 900 so'm</b><span class="plus">+</span></div></div>
+  <div class="card"><div class="img"></div><div class="nm">Gazli ichimlik, apelsin, 1,5 l</div><div class="sub">Yashikda 6 dona</div><div class="pr"><b>9 800 so'm</b><span class="plus">+</span></div></div>
+  <div class="card"><div class="img"></div><div class="nm">Gazli ichimlik, klassik, 0,5 l</div><div class="sub">Yashikda 12 dona</div><div class="pr"><b>5 200 so'm</b><span class="plus">+</span></div></div>
+  <div class="card"><div class="img"></div><div class="nm">Sharbat, olma, 1 l</div><div class="sub">Yashikda 12 dona</div><div class="pr"><b>14 500 so'm</b><span class="plus">+</span></div></div>
+</div>
+<div class="cart"><span>Savat · 3 yashik</span><span>272 400 so'm</span></div>
+<div class="tabs"><div><i></i>Bosh sahifa</div><div class="on"><i></i>Savat</div><div><i></i>Buyurtmalar</div><div><i></i>Qarzlarim</div></div>
+</body></html>

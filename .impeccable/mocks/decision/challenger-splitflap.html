@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — Vokzal tablosi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--board:#111214;--flap:#1C1E21;--paint:#F4F4F0;--amber:#F2A900;--red:#D2453B;--steel:#9AA0A6;--seam:#0A0B0C}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--board);font-family:Barlow,system-ui,sans-serif;color:var(--paint);position:relative}
+  header{padding:54px 16px 0}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top b{font:600 15px Barlow;color:var(--steel)}
+  .top span{font:700 15px "Barlow Condensed";letter-spacing:.12em;color:var(--amber)}
+  .rev{margin-top:14px;display:flex;gap:3px}
+  .rev i{font:700 34px/48px "Barlow Condensed";font-style:normal;width:26px;text-align:center;background:var(--flap);border-radius:4px;position:relative}
+  .rev i:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--seam)}
+  .rev .sp{width:10px;background:none}
+  .rev em{font:600 16px/48px Barlow;font-style:normal;color:var(--steel);margin-left:8px}
+  .sub{margin-top:8px;font:500 13px Barlow;color:var(--steel)}
+  .tabs{display:flex;gap:8px;margin:18px 16px 0}
+  .tabs div{height:36px;padding:0 14px;border-radius:999px;border:1px solid #2B2E33;font:600 14px/34px Barlow;color:var(--steel)}
+  .tabs .on{background:var(--paint);color:var(--board);border-color:var(--paint)}
+  .head{display:grid;grid-template-columns:52px 1fr 86px 90px;gap:6px;margin:18px 16px 6px;font:600 11px "Barlow Condensed";letter-spacing:.14em;color:var(--steel);text-transform:uppercase}
+  .r{display:grid;grid-template-columns:52px 1fr 86px 90px;gap:6px;margin:0 16px;padding:9px 0;border-top:1px solid #222428;align-items:center}
+  .c{font:600 17px/30px "Barlow Condensed";letter-spacing:.06em;text-transform:uppercase;background:var(--flap);border-radius:3px;padding:0 6px;position:relative;white-space:nowrap;overflow:hidden}
+  .c:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--seam)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .st{text-align:center;font-size:15px}
+  .new{color:var(--board);background:var(--paint)}
+  .late{color:var(--board);background:var(--amber)}
+  .rej{color:#fff;background:var(--red)}
+  .go{color:var(--amber)}
+  .sm{grid-column:2/5;font:400 12px Barlow;color:var(--steel);margin-top:-2px}
+  .cta{position:absolute;left:16px;right:16px;bottom:100px;height:52px;border-radius:12px;background:var(--amber);color:var(--board);font:700 17px/52px "Barlow Condensed";letter-spacing:.1em;text-align:center;text-transform:uppercase}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:#0B0C0D;border-top:1px solid #222428;display:grid;grid-template-columns:repeat(4,1fr);padding-top:10px}
+  nav div{text-align:center;font:600 10px/12px Barlow;color:var(--steel)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--amber)}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><b>Salqin Ichimliklar · Operator</b><span>15 OKT</span></div>
+  <div class="rev"><i>1</i><i>8</i><i class="sp"></i><i>4</i><i>2</i><i>0</i><i class="sp"></i><i>0</i><i>0</i><i>0</i><em>so'm bugun</em></div>
+  <div class="sub">12 ta yangi buyurtma · 1 tasi kutib qoldi</div>
+</header>
+<div class="tabs"><div class="on">Yangi 12</div><div>Qabul 7</div><div>Yo'lda 5</div><div>Tugadi</div></div>
+<div class="head"><span>Vaqt</span><span>Do'kon</span><span>Holat</span><span style="text-align:right">Summa</span></div>
+<div class="r"><div class="c num">08:47</div><div class="c">Barakat</div><div class="c st late">Kutyapti</div><div class="c num">1 248 000</div><div class="sm">Chilonzor · 18 yashik · nasiya</div></div>
+<div class="r"><div class="c num">09:02</div><div class="c">Ozod market</div><div class="c st new">Yangi</div><div class="c num">640 500</div><div class="sm">Yunusobod · 9 yashik · naqd</div></div>
+<div class="r"><div class="c num">09:15</div><div class="c">Mahalla 24</div><div class="c st new">Yangi</div><div class="c num">2 016 000</div><div class="sm">Sergeli · 32 yashik · o'tkazma</div></div>
+<div class="r"><div class="c num">09:21</div><div class="c">Diyor savdo</div><div class="c st rej">Rad</div><div class="c num">312 000</div><div class="sm">Olmazor · limitdan oshdi</div></div>
+<div class="r"><div class="c num">09:34</div><div class="c">Nur do'koni</div><div class="c st new">Yangi</div><div class="c num">980 400</div><div class="sm">Chilonzor · 14 yashik · naqd</div></div>
+<div class="cta">08:47 buyurtmani qabul qilish</div>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M4 14h16"/></svg>Buyurtmalar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9H4Z"/></svg>Do'konlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v12H4zM8 7V4h8v3"/></svg>Tovarlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Ko'proq</div>
+</nav>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#FFFFFF;--ground:#EEF0F4;--ink:#16181D;--rule:#C9CDD6;--stamp:#3442A8;--carbon:#5C74C4;--hint:#646A76}
+body{width:390px;height:844px;overflow:hidden;background:var(--ground);font-family:Roboto,system-ui,sans-serif;color:var(--ink)}
+.mono{font-family:'Roboto Mono',ui-monospace,monospace}
+.bar{background:var(--paper);padding:44px 16px 12px;border-bottom:2px solid var(--ink)}
+.top{display:flex;align-items:center;gap:12px}
+.back{width:36px;height:36px;border:1.5px solid var(--ink);border-radius:8px;display:grid;place-items:center;font-size:20px}
+h1{font-size:21px;font-weight:700}
+.meta{font-size:13px;color:var(--hint);margin:6px 0 10px 48px}
+.search{border:1.5px solid var(--rule);border-radius:8px;height:44px;padding:0 14px;display:flex;align-items:center;color:var(--hint);font-size:15px}
+.sheet{margin:12px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;box-shadow:0 1px 0 var(--rule),0 3px 0 -1px #fff,0 4px 0 -1px var(--rule)}
+.hd{display:grid;grid-template-columns:26px 1fr 64px 92px;padding:8px 10px;border-bottom:1.5px solid var(--ink);font-size:11px;letter-spacing:.08em;color:var(--hint);text-transform:uppercase}
+.r{display:grid;grid-template-columns:26px 1fr 64px 92px;padding:12px 10px;border-bottom:1px solid var(--rule);align-items:center;min-height:64px}
+.r .i{font-size:13px;color:var(--hint)}
+.r .nm{font-size:15px;font-weight:500;line-height:19px}
+.r .sub{font-size:12px;color:var(--hint);margin-top:2px}
+.qty{border:1.5px solid var(--ink);border-radius:6px;height:40px;display:grid;place-items:center;font-size:17px}
+.qty.z{border-style:dashed;color:var(--hint)}
+.sm{text-align:right;font-size:15px}
+.foot{position:absolute;left:12px;right:12px;bottom:92px;background:var(--paper);border:1px solid var(--rule);border-top:2px solid var(--ink);padding:12px 14px;border-radius:4px}
+.tot{display:flex;justify-content:space-between;align-items:baseline}
+.tot span{font-size:13px;color:var(--hint);letter-spacing:.06em;text-transform:uppercase}
+.tot b{font-size:26px}
+.stamp{position:absolute;right:18px;top:-40px;width:96px;height:96px;border-radius:50%;border:3px solid var(--stamp);color:var(--stamp);display:grid;place-items:center;transform:rotate(-12deg);text-align:center;font-size:11px;font-weight:700;letter-spacing:.06em;opacity:.85;background:rgba(255,255,255,.6)}
+.stamp i{position:absolute;inset:6px;border-radius:50%;border:1px solid var(--stamp)}
+.min{font-size:13px;color:var(--hint);margin-top:4px}
+.go{margin-top:10px;height:48px;border-radius:8px;background:var(--stamp);color:#fff;font-weight:700;font-size:16px;display:grid;place-items:center}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:80px;background:var(--paper);border-top:2px solid var(--ink);display:flex;justify-content:space-around;padding-top:10px;font-size:12px;color:var(--hint)}
+.tabs div{display:flex;flex-direction:column;align-items:center;gap:4px}
+.tabs i{width:24px;height:24px;border:2px solid currentColor;border-radius:4px}
+.tabs .on{color:var(--stamp);font-weight:700}
+</style></head><body>
+<div class="bar">
+  <div class="top"><div class="back">‹</div><h1>Vodiy Ichimliklari</h1></div>
+  <div class="meta">Ichimliklar · yetkazish Du, Chor, Ju · min. 500 000 so'm</div>
+  <div class="search">Tovar qidirish</div>
+</div>
+<div class="sheet">
+  <div class="hd mono"><span>№</span><span>Tovar</span><span>Yashik</span><span style="text-align:right">Narx</span></div>
+  <div class="r"><span class="i mono">01</span><div><div class="nm">Muzli choy, limonli, 1 l</div><div class="sub">12 dona · Salqin</div></div><div class="qty mono">2</div><div class="sm mono">8 900</div></div>
+  <div class="r"><span class="i mono">02</span><div><div class="nm">Gazli ichimlik, apelsin, 1,5 l</div><div class="sub">6 dona · Salqin</div></div><div class="qty mono">1</div><div class="sm mono">9 800</div></div>
+  <div class="r"><span class="i mono">03</span><div><div class="nm">Gazli ichimlik, klassik, 0,5 l</div><div class="sub">12 dona · Salqin</div></div><div class="qty z mono">+</div><div class="sm mono">5 200</div></div>
+  <div class="r"><span class="i mono">04</span><div><div class="nm">Sharbat, olma, 1 l</div><div class="sub">12 dona · Bog'dan</div></div><div class="qty z mono">+</div><div class="sm mono">14 500</div></div>
+</div>
+<div class="foot">
+  <div class="stamp"><i></i>SAVATDA<br>3 YASHIK</div>
+  <div class="tot"><span>Jami</span><b class="mono">272 400 so'm</b></div>
+  <div class="min">Minimal buyurtmagacha 227 600 so'm</div>
+  <div class="go">Buyurtma rasmiylashtirish</div>
+</div>
+<div class="tabs"><div><i></i>Bosh sahifa</div><div class="on"><i></i>Savat</div><div><i></i>Buyurtmalar</div><div><i></i>Qarzlarim</div></div>
+</body></html>

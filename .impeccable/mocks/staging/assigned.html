@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--kraft:#C69A62;--kraft-d:#8C6234;--kraft-l:#E2C9A3;--ink:#1D1A16;--ground:#F1F0EC;--card:#FFFFFF;--tarp:#1F5E96;--line:#DDD8CF;--hint:#6F6A62;--late:#C23B22}
+body{width:390px;height:844px;overflow:hidden;background:var(--ground);font-family:Roboto,system-ui,sans-serif;color:var(--ink)}
+.st{font-family:'Big Shoulders Stencil','Saira Stencil One',Impact,sans-serif;font-weight:800;letter-spacing:.01em}
+.shell{background:var(--kraft);padding:44px 16px 12px;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.035) 0 2px,transparent 2px 7px)}
+.top{display:flex;align-items:center;gap:12px}
+.back{width:36px;height:36px;border-radius:18px;background:rgba(29,26,22,.12);display:grid;place-items:center;font-size:20px}
+.top h1{font-size:22px;font-weight:700;line-height:26px}
+.meta{font-size:13px;color:#3B2E1E;margin:6px 0 10px 48px}
+.search{background:#F8F3EA;border-radius:10px;height:44px;padding:0 14px;display:flex;align-items:center;font-size:15px;color:var(--hint)}
+.chips{display:flex;gap:8px;padding:12px 16px 4px;overflow:hidden}
+.chip{height:34px;padding:0 14px;border-radius:17px;border:1.5px solid var(--line);display:flex;align-items:center;font-size:14px;white-space:nowrap;background:#fff}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.list{padding:8px 16px;display:flex;flex-direction:column;gap:8px}
+.row{background:var(--card);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;border:1px solid var(--line)}
+.nm{font-size:16px;font-weight:500;line-height:21px}
+.sub{font-size:13px;color:var(--hint);display:flex;align-items:center;gap:8px}
+.tag{background:var(--kraft-l);color:var(--ink);font-size:13px;padding:2px 6px;border-radius:3px;border:1px dashed var(--kraft-d)}
+.price{font-size:28px;line-height:30px}
+.price small{font-family:Roboto,sans-serif;font-size:13px;font-weight:500;margin-left:3px}
+.step{display:flex;align-items:center;border:1.5px solid var(--ink);border-radius:10px;height:44px;align-self:end}
+.step b{width:44px;text-align:center;font-size:22px;font-weight:500}
+.step .n{min-width:52px;text-align:center;font-size:26px;border-left:1.5px solid var(--ink);border-right:1.5px solid var(--ink);height:100%;display:grid;place-items:center;background:var(--kraft-l)}
+.add{height:44px;padding:0 18px;border-radius:10px;background:var(--tarp);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;align-self:end}
+.cart{position:absolute;left:12px;right:12px;bottom:92px;background:var(--kraft);border-radius:14px;padding:12px 14px;box-shadow:0 6px 18px rgba(60,40,15,.28);border:1.5px solid var(--kraft-d)}
+.cart .l1{display:flex;justify-content:space-between;align-items:baseline}
+.cart .cases{font-size:30px}
+.cart .sum{font-size:30px}
+.pal{display:flex;gap:4px;margin:8px 0 4px}
+.pal i{flex:1;height:14px;border-radius:2px;background:var(--ink)}
+.pal i.e{background:transparent;border:1.5px dashed rgba(29,26,22,.45)}
+.cart .note{font-size:13px;color:#3B2E1E}
+.go{margin-top:10px;height:48px;border-radius:10px;background:var(--ink);color:#fff;font-size:16px;font-weight:700;display:grid;place-items:center}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:80px;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:10px;font-size:12px;color:var(--hint)}
+.tabs div{display:flex;flex-direction:column;align-items:center;gap:4px}
+.tabs i{width:24px;height:24px;border-radius:6px;border:2px solid currentColor}
+.tabs .on{color:var(--ink);font-weight:700}
+</style></head><body>
+<div class="shell">
+  <div class="top"><div class="back">‹</div><h1>Vodiy Ichimliklari</h1></div>
+  <div class="meta">Ichimliklar · yetkazish Du, Chor, Ju · min. 500 000 so'm</div>
+  <div class="search">Tovar qidirish</div>
+</div>
+<div class="chips"><div class="chip on">Hammasi</div><div class="chip">Choy</div><div class="chip">Gazli ichimlik</div><div class="chip">Sharbat</div></div>
+<div class="list">
+  <div class="row"><div><div class="nm">Muzli choy, limonli, 1 l</div><div class="sub"><span class="tag st">12 DONA</span>Salqin</div></div>
+    <div class="step"><b>−</b><span class="n st">2</span><b>+</b></div>
+    <div class="price st">8 900<small>so'm</small></div><div class="sub" style="justify-content:flex-end">yashik 106 800</div></div>
+  <div class="row"><div><div class="nm">Gazli ichimlik, apelsin, 1,5 l</div><div class="sub"><span class="tag st">6 DONA</span>Salqin</div></div>
+    <div class="step"><b>−</b><span class="n st">1</span><b>+</b></div>
+    <div class="price st">9 800<small>so'm</small></div><div class="sub" style="justify-content:flex-end">yashik 58 800</div></div>
+  <div class="row"><div><div class="nm">Gazli ichimlik, klassik, 0,5 l</div><div class="sub"><span class="tag st">12 DONA</span>Salqin</div></div>
+    <div class="add">Qo'shish</div>
+    <div class="price st">5 200<small>so'm</small></div><div class="sub" style="justify-content:flex-end">yashik 62 400</div></div>
+</div>
+<div class="cart">
+  <div class="l1"><span class="cases st">3 YASHIK</span><span class="sum st">272 400 <small style="font:500 13px Roboto">so'm</small></span></div>
+  <div class="pal"><i></i><i></i><i></i><i></i><i></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i></div>
+  <div class="note">Minimal buyurtmagacha 227 600 so'm qoldi</div>
+  <div class="go">Savatga o'tish</div>
+</div>
+<div class="tabs"><div><i></i>Bosh sahifa</div><div class="on"><i></i>Savat</div><div><i></i>Buyurtmalar</div><div><i></i>Qarzlarim</div></div>
+</body></html>

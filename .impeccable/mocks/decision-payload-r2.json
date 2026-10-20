@@ -1,0 +1,306 @@
+{
+  "title": "Captar uchun vizual dunyo",
+  "question": "To'rtta yo'nalish yonma-yon: yangi qo'ldagi Rishton lagani va Toshkent metrosi, oldingi qo'ldagi Atlas va Qarz daftar. Bittasini tanlang yoki yana tashlang.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Rishton lagani",
+      "kicker": "THE ROLL",
+      "lineage": "Rishton kulolchiligi: ishqor sirli firuza va kobalt laganlar, oq angob ustiga mo'yqalam izi, markazda medalyon",
+      "thesis": "Har bir tashkilot va odam lagan markazidagi medalyon: surat yoki logo firuza halqa ichida, halqa esa uning holatini ko'rsatadi.",
+      "palette": [
+        "#0B7F86",
+        "#1C3F94",
+        "#C9862B",
+        "#F3F7F7",
+        "#0F2A2E"
+      ],
+      "materials": [
+        "ishqor firuza sir",
+        "kobalt mo'yqalam",
+        "oxra halqa"
+      ],
+      "viewport": "Do'konchi bosh sahifasi: firuza tasmada do'kon surati medalyonda, atrofidagi halqa nasiya limitidan qancha ishlatilganini ko'rsatadi, yonida katta qarz summasi; ostida buyurtmalar, har birida distribyutor logosi medalyonda va 4 bo'lakli halqa buyurtma yo'lini ko'rsatadi; pastda tab bar.",
+      "risk": "Naqshlar bezakka aylansa o'yinchoq ko'rinadi: naqsh yo'q, faqat sir ranglari va halqa; rasmi yo'q tashkilotda bosh harf medalyoni turadi.",
+      "raised": [
+        {
+          "from": "challenger-zones",
+          "raise": "Qat'iy ohang zinasi: barcha neytral ranglar sirdan olingan 9 pog'onali zinadan, tasodifiy kulrang yo'q."
+        },
+        {
+          "from": "challenger-rail",
+          "raise": "Bitta chiziq qalinligi: har ajratgich va chegara bir xil ingichka chiziq, boshqa qalinlik yo'q."
+        },
+        {
+          "from": "challenger-score",
+          "raise": "Vaqt bir yo'nalishda: halqa doim soat 12 dan soat yo'nalishida to'ladi, joriy bosqich och tasma bilan ajraladi."
+        },
+        {
+          "from": "challenger-console",
+          "raise": "Xavfli amal yolg'iz turadi: bekor qilish va rad etish qo'shni tugmadan ataylab bo'sh joy bilan ajratilgan, kontur holatida."
+        },
+        {
+          "from": "challenger-wall",
+          "raise": "Rasm o'zi rang: tovar rasmi bor kartochkada bezak rangi ishlatilmaydi, rasm kartochka kengligini to'liq egallaydi."
+        }
+      ],
+      "html": ".impeccable/mocks/decision/r2-rishton.html",
+      "htmlFrame": "390x844"
+    },
+    {
+      "id": "model-pick",
+      "label": "Toshkent metrosi",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Toshkent metrosi: har bekatning o'z marmar va keramik bezagi, liniyalar o'z rangida",
+      "thesis": "Har buyurtma o'z liniyasi bo'ylab bekatma-bekat yuradi; har distribyutorga o'z liniya rangi.",
+      "palette": [
+        "#ECEAE5",
+        "#1B1F2A",
+        "#D6332B",
+        "#1F5FBF",
+        "#1E9A57",
+        "#B98B2E"
+      ],
+      "materials": [
+        "oq marmar",
+        "granit",
+        "bronza halqa"
+      ],
+      "viewport": "Do'konchi bosh sahifasi: tepada qarz summasi va limit; buyurtmalar liniya chizig'ida (Yuborildi, Qabul, Yo'lda, Topshirildi bekatlari), joriy bekat bronza halqada; har distribyutor kartasi chetida o'z liniya rangi.",
+      "risk": "Yetkazish ilovalari (Yandex Go) ham shu 'yo'l chizig'i'ga yaqin keladi; liniya ranglari holat ranglari bilan aralashib ketmasligi kerak.",
+      "html": ".impeccable/mocks/decision/r2-metro.html",
+      "htmlFrame": "390x844"
+    },
+    {
+      "id": "prev-atlas",
+      "label": "Atlas (abr)",
+      "kicker": "OLDINGI QO'L",
+      "lineage": "Marg'ilon xon-atlasi va adras: iplar to'qishdan oldin bo'yaladi, rang chegarasi bulutdek (abr) yoyiladi",
+      "thesis": "Har bir buyurtma, qarz limiti va obuna muddati bitta to'quv chizig'i: bosqich o'tgan sari bo'yoq abr chetiga yoyiladi.",
+      "palette": [
+        "#23205C",
+        "#D11F5E",
+        "#F2B705",
+        "#F6F5FA",
+        "#17152E"
+      ],
+      "materials": [
+        "to'q indigo ipak",
+        "malina bo'yoq",
+        "abr (yoyilgan) chet"
+      ],
+      "viewport": "Do'konchi bosh sahifasi: tepada indigo tasma ichida do'kon rasmi, nomi va katta qarz summasi, ostida limit sig'imi abr chizig'ida; keyin distribyutor logolari bilan yo'ldagi buyurtmalar, har birida bir xil joyda abr holat chizig'i; pastda tab bar, faol tab malina.",
+      "risk": "Atlas odatda juda rang-barang: bu yerda indigo va bitta malina bilan cheklangan; abr cheti kichik o'lchamda 'buzilgan chiziq'dek ko'rinib qolishi mumkin.",
+      "html": ".impeccable/mocks/decision/r2-atlas.html",
+      "htmlFrame": "390x844",
+      "raised": [
+        {
+          "from": "challenger-orienteering",
+          "raise": "Bitta ajratilgan rang: malina faqat 'hozirgi' narsa uchun (joriy bosqich, faol tab, tanlangan), boshqa hech qayerda."
+        },
+        {
+          "from": "challenger-jcard",
+          "raise": "Halol sig'im: nasiya limiti va obuna muddati qat'iy sig'imdek, qolgani doim raqam bilan ko'rinadi, to'lishidan oldin ogohlantiradi."
+        },
+        {
+          "from": "challenger-folio",
+          "raise": "Bir joyda turish: abr holat chizig'i har buyurtma kartochkasi va sahifasida aynan bir joyda, bir xil uzunlikda."
+        },
+        {
+          "from": "challenger-doujin",
+          "raise": "Zichlik jasorati: rasmli katalog butun kataklar bilan qayta joylashadigan to'r; rasmsiz tovar ixcham qator."
+        },
+        {
+          "from": "challenger-bitmap",
+          "raise": "Bitta yuz, qat'iy pog'onalar: sarlavha shrifti faqat to'rt o'lchamda, oraliq o'lcham yo'q."
+        }
+      ]
+    },
+    {
+      "id": "prev-daftar",
+      "label": "Qarz daftar va muhr",
+      "kicker": "OLDINGI QO'L",
+      "lineage": "do'kon nasiya daftari, nakladnoy nusxasi va firmaning dumaloq muhri",
+      "thesis": "Nasiya Captar'ning yuragi: holatlar dumaloq muhr bo'lib tushadi, summalar daftar ustunidek tekis turadi.",
+      "palette": [
+        "#4B2E83",
+        "#1D3FA8",
+        "#FBFBF8",
+        "#2B2F38",
+        "#C8302C"
+      ],
+      "materials": [
+        "binafsha muhr siyohi",
+        "sharikli ruchka ko'ki",
+        "nakladnoy qog'ozi"
+      ],
+      "viewport": "Do'konchi bosh sahifasi: katta umumiy qarz, ostida distribyutorlar bo'yicha qarz qatorlari tekis ustunda; yo'ldagi buyurtmalar dumaloq muhr holat belgilari bilan; pastda tab bar.",
+      "risk": "Ko'p loyihalar shu tanish 'daftar' obraziga keladi; qog'oz chiziqlari bezakka aylanib ketish xavfi bor.",
+      "html": ".impeccable/mocks/decision/r2-daftar.html",
+      "htmlFrame": "390x844"
+    },
+    {
+      "id": "challenger-transit",
+      "label": "Tungi transport sxemasi",
+      "verdict": "competitive",
+      "lineage": "to'q ko'k emal devoriy metro sxemasi",
+      "thesis": "Bugungi yetkazish sxema: har yetkazuvchi bitta liniya, do'konlar uning bekatlari.",
+      "palette": [
+        "#14213D",
+        "#F4F1EA",
+        "#E03C31",
+        "#2E6BD9",
+        "#F2A900",
+        "#2BA84A"
+      ],
+      "materials": [
+        "to'q ko'k emal",
+        "chinni oq bekat belgilari"
+      ],
+      "viewport": "Distribyutor operatori: bugungi buyurtmalar to'q ko'k fonda liniyalar; har yetkazuvchi bitta liniya, do'konlar bekatlar, kechikkan bekat amber.",
+      "case": "Yetkazish navbatini liniya qilib ko'rsatishda aniq, lekin qorong'i emal kunduzi ko'chada va do'konchiga begona.",
+      "risk": "Qorong'i fon quyoshda o'qilishi qiyin; xaritasiz ilovada sxema o'ylab topilgan geografiyaga o'xshab qolishi mumkin.",
+      "html": ".impeccable/mocks/decision/r2-transit.html",
+      "htmlFrame": "390x844",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-midnight-transit-diagram-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-midnight-transit-diagram.webp"
+    },
+    {
+      "id": "challenger-zones",
+      "label": "Fotolaboratoriya varag'i",
+      "verdict": "declined",
+      "lineage": "fotochop ustasining ekspozitsiya yozuvi va zona shkalasi",
+      "thesis": "Qarz va limit zona shkalasida, ziddiyat kesishgan shtrix bilan.",
+      "palette": [
+        "#F2F2F0",
+        "#6B6B6B",
+        "#1A1A1A",
+        "#C2187A"
+      ],
+      "materials": [
+        "shaffof varaqlar",
+        "shtrixlash"
+      ],
+      "viewport": "Ustma-ust shaffof varaqlar, raqamlar kasr bilan.",
+      "case": "Savdo auditoriyasi tanimaydi, shtrixlar summani o'qishni qiyinlashtiradi.",
+      "risk": "Texnik kostyum.",
+      "kept": "Qat'iy ohang zinasi: barcha neytrallar bitta pog'onali zinadan.",
+      "hero": "https://impeccable.style/worlds/cards/operate-b-exposure-record-zone-sheets-hero.webp"
+    },
+    {
+      "id": "challenger-rail",
+      "label": "Izohli nashr sahifasi",
+      "verdict": "declined",
+      "lineage": "markazida harf-kalitlar ustuni bo'lgan ilmiy nashr",
+      "thesis": "Ikki ustun va markazdagi kalitlar.",
+      "palette": [
+        "#EFE9DC",
+        "#141414",
+        "#C0392B"
+      ],
+      "materials": [
+        "suyak rang qog'oz",
+        "ingichka chiziqlar"
+      ],
+      "viewport": "Ikki tor ustun, keng hoshiya.",
+      "case": "Ilmiy kitob ko'rinishi ishchi ekranga mos emas, telefonga sig'maydi.",
+      "risk": "Muzey ko'rinishi.",
+      "kept": "Bitta chiziq qalinligi: har ajratgich bir xil ingichka.",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp"
+    },
+    {
+      "id": "challenger-score",
+      "label": "Raqs notasi",
+      "verdict": "declined",
+      "lineage": "labanotatsiya: vaqt pastdan yuqoriga oqadigan raqs yozuvi",
+      "thesis": "Buyurtma bosqichlari uzunligi vaqtga teng bloklar.",
+      "palette": [
+        "#FFFFFF",
+        "#111111",
+        "#D9D9D9"
+      ],
+      "materials": [
+        "oq nota qog'ozi",
+        "qora bloklar"
+      ],
+      "viewport": "Markaziy chiziq atrofida bloklar.",
+      "case": "Hech kim o'qiy olmaydigan yozuv; aniqlik yo'qoladi.",
+      "risk": "Sirli belgilar.",
+      "kept": "Vaqt bir yo'nalishda: halqa doim bir nuqtadan, bir yo'nalishda to'ladi.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation-hero.webp"
+    },
+    {
+      "id": "challenger-console",
+      "label": "Dasturchi konsoli",
+      "verdict": "declined",
+      "lineage": "qorong'i grafit ishchi panel",
+      "thesis": "Panellar ingichka chiziq bilan ajralgan qorong'i ish yuzasi.",
+      "palette": [
+        "#1E1F22",
+        "#2B2D31",
+        "#7AA2F7",
+        "#9ECE6A",
+        "#F7768E"
+      ],
+      "materials": [
+        "grafit",
+        "bir piksel chiziqlar"
+      ],
+      "viewport": "Qorong'i panellar.",
+      "case": "Do'konchi va agent uchun begona asbob kostyumi; quyoshda o'qilmaydi.",
+      "risk": "Asbob kostyumi.",
+      "kept": "Xavfli amal yolg'iz turadi, qo'shnisidan bo'sh joy bilan ajratilgan.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console-hero.webp"
+    },
+    {
+      "id": "challenger-wall",
+      "label": "Kino katalog devori",
+      "verdict": "declined",
+      "lineage": "striming xizmatining gorizontal rasm qatorlari",
+      "thesis": "Katalog toifa qatorlari, tanlangan rasm kattalashadi.",
+      "palette": [
+        "#141414",
+        "#FFFFFF",
+        "#E50914"
+      ],
+      "materials": [
+        "to'liq rasm plitalar"
+      ],
+      "viewport": "Gorizontal aylanadigan rasm qatorlari.",
+      "case": "Tez buyurtma uchun ro'yxat kerak; qorong'i devor qarz va holatni ko'rsatmaydi.",
+      "risk": "Ko'ngilochar ko'rinish.",
+      "kept": "Rasm o'zi rang: rasm bor joyda bezak rangi yo'q.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-streaming-title-card-wall-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": false
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Sohaning odatiy ko'rinishi",
+    "thesis": "Click, Payme va Yandex Go kabi: oq kartochkalar, bitta ishonchli ko'k, yuqori sifatda.",
+    "palette": [
+      "#F4F5F7",
+      "#FFFFFF",
+      "#0F172A",
+      "#1A64D6"
+    ],
+    "materials": [
+      "oq yumaloq kartochkalar",
+      "tizim shrifti"
+    ],
+    "viewport": "Hozirgi Captar: kulrang fon, oq kartochkalar, ko'k asosiy tugma va suzuvchi savat.",
+    "risk": "Raqobatchilardan ataylab farq qilmaydi.",
+    "html": ".impeccable/mocks/decision/r2-canon.html",
+    "htmlFrame": "390x844"
+  },
+  "steer": true
+}

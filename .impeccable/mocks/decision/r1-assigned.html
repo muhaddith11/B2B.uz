@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Captar — Rishton lagani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--fir:#0B7F86;--fir-2:#096A70;--kob:#1C3F94;--oxra:#C9862B;--oxra-l:#F0B35A;--glaze:#F3F7F7;--ink:#0F2A2E;--hint:#5A7377;--line:#DCE7E7;--card:#FFFFFF}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:390px;height:844px;overflow:hidden;background:var(--glaze);font-family:"Golos Text",system-ui,sans-serif;color:var(--ink);position:relative}
+  .band{background:var(--fir);color:#fff;padding:52px 20px 22px;border-radius:0 0 30px 30px}
+  .top{display:flex;justify-content:space-between;align-items:center;font:500 14px "Golos Text";color:#CDEBEC}
+  .top b{font:600 17px/22px "Golos Text";color:#fff;display:block}
+  .bell{width:40px;height:40px;border-radius:50%;background:var(--fir-2);display:grid;place-items:center}
+  .hero{display:flex;align-items:center;gap:16px;margin-top:20px}
+  .med{position:relative;width:92px;height:92px;flex:none}
+  .med svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .photo{position:absolute;inset:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#D9B48A,#8A6440 60%,#5E4229);box-shadow:0 0 0 3px #fff}
+  .lbl{font:500 13px/18px "Golos Text";color:#CDEBEC}
+  .sum{font:700 30px/36px Rubik;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .sum small{font:500 16px Rubik;color:#CDEBEC;margin-left:5px}
+  .cap{font:500 13px/18px "Golos Text";color:#CDEBEC;margin-top:4px}
+  .cap b{color:var(--oxra-l);font-weight:600}
+  .acts{display:flex;gap:10px;margin-top:20px}
+  .act{flex:1;height:48px;border-radius:16px;background:#fff;color:var(--kob);font:600 15px/48px "Golos Text";text-align:center}
+  .act.alt{background:var(--fir-2);color:#fff}
+  main{padding:20px 16px 0}
+  h2{font:600 18px/24px Rubik;display:flex;justify-content:space-between;align-items:baseline}
+  h2 a{font:500 14px "Golos Text";color:var(--kob)}
+  .card{background:var(--card);border-radius:22px;padding:14px;margin-top:12px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(11,127,134,.08)}
+  .lm{position:relative;width:64px;height:64px;flex:none}
+  .lm svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .logo{position:absolute;inset:9px;border-radius:50%;display:grid;place-items:center;font:700 18px Rubik;color:#fff}
+  .t{flex:1;min-width:0}
+  .t b{font:600 16px/21px "Golos Text";display:block}
+  .t span{font:400 13px/18px "Golos Text";color:var(--hint)}
+  .st{display:inline-block;margin-top:6px;font:600 12px/16px "Golos Text";padding:3px 10px;border-radius:999px}
+  .st.go{background:#FBEFDC;color:#9A5F12}
+  .st.ok{background:#E7ECF7;color:var(--kob)}
+  .amt{text-align:right;font:600 16px/21px Rubik;font-variant-numeric:tabular-nums;align-self:flex-start;margin-top:4px}
+  .amt small{display:block;font:400 12px "Golos Text";color:var(--hint)}
+  nav{position:absolute;left:0;right:0;bottom:0;height:84px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-top:10px}
+  nav div{text-align:center;font:600 10px/12px "Golos Text";color:var(--hint)}
+  nav svg{display:block;margin:0 auto 4px}
+  nav .on{color:var(--kob)}
+  nav .on:after{content:"";display:block;width:5px;height:5px;border-radius:50%;background:var(--oxra);margin:5px auto 0}
+</style>
+</head>
+<body>
+<section class="band">
+  <div class="top"><div>Xush kelibsiz<b>Barakat do'koni</b></div><div class="bell"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></div></div>
+  <div class="hero">
+    <div class="med" aria-label="Do'kon surati, limitdan 80% ishlatilgan">
+      <svg viewBox="0 0 92 92"><circle cx="46" cy="46" r="42" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="6"/><circle cx="46" cy="46" r="42" fill="none" stroke="var(--oxra-l)" stroke-width="6" stroke-linecap="round" stroke-dasharray="211 264"/></svg>
+      <div class="photo"></div>
+    </div>
+    <div>
+      <div class="lbl">Umumiy qarz · 3 distribyutor</div>
+      <div class="sum">4 812 600<small>so'm</small></div>
+      <div class="cap">Limitdan 80% · qoldi <b>1 187 400</b></div>
+    </div>
+  </div>
+  <div class="acts"><div class="act">Qarzni to'lash</div><div class="act alt">Distribyutor topish</div></div>
+</section>
+<main>
+  <h2>Yo'ldagi buyurtmalar <a>Hammasi</a></h2>
+  <div class="card">
+    <div class="lm"><svg viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--line)" stroke-width="5"/>
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--kob)" stroke-width="5" stroke-dasharray="41.5 140.7" stroke-dashoffset="-2"/>
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--kob)" stroke-width="5" stroke-dasharray="41.5 140.7" stroke-dashoffset="-47.6"/>
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--oxra)" stroke-width="5" stroke-dasharray="41.5 140.7" stroke-dashoffset="-93.2"/>
+    </svg><div class="logo" style="background:#0E6E78">S</div></div>
+    <div class="t"><b>Salqin Ichimliklar</b><span>№ 1042 · 18 yashik</span><br><span class="st go">Yo'lda · 11:05</span></div>
+    <div class="amt">1 248 000<small>so'm</small></div>
+  </div>
+  <div class="card">
+    <div class="lm"><svg viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--line)" stroke-width="5"/>
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--kob)" stroke-width="5" stroke-dasharray="41.5 140.7" stroke-dashoffset="-2"/>
+      <circle cx="32" cy="32" r="29" fill="none" stroke="var(--oxra)" stroke-width="5" stroke-dasharray="41.5 140.7" stroke-dashoffset="-47.6"/>
+    </svg><div class="logo" style="background:#3A4FA0">T</div></div>
+    <div class="t"><b>Toshkent Sut</b><span>№ 1039 · 32 yashik</span><br><span class="st ok">Qabul qilindi · 08:52</span></div>
+    <div class="amt">2 016 000<small>so'm</small></div>
+  </div>
+</main>
+<nav>
+  <div class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4Z"/></svg>Asosiy</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Katalog</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h15l-2 9H7L5 3H2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>Savat</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 10h16M8 15h4"/></svg>Qarzlar</div>
+  <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profil</div>
+</nav>
+</body>
+</html>
