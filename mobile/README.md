@@ -84,7 +84,7 @@ Server talab qiladigan eng kichik versiya `/admin` -> Mobil ilova bo'limida. Ilo
 Ilova foydalanuvchi telefonida yiqilsa yoki kutilmagan xato bersa, Sentry'ga yoziladi: qaysi ekran, asl koddagi qator, ilova versiyasi va OTA update. Telefon raqami, ism va IP yuborilmaydi (`src/lib/sentry.ts`). Ulash:
 
 1. [sentry.io](https://sentry.io) da hisob oching (ma'lumot Yevropada saqlansin: EU region) va React Native loyihasi yarating. Loyiha sozlamasida **Security & Privacy -> Prevent Storing of IP Addresses** ni yoqing.
-2. EAS'da (production va preview muhitlari) o'zgaruvchilarni yarating: `EXPO_PUBLIC_SENTRY_DSN` (loyiha DSN'i, plaintext), `SENTRY_ORG` va `SENTRY_PROJECT` (plaintext), `SENTRY_AUTH_TOKEN` (Organization Auth Token, secret).
+2. EAS'da (production va preview muhitlari) o'zgaruvchilar: `EXPO_PUBLIC_SENTRY_DSN` (loyiha DSN'i), `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_URL` (EU hududi: `https://de.sentry.io/`) plaintext, `SENTRY_AUTH_TOKEN` (Organization Auth Token) secret. Kiritilgan (2026-10-20): DSN, `SENTRY_ORG=muhaddith`, `SENTRY_PROJECT=captar`, `SENTRY_URL`; token sizda.
 3. Yangi build qiling. Build source map'larni Sentry'ga o'zi yuklaydi (`app.config.ts`). OTA update'dan keyin: `npx sentry-expo-upload-sourcemaps dist` (shu o'zgaruvchilar lokal muhitda ham kerak).
 
 DSN bo'lmasa Sentry o'chiq, token bo'lmasa source map yuklanmaydi; ikkala holda ham build yiqilmaydi. Ulagach, App Store Connect -> App Privacy'da "Crash Data" (Diagnostics, foydalanuvchiga bog'lanmagan, kuzatish uchun emas), Google Play -> Data safety'da "Crash logs" va "Diagnostics" ni belgilang.
