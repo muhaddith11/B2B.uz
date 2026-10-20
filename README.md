@@ -117,18 +117,15 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 
 Har kuni Toshkent vaqti bilan 03:00 da GitHub Actions production bazasining to'liq nusxasini oladi, cheklar va rasmlar bilan birga (`.github/workflows/backup.yml`). Nusxa AES-256 bilan shifrlanadi va Actions -> Zaxira nusxa -> har bir ishga tushirish ostida 30 kun saqlanadi. Repo ochiq bo'lgani uchun nusxani faqat parol bilan ochish mumkin.
 
-**Bir martalik sozlash:**
-
-1. Parol yarating va uni parollar menejerida saqlang. Parol yo'qolsa, birorta nusxani ochib bo'lmaydi:
+**Bir martalik sozlash:** skript hammasini o'zi qiladi. U baza manzilini Vercel production'dan oladi, parol yaratadi, ikkalasini GitHub sirlariga (`BACKUP_DATABASE_URL`, `BACKUP_PASSPHRASE`) yozadi va birinchi nusxani boshlaydi. Qiymatlar ekranga chiqmaydi. GitHub'ga kirilmagan bo'lsa, avval brauzer orqali kirishni so'raydi:
 
 ```bash
-openssl rand -base64 32
+node scripts/backup-secrets.mjs
 ```
 
-2. GitHub -> B2B.uz -> Settings -> Secrets and variables -> Actions -> New repository secret. Ikkita sir:
-   - `BACKUP_DATABASE_URL`: Vercel -> Storage -> b2b-uz-db-eu -> `.env.local` bo'limidagi `DATABASE_URL_UNPOOLED` qiymati
-   - `BACKUP_PASSPHRASE`: 1-qadamdagi parol
-3. Actions -> Zaxira nusxa -> Run workflow: birinchi nusxani darhol oling va yashil bo'lganini tekshiring.
+Parol `Hujjatlar/captar-zaxira-paroli.txt` fayliga saqlanadi: uni parollar menejeriga ko'chiring, u yo'qolsa nusxalarni ochib bo'lmaydi. Keyin Actions -> Zaxira nusxa'da birinchi nusxa yashil bo'lganini tekshiring.
+
+Qo'lda sozlash: GitHub -> Settings -> Secrets and variables -> Actions'ga `BACKUP_DATABASE_URL` (Vercel -> Storage -> b2b-uz-db-eu -> `.env.local` dagi `DATABASE_URL_UNPOOLED`) va `BACKUP_PASSPHRASE` (`openssl rand -base64 32`) kiriting.
 
 Nusxa olinmasa, GitHub elektron pochtaga xabar yuboradi. Repoda 60 kun hech qanday o'zgarish bo'lmasa, GitHub kunlik ishni o'zi o'chirib qo'yadi: Actions sahifasida qayta yoqing.
 
