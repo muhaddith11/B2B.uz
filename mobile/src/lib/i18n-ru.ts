@@ -14,6 +14,8 @@ export const RU = {
   Ortga: 'Назад',
   Xato: 'Ошибка',
   'Qayta urinish': 'Повторить',
+  'Yangi versiya chiqdi': 'Вышла новая версия',
+  "Ilovaning bu versiyasi endi ishlamaydi. Davom etish uchun uni do'kondan yangilang": 'Эта версия приложения больше не работает. Чтобы продолжить, обновите его в магазине приложений',
   Yuklanmoqda: 'Загрузка',
   'Hech narsa topilmadi': 'Ничего не найдено',
   Hammasi: 'Все',
@@ -114,7 +116,8 @@ export const RU = {
   'Kodni qayta yuborish': 'Отправить код ещё раз',
   "Bu raqam bir nechta hisobga bog'langan. Qaysi biri bilan kirasiz?": 'К этому номеру привязано несколько аккаунтов. С каким войти?',
   'Yangi hisob ochish': 'Создать новый аккаунт',
-  'Kirish orqali {link} rozilik bildirasiz': 'Входя, вы соглашаетесь с {link}',
+  'Kirish orqali {terms} va {privacy} rozilik bildirasiz': 'Входя, вы соглашаетесь с {terms} и {privacy}',
+  'foydalanish shartlariga': 'условиями использования',
   'maxfiylik siyosatiga': 'политикой конфиденциальности',
   "Ro'yxatdan o'tish": 'Регистрация',
   "Do'konni ro'yxatdan o'tkazish": 'Регистрация магазина',
@@ -155,6 +158,7 @@ export const RU = {
 
   // Hisob, maxfiylik, til
   'Maxfiylik siyosati': 'Политика конфиденциальности',
+  'Foydalanish shartlari': 'Условия использования',
   "Hisobni o'chirish": 'Удалить аккаунт',
   'Barcha qurilmalardan chiqish': 'Выйти на всех устройствах',
   "O'chiriladi": 'Будет удалено',

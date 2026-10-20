@@ -1,8 +1,9 @@
 import { getLang, t } from './i18n';
 import { fetchWithTimeout, REQUEST_TIMEOUT_MS, TimeoutError, UPLOAD_TIMEOUT_MS } from './net';
 
-// Server manzili: telefonda sinashda kompyuterning lokal tarmoqdagi IP manzili (masalan, http://192.168.1.10:3000)
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+// Server manzili: telefonda sinashda kompyuterning lokal tarmoqdagi IP manzili (masalan, http://192.168.1.10:3000).
+// Do'kon build'i va OTA update'da EAS env'dan keladi; u yo'q bo'lsa ham ilova localhost'ga emas, production'ga ulanadi
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? 'http://localhost:3000' : 'https://b2b-uz.vercel.app')).replace(/\/$/, '');
 
 // Server qaytargan rasm havolasi nisbiy bo'lishi mumkin (/api/files/...): to'liq manzilga aylantiradi
 export function fileUrl(url: string): string {

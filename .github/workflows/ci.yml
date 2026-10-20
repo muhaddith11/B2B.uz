@@ -64,7 +64,9 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
       - run: npm run typecheck
-      - run: npx eslint src --max-warnings=0
+      - run: npx eslint src __tests__ --max-warnings=0
+      # Asosiy jarayonlar ekran darajasida: kirish, buyurtma, to'lov (soxta server bilan, __tests__)
+      - run: npm test
       # Qolgan "high" topilmalar yig'ish vositalarida (metro > braces, expo cli > node-forge): tuzatilgan versiyasi chiqmagan,
       # ilova ichiga kirmaydi. Kritiklari to'xtatadi
       - name: Zaifliklar (kritik)

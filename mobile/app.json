@@ -2,7 +2,13 @@
   "expo": {
     "name": "Captar",
     "slug": "captar",
-    "version": "1.0.0",
+    "version": "1.1.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cb941320-1003-46aa-b28f-67730f117efc"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "captar",

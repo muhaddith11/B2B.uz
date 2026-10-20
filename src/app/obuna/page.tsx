@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { formatSom } from "@/lib/money";
 import { MONTH_OPTIONS, monthlyPrice, payableOrgs, platformClick, platformPayme, subscriptionLabel } from "@/lib/subscription";
@@ -29,6 +30,13 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
       <p className="text-sm text-ink">
         Har bir distribyutor va do'kon uchun alohida obuna: uning barcha xodimlari bitta obuna bilan ishlaydi. Qo'shilgan kundan 12 oy tekin, keyin oyiga{" "}
         <b>{formatSom(price)}</b>.
+      </p>
+      <p className="text-sm text-hint">
+        To'lov qilish bilan{" "}
+        <Link href="/oferta" className="text-accent-ink underline">
+          ommaviy oferta
+        </Link>{" "}
+        shartlarini qabul qilasiz.
       </p>
 
       {qaytdi && (

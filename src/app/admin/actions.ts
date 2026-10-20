@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { setMinAppVersion } from "@/lib/app-version";
 import { db } from "@/lib/db";
 import { clientIp, deliverOtp, verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
@@ -112,6 +113,20 @@ export async function setSubscriptionPriceAction(form: FormData) {
     return back({ error: e instanceof HttpError ? e.message : "Narx saqlanmadi" });
   }
   back({ ok: "Narx saqlandi" });
+}
+
+// ---- Mobil ilova ----
+
+// Shu versiyadan eski ilovalar ishlamay, "Yangilash" ekranini ko'rsatadi
+export async function setMinAppVersionAction(form: FormData) {
+  const admin = await requireAdmin();
+  const version = String(form.get("version") ?? "").trim();
+  try {
+    await setMinAppVersion(version, `admin:${admin.phone}`);
+  } catch (e) {
+    return back({ error: e instanceof HttpError ? e.message : "Versiya saqlanmadi" });
+  }
+  back({ ok: `Eng kichik versiya: ${version}` });
 }
 
 // Saytdan tashqari to'lov (masalan, bank o'tkazmasi) uchun obunani qo'lda uzaytirish

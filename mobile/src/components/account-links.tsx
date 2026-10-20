@@ -15,6 +15,11 @@ export function openPrivacyPolicy() {
   WebBrowser.openBrowserAsync(`${API_URL}/maxfiylik${getLang() === 'ru' ? '?lang=ru' : ''}`);
 }
 
+// Foydalanish shartlari (ommaviy oferta) ham saytda
+export function openTerms() {
+  WebBrowser.openBrowserAsync(`${API_URL}/oferta${getLang() === 'ru' ? '?lang=ru' : ''}`);
+}
+
 // Chiqishdan oldin so'raladi: qayta kirish uchun SMS kod kerak bo'ladi
 export async function askSignOut(signOut: (opts?: SignOutOptions) => Promise<void>) {
   const ok = await confirm({ title: t('Hisobdan chiqasizmi?'), message: t("Qayta kirish uchun SMS kod kerak bo'ladi."), action: t('Chiqish') });
@@ -38,7 +43,7 @@ export function LanguageSwitch() {
   );
 }
 
-// Profil pastidagi havolalar: til, maxfiylik siyosati, hisobni o'chirish (App Store, Google Play talabi)
+// Profil pastidagi havolalar: til, maxfiylik siyosati, foydalanish shartlari, hisobni o'chirish (App Store, Google Play talabi)
 // va barcha qurilmalardan chiqish (telefon yo'qolsa yoki boshqa qurilmada kirib qolgan bo'lsa: hisob hamma joyda yopiladi)
 export function AccountLinks() {
   const { signOut } = useSession();
@@ -62,10 +67,15 @@ export function AccountLinks() {
   return (
     <View style={{ gap: 16, marginTop: 16 }}>
       <LanguageSwitch />
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 20, rowGap: 12 }}>
         <Pressable accessibilityRole="link" onPress={openPrivacyPolicy} hitSlop={8}>
           <T size="small" tone="hint">
             {t('Maxfiylik siyosati')}
+          </T>
+        </Pressable>
+        <Pressable accessibilityRole="link" onPress={openTerms} hitSlop={8}>
+          <T size="small" tone="hint">
+            {t('Foydalanish shartlari')}
           </T>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push('/delete-account')} hitSlop={8}>

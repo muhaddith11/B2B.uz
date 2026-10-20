@@ -1,3 +1,4 @@
+import { minAppVersion, STORE_URLS } from "@/lib/app-version";
 import { db } from "@/lib/db";
 import { formatDate, formatSom } from "@/lib/money";
 import { devAuthEnabled, getAdmin } from "@/lib/session";
@@ -13,6 +14,7 @@ import {
   requestAdminCode,
   setBrandStatus,
   setDistributorStatus,
+  setMinAppVersionAction,
   setSubscriptionPriceAction,
   verifyAdminCode,
 } from "./actions";
@@ -28,7 +30,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const q = (params.q ?? "").trim();
-  const [distributors, brands, shops, orders, subscriptions, storage] = await Promise.all([
+  const [distributors, brands, shops, orders, subscriptions, storage, minVersion] = await Promise.all([
     db.distributor.findMany({
       include: { staff: { where: { role: "ADMIN" }, take: 1 }, _count: { select: { links: { where: { status: "ACTIVE" } }, products: true } } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -38,6 +40,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     db.order.aggregate({ where: { status: "DELIVERED", updatedAt: { gte: since } }, _count: true, _sum: { deliveredTotal: true } }),
     loadSubscriptions(q),
     storageUsage(),
+    minAppVersion(),
   ]);
   // Bazadagi fayllar (cheklar, rasmlar) va butun baza hajmi: tarif chegarasiga yaqinlashsa oldindan ko'rinsin
   const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
@@ -83,6 +86,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         {params.error && <p className="text-sm text-danger">{params.error}</p>}
         {params.ok && <p className="text-sm text-ok">{params.ok}</p>}
         <SubscriptionSection q={q} {...subscriptions} />
+        <AppSection minVersion={minVersion} />
 
         <Section title="Distribyutorlar">
           {distributors.map((d) => (
@@ -210,6 +214,30 @@ function SubscriptionSection({ q, price, orgs }: { q: string } & Awaited<ReturnT
           </div>
         );
       })}
+    </Section>
+  );
+}
+
+// Majburiy yangilash: shu versiyadan eski ilovalar ishlamay, do'kondan yangilashni so'raydi
+function AppSection({ minVersion }: { minVersion: string }) {
+  return (
+    <Section title="Mobil ilova">
+      <div className="flex flex-wrap items-end gap-4 rounded-xl border border-line bg-card p-4">
+        <form action={setMinAppVersionAction} className="flex items-end gap-2">
+          <label className="grid gap-1 text-sm text-hint">
+            Eng kichik ishlaydigan versiya
+            <input name="version" defaultValue={minVersion} placeholder="1.1.0" className="w-32 field text-ink" />
+          </label>
+          <ConfirmButton message="Bundan eski ilovalar ishlamay qoladi va foydalanuvchidan yangilashni so'raydi. Saqlansinmi?" className="btn btn-sm btn-primary">
+            Saqlash
+          </ConfirmButton>
+        </form>
+      </div>
+      <p className="text-sm text-hint">
+        Versiyani faqat yangi build App Store va Google Play'da chiqqandan keyin oshiring, aks holda foydalanuvchi yangilay olmaydi. Faqat JS o'zgarishlari uchun
+        oshirish shart emas: ular OTA update bilan o'zi keladi. Do'kon sahifalari: <code className="break-all">{STORE_URLS.ios}</code>, <code className="break-all">{STORE_URLS.android}</code>. Ilova 1.0.0 da
+        bu tekshiruv yo'q, u 1.1.0 dan boshlab ishlaydi.
+      </p>
     </Section>
   );
 }

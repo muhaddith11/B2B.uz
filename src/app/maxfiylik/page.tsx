@@ -13,7 +13,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 const TEXT = {
   uz: {
     title: "Captar: maxfiylik siyosati",
-    updated: "Oxirgi yangilanish: 2026-yil 14-oktabr",
+    updated: "Oxirgi yangilanish: 2026-yil 20-oktabr",
     other: "Русский",
     general: "Umumiy",
     generalText:
@@ -25,6 +25,7 @@ const TEXT = {
       "Buyurtmalar, nasiya (qarz) va to'lovlar, siz yuklagan to'lov cheki rasmlari, do'kon va distribyutor o'rtasidagi xabarlar.",
       "Distribyutor va tovar egasi yuklagan tovar rasmlari: katalogda do'konlarga ko'rinadi.",
       "Bildirishnoma (push) tokeni va ilovada tanlangan til: buyurtma va to'lov haqida xabarni shu tilda yuborish uchun.",
+      "Ilova xatosi yoki yopilib qolishi haqida texnik ma'lumot (qurilma modeli, tizim va ilova versiyasi, xato bo'lgan joy): nosozlikni topib tuzatish uchun. Unga ismingiz va telefon raqamingiz qo'shilmaydi.",
       "Kamera va galereya faqat siz chek yoki tovar rasmini yuklaganingizda ishlatiladi. Ilova joylashuvingizni avtomatik yig'maydi.",
     ],
     noAds: "Ilovada reklama yo'q, ma'lumotlaringiz reklama yoki kuzatish (tracking) uchun ishlatilmaydi va sotilmaydi.",
@@ -38,7 +39,7 @@ const TEXT = {
     shared: "Ma'lumot kim bilan ulashiladi",
     sharedList: [
       "Siz ulangan distribyutor: do'koningiz ma'lumoti, buyurtmalar, qarz va to'lovlar. Tovar egasi va distribyutor esa o'zaro kelishuv doirasidagi ma'lumotni ko'radi.",
-      "Xizmat ko'rsatuvchilar, faqat xizmat uchun kerakli qismi: Vercel (server) va Neon (ma'lumotlar bazasi), ikkalasi Germaniyada (Frankfurt) joylashgan; TextUP (SMS kod); Payme va Click (onlayn to'lov, karta ma'lumotlari ular tomonida qoladi, bizga kelmaydi); Expo, Apple va Google (bildirishnomalar).",
+      "Xizmat ko'rsatuvchilar, faqat xizmat uchun kerakli qismi: Vercel (server) va Neon (ma'lumotlar bazasi), ikkalasi Germaniyada (Frankfurt) joylashgan; TextUP (SMS kod); Payme va Click (onlayn to'lov, karta ma'lumotlari ular tomonida qoladi, bizga kelmaydi); Expo, Apple va Google (bildirishnomalar va ilova yangilanishlari); Sentry (ilova xatolari haqida texnik hisobot).",
       "Qonunda belgilangan hollarda vakolatli davlat organlariga.",
     ],
     storage: "Saqlash muddati va xavfsizlik",
@@ -57,7 +58,7 @@ const TEXT = {
   },
   ru: {
     title: "Captar: политика конфиденциальности",
-    updated: "Последнее обновление: 14 октября 2026 г.",
+    updated: "Последнее обновление: 20 октября 2026 г.",
     other: "O'zbekcha",
     general: "Общие положения",
     generalText:
@@ -69,6 +70,7 @@ const TEXT = {
       "Заказы, отсрочка (долг) и платежи, загруженные вами фото чеков, сообщения между магазином и дистрибьютором.",
       "Фото товаров, загруженные дистрибьютором и производителем: видны магазинам в каталоге.",
       "Push-токен и выбранный в приложении язык: чтобы присылать уведомления о заказах и платежах на этом языке.",
+      "Технические данные о сбоях и ошибках приложения (модель устройства, версия системы и приложения, место ошибки): чтобы находить и исправлять неполадки. Ваше имя и номер телефона к ним не добавляются.",
       "Камера и галерея используются только когда вы загружаете фото чека или товара. Приложение не собирает ваше местоположение.",
     ],
     noAds: "В приложении нет рекламы, ваши данные не используются для рекламы или отслеживания (tracking) и не продаются.",
@@ -82,7 +84,7 @@ const TEXT = {
     shared: "С кем передаются данные",
     sharedList: [
       "Дистрибьютор, к которому вы подключены: данные магазина, заказы, долг и платежи. Производитель и дистрибьютор видят данные в рамках своего соглашения.",
-      "Поставщики услуг, только в нужном для услуги объёме: Vercel (сервер) и Neon (база данных), оба в Германии (Франкфурт); TextUP (SMS-коды); Payme и Click (онлайн-оплата, данные карты остаются у них и к нам не попадают); Expo, Apple и Google (уведомления).",
+      "Поставщики услуг, только в нужном для услуги объёме: Vercel (сервер) и Neon (база данных), оба в Германии (Франкфурт); TextUP (SMS-коды); Payme и Click (онлайн-оплата, данные карты остаются у них и к нам не попадают); Expo, Apple и Google (уведомления и обновления приложения); Sentry (технические отчёты об ошибках приложения).",
       "Уполномоченным государственным органам в случаях, предусмотренных законом.",
     ],
     storage: "Срок хранения и безопасность",

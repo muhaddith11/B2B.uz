@@ -216,7 +216,9 @@ export function Field({ label, error, style, onFocus, onBlur, ...rest }: TextInp
       <T size="small" tone="hint" style={{ fontWeight: '500' }}>
         {label}
       </T>
+      {/* Ekran o'quvchi maydonni yorlig'i bilan aytadi (testlar ham maydonni shu nom bilan topadi) */}
       <TextInput
+        accessibilityLabel={label}
         placeholderTextColor={c.hint}
         selectionColor={c.accentInk}
         cursorColor={c.accentInk}

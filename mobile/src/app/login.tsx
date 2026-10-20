@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LanguageSwitch, openPrivacyPolicy } from '@/components/account-links';
+import { LanguageSwitch, openPrivacyPolicy, openTerms } from '@/components/account-links';
 import { Banner, Button, Card, Divider, Field, ListRow, T } from '@/components/ui';
 import { usePalette } from '@/constants/theme';
 import { useSession } from '@/context/session';
@@ -86,7 +86,8 @@ export default function LoginScreen() {
 
   const KIND_ICON = { shop: 'storefront-outline', staff: 'business-outline', brand: 'ribbon-outline' } as const;
   const [sentBefore, sentAfter] = around(t('{phone} raqamiga SMS orqali 6 xonali kod yuborildi.', { phone: '\u0000' }));
-  const [agreeBefore, agreeAfter] = around(t('Kirish orqali {link} rozilik bildirasiz', { link: '\u0000' }));
+  // Ikki havola: foydalanish shartlari (ommaviy oferta) va maxfiylik siyosati
+  const [agreeBefore = '', agreeMiddle = '', agreeAfter = ''] = t('Kirish orqali {terms} va {privacy} rozilik bildirasiz', { terms: '\u0000', privacy: '\u0000' }).split('\u0000');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.card }}>
@@ -176,6 +177,10 @@ export default function LoginScreen() {
 
           <T size="tiny" tone="hint" style={{ textAlign: 'center', marginTop: 8 }}>
             {agreeBefore}
+            <T size="tiny" tone="accent" onPress={openTerms} accessibilityRole="link">
+              {t('foydalanish shartlariga')}
+            </T>
+            {agreeMiddle}
             <T size="tiny" tone="accent" onPress={openPrivacyPolicy} accessibilityRole="link">
               {t('maxfiylik siyosatiga')}
             </T>

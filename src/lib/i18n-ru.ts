@@ -141,6 +141,7 @@ export const RU = {
     "Срок подписки истёк: нельзя оформлять и принимать новые заказы. Начатые доставки и платежи работают",
   "Bu distribyutor hozir yangi buyurtma qabul qilmayapti": "Этот дистрибьютор сейчас не принимает новые заказы",
   "Narx 1 000 so'mdan 100 000 000 so'mgacha bo'lsin": "Цена должна быть от 1 000 до 100 000 000 сум",
+  "Versiya 1.2.3 ko'rinishida bo'lsin": "Версия должна быть в формате 1.2.3",
   "Bu tashkilot uchun to'lay olmaysiz": "Вы не можете оплатить за эту организацию",
   "{provider} orqali to'lov hozircha ulanmagan": "Оплата через {provider} пока не подключена",
 

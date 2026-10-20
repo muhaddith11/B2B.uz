@@ -108,7 +108,8 @@ Vercel → b2b-uz → Settings → Environment Variables bo'limida o'zingiz kiri
 | `OTP_DELETE_SMS_TEXT` | Ixtiyoriy: hisobni o'chirish kodi uchun alohida SMS matni (TextUP'da alohida shablon tasdiqlangach). Bo'sh bo'lsa umumiy matn |
 | `DATABASE_LIMIT_MB` | Ixtiyoriy: baza tarifining hajm chegarasi, MB (standart 512). `/admin` 80% dan oshganda ogohlantiradi |
 | `PLATFORM_ADMIN_PHONES` | `/admin` sahifasiga kiradigan raqamlar (vergul bilan), masalan `+998901234567` |
-| `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati sahifasidagi murojaat manzili (App Store va Google Play uchun) |
+| `SUPPORT_EMAIL`, `SUPPORT_PHONE` | Maxfiylik siyosati va ommaviy oferta sahifalaridagi murojaat manzili (App Store, Google Play, Payme, Click uchun) |
+| `COMPANY_NAME`, `COMPANY_INN`, `COMPANY_ADDRESS`, `COMPANY_BANK` | Ommaviy oferta (`/oferta`) dagi ijrochi rekvizitlari: korxona yoki YaTT nomi, STIR, yuridik manzil, bank rekvizitlari (h/r, bank, MFO) bir qatorda. Payme va Click kassa ulashda shu sahifani so'raydi |
 
 `SESSION_SECRET`, `PUBLIC_URL` va baza o'zgaruvchilari allaqachon kiritilgan.
 

@@ -47,6 +47,7 @@ const TEXT = {
     subscription: "Obuna",
     subscriptionText: "Distribyutor va do'kon uchun 12 oy tekin, keyin oylik to'lov.",
     privacy: "Maxfiylik siyosati",
+    offer: "Ommaviy oferta",
     deletion: "Hisobni o'chirish",
   },
   ru: {
@@ -81,6 +82,7 @@ const TEXT = {
     subscription: "Подписка",
     subscriptionText: "Для дистрибьютора и магазина 12 месяцев бесплатно, затем ежемесячная оплата.",
     privacy: "Политика конфиденциальности",
+    offer: "Публичная оферта",
     deletion: "Удаление аккаунта",
   },
 };
@@ -140,6 +142,9 @@ export default async function Home({ searchParams }: Props) {
       <footer className="flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-6 text-sm text-hint">
         <Link href={`/maxfiylik${q}`} className="hover:text-ink">
           {x.privacy}
+        </Link>
+        <Link href={`/oferta${q}`} className="hover:text-ink">
+          {x.offer}
         </Link>
         <Link href={`/hisobni-ochirish${q}`} className="hover:text-ink">
           {x.deletion}

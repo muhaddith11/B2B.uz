@@ -1,3 +1,6 @@
+// Sentry eng birinchi ishga tushadi: keyingi modullar yuklanayotgandagi xato ham yozilsin
+import { wrap } from '@/lib/sentry';
+
 import { GolosText_400Regular } from '@expo-google-fonts/golos-text/400Regular';
 import { GolosText_500Medium } from '@expo-google-fonts/golos-text/500Medium';
 import { GolosText_600SemiBold } from '@expo-google-fonts/golos-text/600SemiBold';
@@ -12,6 +15,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useStackOptions } from '@/components/nav';
+import { UpdateGate } from '@/components/update-gate';
 import { FONT, usePalette } from '@/constants/theme';
 import { LanguageKeyed, LanguageProvider, useLanguage } from '@/context/language';
 import { SessionProvider, useSession } from '@/context/session';
@@ -20,7 +24,9 @@ import { onNotificationTap, registerForPush } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+export default wrap(RootLayout);
+
+function RootLayout() {
   const scheme = useColorScheme();
   const c = usePalette();
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -79,30 +85,33 @@ function RootStack() {
   const kind = session?.kind;
 
   return (
-    <Stack screenOptions={options}>
-      <Stack.Protected guard={kind === 'shop'}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="distributor/[id]" options={{ title: t('Katalog') }} />
-        <Stack.Screen name="find" options={{ title: t('Yangi distribyutor topish') }} />
-        <Stack.Screen name="pay/[id]" options={{ title: t("Qarzni to'lash") }} />
-        <Stack.Screen name="shop-team" options={{ title: t('Sotuvchilar') }} />
-      </Stack.Protected>
-      <Stack.Protected guard={kind === 'staff'}>
-        <Stack.Screen name="staff" options={{ headerShown: false }} />
-      </Stack.Protected>
-      <Stack.Protected guard={kind === 'brand'}>
-        <Stack.Screen name="brand" options={{ headerShown: false }} />
-      </Stack.Protected>
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="delete-account" options={{ title: t("Hisobni o'chirish") }} />
-      </Stack.Protected>
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="register" options={{ title: t("Ro'yxatdan o'tish") }} />
-        <Stack.Screen name="register-shop" options={{ title: t("Do'konni ro'yxatdan o'tkazish") }} />
-        <Stack.Screen name="register-distributor" options={{ title: t('Distribyutor sifatida') }} />
-        <Stack.Screen name="register-brand" options={{ title: t('Tovar egasi sifatida') }} />
-      </Stack.Protected>
-    </Stack>
+    <>
+      <Stack screenOptions={options}>
+        <Stack.Protected guard={kind === 'shop'}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="distributor/[id]" options={{ title: t('Katalog') }} />
+          <Stack.Screen name="find" options={{ title: t('Yangi distribyutor topish') }} />
+          <Stack.Screen name="pay/[id]" options={{ title: t("Qarzni to'lash") }} />
+          <Stack.Screen name="shop-team" options={{ title: t('Sotuvchilar') }} />
+        </Stack.Protected>
+        <Stack.Protected guard={kind === 'staff'}>
+          <Stack.Screen name="staff" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={kind === 'brand'}>
+          <Stack.Screen name="brand" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="delete-account" options={{ title: t("Hisobni o'chirish") }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!session}>
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ title: t("Ro'yxatdan o'tish") }} />
+          <Stack.Screen name="register-shop" options={{ title: t("Do'konni ro'yxatdan o'tkazish") }} />
+          <Stack.Screen name="register-distributor" options={{ title: t('Distribyutor sifatida') }} />
+          <Stack.Screen name="register-brand" options={{ title: t('Tovar egasi sifatida') }} />
+        </Stack.Protected>
+      </Stack>
+      <UpdateGate />
+    </>
   );
 }
