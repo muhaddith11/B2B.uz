@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Prisma, type Distributor, type OrderStatus, type PaymentType, type ShopLink } from "@prisma/client";
+import { Prisma, type Distributor, type OrderStatus, type PaymentType, type ShopLink, type ShopUserRole } from "@prisma/client";
 import { db } from "./db";
 import { L, som, type TextKey } from "./i18n";
 import { addDays, checkCredit } from "./ledger";
@@ -34,6 +34,7 @@ export const agentOrderInput = z.object({
 
 // Do'konga bildirishnoma: buyurtma holati o'zgardi
 const STATUS_TEXT = {
+  AWAITING_SHOP: "Buyurtma tasdiqingizni kutmoqda",
   SENT: "Buyurtmangiz yuborildi",
   ACCEPTED: "Buyurtmangiz qabul qilindi",
   REJECTED: "Buyurtmangiz rad etildi",
@@ -141,9 +142,9 @@ export async function createOrderForLink(
         // Bir do'konning nasiyali buyurtmalari navbat bilan tekshiriladi: bir vaqtda kelgan ikki buyurtma birgalikda limitdan oshmaydi
         await tx.$queryRaw`SELECT id FROM "ShopLink" WHERE id = ${link.id} FOR UPDATE`;
         const entries = await tx.ledgerEntry.findMany({ where: { shopLinkId: link.id } });
-        // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan nasiyali buyurtmalar ham limitga qo'shiladi
+        // Qarz topshirilganda yoziladi, shuning uchun hali topshirilmagan (do'kon tasdig'ini kutayotgan ham) nasiyali buyurtmalar limitga qo'shiladi
         const pending = await tx.order.aggregate({
-          where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: ["SENT", "ACCEPTED", "IN_DELIVERY"] } },
+          where: { shopLinkId: link.id, paymentType: "CREDIT", status: { in: [...OPEN_STATUSES] } },
           _sum: { total: true },
         });
         const check = checkCredit(link, entries, total + (pending._sum.total ?? 0), new Date());
@@ -167,9 +168,9 @@ export async function createOrderForLink(
           source: "staffId" in creator ? "AGENT" : "APP",
           createdByShopUserId: "staffId" in creator ? null : creator.shopUserId,
           createdByStaffId: "staffId" in creator ? creator.staffId : null,
-          // Agent olgan buyurtma darhol qabul qilingan hisoblanadi
-          status: fromStaff ? "ACCEPTED" : "SENT",
-          acceptedAt: fromStaff ? new Date() : null,
+          // Xodim kiritgan buyurtma do'kon egasi ilovada tasdiqlaguncha jo'natilmaydi: do'konning roziligisiz qarz yozilmaydi.
+          // Tasdiqlangach darhol qabul qilingan bo'ladi (buyurtmani distribyutorning o'zi kiritgan)
+          status: fromStaff ? "AWAITING_SHOP" : "SENT",
           items: { create: lines },
         },
         include: { items: true, shopLink: { include: { shop: true } } },
@@ -189,7 +190,11 @@ export async function createOrderForLink(
   }
 
   if (fromStaff) {
-    notifyShop(link.shopId, { title: L("Buyurtma №{n}", { n: order.number }), body: L("Agent {sum}lik buyurtma oldi", { sum: som(total) }), data: { url: "/orders" } });
+    notifyShop(link.shopId, {
+      title: L("Buyurtma №{n}: tasdiqlang", { n: order.number }),
+      body: L("{name} {sum}lik buyurtma kiritdi. Tasdiqlasangiz jo'natiladi", { name: link.distributor.name, sum: som(total) }),
+      data: { url: "/orders" },
+    });
   } else {
     notifyStaff(link.distributorId, ["ADMIN", "OPERATOR"], {
       title: L("Yangi buyurtma №{n}", { n: order.number }),
@@ -200,8 +205,13 @@ export async function createOrderForLink(
   return order;
 }
 
-// Holatlar qaysi holatga o'ta oladi
+// Hali topshirilmagan buyurtmalar: nasiya limitiga qo'shiladi va "faol buyurtma" hisoblanadi
+export const OPEN_STATUSES = ["AWAITING_SHOP", "SENT", "ACCEPTED", "IN_DELIVERY"] as const satisfies readonly OrderStatus[];
+
+// Distribyutor holatni qaysi holatga o'tkaza oladi. Do'kon tasdig'ini kutayotgan buyurtmani xodim faqat qaytarib oladi,
+// tasdiqlash yoki rad etish do'konning ishi (answerOrderByShop)
 const transitions: Record<OrderStatus, OrderStatus[]> = {
+  AWAITING_SHOP: ["CANCELLED"],
   SENT: ["ACCEPTED", "REJECTED", "CANCELLED"],
   ACCEPTED: ["IN_DELIVERY", "CANCELLED"],
   IN_DELIVERY: ["DELIVERED"],
@@ -343,5 +353,50 @@ export async function cancelOrderByShop(shopId: string, orderId: string) {
     body: order.shopLink.shop.name,
     data: { url: `/staff/order/${order.id}` },
   });
+  return updated;
+}
+
+// Do'kon egasi distribyutor xodimi kiritgan buyurtmaga javob beradi. Tasdiq: buyurtma qabul qilingan bo'ladi va jo'natiladi,
+// topshirilganda qarz shu buyurtma summasidan oshmaydi. Rad etish: buyurtma bekor qilinadi
+export async function answerOrderByShop(user: { id: string; shopId: string; role: ShopUserRole }, orderId: string, accept: boolean) {
+  if (user.role !== "OWNER") throw new HttpError(403, "Buyurtmani faqat do'kon egasi tasdiqlaydi");
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { shopLink: { include: { shop: true, distributor: true } } } });
+  if (!order || order.shopLink.shopId !== user.shopId) throw new HttpError(404, "Buyurtma topilmadi");
+  const answeredMsg = "Buyurtma allaqachon ko'rib chiqilgan";
+  if (order.status !== "AWAITING_SHOP") throw new HttpError(400, answeredMsg);
+  if (accept) {
+    // Tasdiq buyurtma berish bilan teng: ulanish faol, do'kon va distribyutor savdo qila oladigan bo'lishi kerak
+    if (order.shopLink.status !== "ACTIVE") throw new HttpError(403, "Bu distribyutor bilan ulanish faol emas");
+    assertTrading(order.shopLink.shop, EXPIRED_SHOP);
+    if (order.shopLink.distributor.status !== "ACTIVE") throw new HttpError(403, DISTRIBUTOR_PAUSED);
+    assertTrading(order.shopLink.distributor, DISTRIBUTOR_PAUSED);
+  }
+  const to: OrderStatus = accept ? "ACCEPTED" : "CANCELLED";
+  const updated = await db.$transaction(async (tx) => {
+    // Shart bilan: xodim shu orada buyurtmani qaytarib olgan bo'lsa yoki ikki marta bosilsa, javob bir marta yoziladi
+    const res = await tx.order.updateMany({ where: { id: order.id, status: "AWAITING_SHOP" }, data: { status: to, ...(accept ? { acceptedAt: new Date() } : {}) } });
+    if (res.count === 0) throw new HttpError(409, answeredMsg);
+    await tx.auditLog.create({
+      data: {
+        actor: `shop:${user.shopId}`,
+        action: accept ? "order.shop_confirmed" : "order.shop_declined",
+        entity: "Order",
+        entityId: order.id,
+        before: { status: order.status },
+        after: { status: to, shopUserId: user.id },
+      },
+    });
+    return tx.order.findUniqueOrThrow({ where: { id: order.id } });
+  });
+  notifyStaff(
+    order.shopLink.distributorId,
+    ["ADMIN", "OPERATOR"],
+    {
+      title: L("Buyurtma №{n}", { n: order.number }),
+      body: accept ? L("{name} buyurtmani tasdiqladi", { name: order.shopLink.shop.name }) : L("{name} buyurtmani rad etdi", { name: order.shopLink.shop.name }),
+      data: { url: `/staff/order/${order.id}` },
+    },
+    order.createdByStaffId ? [order.createdByStaffId] : [],
+  );
   return updated;
 }

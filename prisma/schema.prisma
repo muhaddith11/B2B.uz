@@ -13,7 +13,7 @@ datasource db {
 }
 
 enum DistributorStatus {
-  PENDING // tekshiruvda
+  PENDING // to'xtatilgan: platforma admini to'xtatgan yoki kompaniyada admin qolmagan
   ACTIVE
 }
 
@@ -44,6 +44,7 @@ enum LinkSource {
 }
 
 enum OrderStatus {
+  AWAITING_SHOP // distribyutor xodimi kiritgan: do'kon egasi ilovada tasdiqlaguncha jo'natilmaydi
   SENT // yuborildi
   ACCEPTED // qabul qilindi
   REJECTED // rad etildi
@@ -71,7 +72,7 @@ enum LedgerType {
 
 enum LedgerStatus {
   CONFIRMED
-  PENDING // chek yuklangan, distribyutor tasdig'i kutilmoqda
+  PENDING // chek distribyutor tasdig'ini yoki distribyutor qo'shgan qarz do'kon tasdig'ini kutmoqda
   REJECTED
 }
 
@@ -150,7 +151,7 @@ model Distributor {
   categories   String[]
   minOrder     Int               @default(0) // minimal buyurtma, so'm
   deliveryDays String[] // masalan: ["Du", "Chor", "Ju"]
-  status       DistributorStatus @default(PENDING)
+  status       DistributorStatus @default(ACTIVE)
   // Obuna: tashkilot (barcha xodimlari) uchun. Qo'shilgan kundan 12 oy tekin, keyin oylik to'lov
   trialEndsAt  DateTime
   paidUntil    DateTime

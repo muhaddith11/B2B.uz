@@ -11,6 +11,7 @@ import { useSession } from '@/context/session';
 import { useStaff } from '@/context/staff';
 import { haptic } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
+import { BRANDS_ENABLED } from '@/lib/features';
 import { formatSom } from '@/lib/money';
 import { roleLabel } from '@/lib/staff-types';
 import type { Dashboard, StaffOrder } from '@/lib/staff-types';
@@ -24,13 +25,13 @@ export default function StaffHome() {
   return <ManagerHome />;
 }
 
-// Kompaniya holati: platforma tekshiruvi va obuna ogohlantirishi
+// Kompaniya holati: to'xtatilgan bo'lsa va obuna ogohlantirishi
 function Notices() {
   const { me } = useStaff();
   return (
     <>
       {me?.distributor.status === 'PENDING' && (
-        <Banner>{t("Kompaniyangiz platforma tekshiruvida. Tasdiqlangach, do'konlar sizni topa oladi. Hozircha tovarlar, xodimlar va to'lov usullarini sozlang.")}</Banner>
+        <Banner tone="danger">{t("Kompaniya hisobi to'xtatilgan: yangi buyurtma va do'kon qo'shib bo'lmaydi. Captar bilan bog'laning.")}</Banner>
       )}
       <SubscriptionBanner s={me?.subscription} who="distributor" />
     </>
@@ -123,11 +124,12 @@ function ManagerHome() {
   // Faqat bajariladigan ishi bor qatorlar
   const tasks = [
     { key: 'new', show: inline.length === 0, icon: 'receipt-outline' as const, title: t('Yangi buyurtmalar'), sub: formatSom(data.newOrders.sum), n: data.newOrders.count, href: '/staff/orders' as const },
+    { key: 'awaiting', show: true, icon: 'hourglass-outline' as const, title: t("Do'kon tasdig'ini kutmoqda"), n: data.awaitingShop ?? 0, href: '/staff/orders' as const },
     { key: 'dispatch', show: true, icon: 'car-outline' as const, title: t("Yo'lga chiqarish kerak"), n: data.acceptedOrders, href: '/staff/orders' as const },
     { key: 'requests', show: manager, icon: 'person-add-outline' as const, title: t("Ulanish so'rovlari"), n: data.requests, href: '/staff/requests' as const },
     { key: 'payments', show: can('ADMIN', 'ACCOUNTANT'), icon: 'document-text-outline' as const, title: t("Tasdiqlanadigan to'lovlar"), n: data.pendingPayments, href: '/staff/payments' as const },
-    { key: 'proposals', show: can('ADMIN'), icon: 'ribbon-outline' as const, title: t('Tovar egalaridan takliflar'), n: data.brandProposals, href: '/staff/brands' as const },
-    { key: 'receive', show: can('ADMIN'), icon: 'cube-outline' as const, title: t('Qabul qilinadigan xaridlar'), n: data.brandOrdersToReceive, href: '/staff/brands' as const },
+    { key: 'proposals', show: BRANDS_ENABLED && can('ADMIN'), icon: 'ribbon-outline' as const, title: t('Tovar egalaridan takliflar'), n: data.brandProposals, href: '/staff/brands' as const },
+    { key: 'receive', show: BRANDS_ENABLED && can('ADMIN'), icon: 'cube-outline' as const, title: t('Qabul qilinadigan xaridlar'), n: data.brandOrdersToReceive, href: '/staff/brands' as const },
   ].filter((task) => task.show && task.n > 0);
 
   return (

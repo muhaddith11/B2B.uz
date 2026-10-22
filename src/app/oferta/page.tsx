@@ -58,7 +58,7 @@ function text(lang: Lang, v: Vars) {
           title: "Регистрация и аккаунт",
           items: [
             "Вход в аккаунт — по номеру телефона и коду из SMS. Пользователь отвечает за то, чтобы посторонние не получили доступ к его номеру и телефону; действия из аккаунта считаются действиями этого пользователя.",
-            "Пользователь указывает достоверные сведения о себе и своей организации. Дистрибьютор и производитель начинают торговлю после проверки Исполнителем.",
+            "Пользователь указывает достоверные сведения о себе и своей организации. Дистрибьютор начинает торговлю сразу после регистрации. Без согласия магазина ему не оформляются заказы и не записывается долг: подключение, заказ, оформленный сотрудником дистрибьютора, и добавленный долг владелец магазина подтверждает на Платформе. Исполнитель вправе приостановить организацию, нарушающую настоящую оферту.",
             "Администратор организации добавляет сотрудников и определяет их права; за действия сотрудников отвечает организация.",
           ],
         },
@@ -162,7 +162,7 @@ function text(lang: Lang, v: Vars) {
         title: "Ro'yxatdan o'tish va hisob",
         items: [
           "Hisobga telefon raqami va SMS kod bilan kiriladi. Foydalanuvchi raqami va telefoniga begonalar kirmasligi uchun o'zi javob beradi; hisobdan qilingan amallar shu foydalanuvchiniki hisoblanadi.",
-          "Foydalanuvchi o'zi va tashkiloti haqida to'g'ri ma'lumot beradi. Distribyutor va tovar egasi Ijrochi tekshiruvidan o'tgach savdo qila boshlaydi.",
+          "Foydalanuvchi o'zi va tashkiloti haqida to'g'ri ma'lumot beradi. Distribyutor ro'yxatdan o'tishi bilan savdo qila boshlaydi. Do'konga uning roziligisiz buyurtma va qarz yozilmaydi: ulanishni, distribyutor xodimi kiritgan buyurtmani va qo'shilgan qarzni do'kon egasi Platformada tasdiqlaydi. Ijrochi shu ofertani buzgan tashkilotni to'xtatib qo'yishi mumkin.",
           "Tashkilot admini xodimlarni qo'shadi va ularning huquqlarini belgilaydi; xodimlarning amallari uchun tashkilot javob beradi.",
         ],
       },

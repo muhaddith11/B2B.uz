@@ -4,7 +4,8 @@ import { handle, readJson } from "@/lib/session";
 import { trialPeriod } from "@/lib/subscription";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
-// Distribyutor o'zi ro'yxatdan o'tadi. Platforma tasdiqlaguncha (status PENDING) do'konlar uni ko'rmaydi.
+// Distribyutor o'zi ro'yxatdan o'tadi va darhol faol: platforma tekshiruvi yo'q. Do'kon bilan savdo faqat do'kon roziligi bilan
+// (ulanish va xodim kiritgan har bir buyurtma do'kon egasi tasdig'i bilan), shuning uchun begona do'konga qarz yozib bo'lmaydi.
 export const POST = handle(async (req: Request) => {
   const input = await readJson(req, distributorRegistration, "Barcha maydonlarni to'ldiring");
   const phone = phoneFromToken(input.phoneToken);
@@ -17,7 +18,7 @@ export const POST = handle(async (req: Request) => {
     });
     if (existing) return existing;
     const dist = await tx.distributor.create({
-      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "PENDING", ...trialPeriod() },
+      data: { name: input.companyName, inn: input.inn || null, districts: input.districts, categories: input.categories, status: "ACTIVE", ...trialPeriod() },
     });
     await tx.priceGroup.create({ data: { distributorId: dist.id, name: "Oddiy", isDefault: true } });
     return tx.staff.create({ data: { distributorId: dist.id, name: input.adminName, phone, role: "ADMIN" } });

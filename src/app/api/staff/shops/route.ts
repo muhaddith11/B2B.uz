@@ -22,8 +22,9 @@ const newShopInput = z.object({
   phone: z.string(),
 });
 
-// Agent do'konga borib, uni qo'shadi. Faqat platforma tasdiqlagan distribyutor:
-// - raqam tizimda yo'q: yangi do'kon yaratiladi va darhol ulanadi (egasi shu raqam bilan SMS orqali kiradi);
+// Agent do'konga borib, uni qo'shadi. Captar faqat ilovadan foydalanadigan do'kon bilan ishlaydi, shuning uchun har doim
+// do'kon egasining roziligi kerak (faqat faol distribyutor):
+// - raqam tizimda yo'q: do'kon yaratiladi, ulanish taklif bo'ladi. Egasi shu raqam bilan ilovaga SMS orqali kirib tasdiqlaydi;
 // - raqamda do'kon bor: ulanish taklif bo'ladi, do'kon egasi ilovada tasdiqlaydi. Roziligisiz begona do'konning
 //   ma'lumotini ko'rib, uning nomidan buyurtma va qarz yozib bo'lmaydi. Do'kon nomi va manzili egasi kiritgandek qoladi;
 //   egasining bir nechta do'koni bo'lsa, nomi mos kelgani tanlanadi (taxmin qilinmaydi);
@@ -47,9 +48,9 @@ export const POST = handle(async (req: Request) => {
       const shop = await tx.shop.create({
         data: { name: input.shopName, address: input.address, district: input.district, ...trialPeriod(), users: { create: { name: input.ownerName, phone, role: "OWNER" } } },
       });
-      const created = await tx.shopLink.create({ data: { shopId: shop.id, distributorId, status: "ACTIVE", agentId, source: "AGENT" } });
-      await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "link.created", entity: "ShopLink", entityId: created.id, after: { shopId: shop.id } } });
-      return { link: created, invited: false, existingShop: false };
+      const created = await tx.shopLink.create({ data: { shopId: shop.id, distributorId, status: "INVITED", agentId, source: "AGENT" } });
+      await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: "link.invited", entity: "ShopLink", entityId: created.id, after: { shopId: shop.id, status: "INVITED" } } });
+      return { link: created, invited: true, existingShop: false };
     }
 
     const sameName = (name: string) => name.trim().toLocaleLowerCase() === input.shopName.trim().toLocaleLowerCase();

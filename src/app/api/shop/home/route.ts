@@ -5,7 +5,7 @@ import { linkSummaries } from "@/lib/shop-summary";
 
 export const GET = handle(async (req: Request) => {
     const user = await requireShopUser(req);
-    const [links, requests, invites, active] = await Promise.all([
+    const [links, requests, invites, active, awaitingOrders, pendingDebts] = await Promise.all([
       linkSummaries(user.shopId),
       db.shopLink.findMany({
         where: { shopId: user.shopId, status: "REQUESTED" },
@@ -25,12 +25,16 @@ export const GET = handle(async (req: Request) => {
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
+      // Do'kon roziligini kutayotganlar: distribyutor xodimi kiritgan buyurtma va distribyutor qo'shmoqchi bo'lgan qarz
+      db.order.count({ where: { shopLink: { shopId: user.shopId }, status: "AWAITING_SHOP" } }),
+      db.ledgerEntry.count({ where: { shopLink: { shopId: user.shopId }, type: "ADJUSTMENT", status: "PENDING", amount: { gt: 0 } } }),
     ]);
     return Response.json({
       user: { name: user.name, role: user.role, avatarUrl: user.avatarUrl },
       shop: { name: user.shop.name, address: user.shop.address, imageUrl: user.shop.imageUrl },
       // Obuna holati (ilovada faqat ko'rsatiladi, to'lov saytda)
       subscription: subscriptionInfo(user.shop),
+      confirmations: { orders: awaitingOrders, debts: pendingDebts },
       links,
       requests: requests.map((r) => ({ distributorId: r.distributorId, name: r.distributor.name, logoUrl: r.distributor.logoUrl, createdAt: r.createdAt })),
       invites: invites.map((r) => ({

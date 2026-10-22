@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
+import { assertBrandsEnabled } from "@/lib/features";
 import { brandRegistration, lockRegistration, phoneFromToken } from "@/lib/registration";
 import { handle, readJson } from "@/lib/session";
 import { DAY_SECONDS, signToken } from "@/lib/token";
 
 // Tovar egasi o'zi ro'yxatdan o'tadi. Platforma tasdiqlaguncha distribyutorlarga ko'rinmaydi.
 export const POST = handle(async (req: Request) => {
+  assertBrandsEnabled();
   const input = await readJson(req, brandRegistration, "Barcha maydonlarni to'ldiring");
   const phone = phoneFromToken(input.phoneToken);
 

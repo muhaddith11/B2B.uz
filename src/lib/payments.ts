@@ -145,14 +145,15 @@ export async function submitReceipt(shopUser: { id: string; shopId: string }, fo
 
 export async function reviewPayment(staff: { id: string; distributorId: string }, entryId: string, action: "confirm" | "reject", reason?: string) {
   const entry = await db.ledgerEntry.findUnique({ where: { id: entryId }, include: { shopLink: true } });
-  if (!entry || entry.shopLink.distributorId !== staff.distributorId) throw new HttpError(404, "To'lov topilmadi");
+  // Faqat to'lov: do'kon tasdig'ini kutayotgan qarzni (tuzatish) distribyutor o'zi tasdiqlay olmaydi
+  if (!entry || entry.shopLink.distributorId !== staff.distributorId || entry.type !== "PAYMENT") throw new HttpError(404, "To'lov topilmadi");
   if (entry.status !== "PENDING") throw new HttpError(400, "To'lov allaqachon ko'rib chiqilgan");
   const status = action === "confirm" ? "CONFIRMED" : "REJECTED";
   const note = action === "reject" && reason ? `${entry.note ? `${entry.note}. ` : ""}Rad etildi: ${reason}` : entry.note;
   const updated = await db.$transaction(async (tx) => {
     // Faqat tasdiqlanmagan yozuv holati o'zgaradi; qoldiqqa CONFIRMED bo'lgandan keyingina kiradi.
     // Shart bilan yangilanadi: ikki xodim bir vaqtda biri tasdiqlab, biri rad etsa, faqat birinchisining qarori qoladi
-    const res = await tx.ledgerEntry.updateMany({ where: { id: entry.id, status: "PENDING" }, data: { status, note } });
+    const res = await tx.ledgerEntry.updateMany({ where: { id: entry.id, type: "PAYMENT", status: "PENDING" }, data: { status, note } });
     if (res.count === 0) throw new HttpError(409, "To'lov allaqachon ko'rib chiqilgan");
     await tx.auditLog.create({ data: { actor: `staff:${staff.id}`, action: `payment.${action}`, entity: "LedgerEntry", entityId: entry.id, before: { status: "PENDING" }, after: { status } } });
     return tx.ledgerEntry.findUniqueOrThrow({ where: { id: entry.id } });

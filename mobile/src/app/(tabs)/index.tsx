@@ -27,6 +27,13 @@ export default function HomeScreen() {
     <Screen band={<DebtBand data={data} onShopImage={(imageUrl) => setData({ ...data, shop: { ...data.shop, imageUrl } })} />} refreshing={refreshing} onRefresh={reload}>
       <SubscriptionBanner s={data.subscription} who="shop" />
 
+      {!!data.confirmations?.orders && (
+        <ConfirmRow icon="receipt-outline" href="/orders" text={t('Tasdiqingizni kutayotgan buyurtma: {n}', { n: data.confirmations.orders })} />
+      )}
+      {!!data.confirmations?.debts && (
+        <ConfirmRow icon="wallet-outline" href="/debts" text={t("Tasdiqingizni kutayotgan qarz so'rovi: {n}", { n: data.confirmations.debts })} />
+      )}
+
       {data.invites.length > 0 && (
         <>
           <SectionTitle>{t('Ulanish takliflari')}</SectionTitle>
@@ -261,6 +268,22 @@ function DistributorRow({ l }: { l: LinkSummary }) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <Badge label={t('Yetkazish: {days}', { days: l.distributor.deliveryDays.map(tx).join(', ') })} />
         {l.activeOrders > 0 && <Badge label={t('Faol buyurtma: {n}', { n: l.activeOrders })} tone="accent" />}
+      </View>
+    </PressCard>
+  );
+}
+
+// Do'kon egasidan javob kutayotgan narsa: bosilsa o'sha ekranga o'tadi
+function ConfirmRow({ icon, text, href }: { icon: React.ComponentProps<typeof Ionicons>['name']; text: string; href: '/orders' | '/debts' }) {
+  const c = usePalette();
+  return (
+    <PressCard onPress={() => router.push(href)}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.warnSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name={icon} size={18} color={c.warn} />
+        </View>
+        <T style={{ flex: 1, fontWeight: '600' }}>{text}</T>
+        <Ionicons name="chevron-forward" size={18} color={c.hint} />
       </View>
     </PressCard>
   );

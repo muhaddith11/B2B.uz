@@ -9,6 +9,7 @@ import { subscriptionText } from '@/components/subscription';
 import { Badge, Card, Divider, ListRow, Pic, Screen, T } from '@/components/ui';
 import { useStaff } from '@/context/staff';
 import { t, type Key } from '@/lib/i18n';
+import { BRANDS_ENABLED } from '@/lib/features';
 import { roleLabel } from '@/lib/staff-types';
 import type { StaffRole } from '@/lib/types';
 
@@ -18,7 +19,7 @@ const ITEMS: Item[] = [
   { href: '/staff/requests', label: "Ulanish so'rovlari", icon: 'person-add-outline', roles: ['ADMIN', 'OPERATOR'] },
   { href: '/staff/payments', label: "To'lovlar va cheklar", icon: 'cash-outline', roles: ['ADMIN', 'ACCOUNTANT', 'OPERATOR'] },
   { href: '/staff/products', label: 'Tovarlar va narxlar', icon: 'cube-outline', roles: ['ADMIN', 'OPERATOR', 'AGENT'] },
-  { href: '/staff/brands', label: 'Tovar egalari va kelishuvlar', icon: 'ribbon-outline', roles: ['ADMIN'] },
+  ...(BRANDS_ENABLED ? [{ href: '/staff/brands', label: 'Tovar egalari va kelishuvlar', icon: 'ribbon-outline', roles: ['ADMIN'] } satisfies Item] : []),
   { href: '/staff/team', label: 'Xodimlar', icon: 'people-outline', roles: ['ADMIN'] },
   { href: '/staff/payment-methods', label: "To'lov usullari (karta, Payme, Click)", icon: 'card-outline', roles: ['ADMIN'] },
   { href: '/staff/settings', label: 'Kompaniya sozlamalari', icon: 'settings-outline', roles: ['ADMIN'] },
@@ -43,7 +44,7 @@ export default function StaffMore() {
               <T bold numberOfLines={2} style={{ flexShrink: 1 }}>
                 {me.distributor.name}
               </T>
-              {me.distributor.status === 'PENDING' && <Badge label={t('tekshiruvda')} tone="warn" />}
+              {me.distributor.status === 'PENDING' && <Badge label={t("to'xtatilgan")} tone="danger" />}
             </View>
             <T size="small" tone={me.subscription.state === 'ACTIVE' ? 'hint' : me.subscription.state === 'GRACE' ? 'warn' : 'danger'}>
               {t('Obuna · {status}', { status: subscriptionText(me.subscription) })}

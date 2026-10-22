@@ -4,7 +4,7 @@ import { agentOrderInput, createOrderForLink } from "@/lib/orders";
 import { handle, readJson, requireStaff } from "@/lib/session";
 import { orderInclude, orderScope, serializeOrder, staffLink } from "@/lib/staff-data";
 
-const STATUSES: OrderStatus[] = ["SENT", "ACCEPTED", "IN_DELIVERY", "DELIVERED", "REJECTED", "CANCELLED"];
+const STATUSES: OrderStatus[] = ["AWAITING_SHOP", "SENT", "ACCEPTED", "IN_DELIVERY", "DELIVERED", "REJECTED", "CANCELLED"];
 
 export const GET = handle(async (req: Request) => {
   const staff = await requireStaff(req);
@@ -21,7 +21,7 @@ export const GET = handle(async (req: Request) => {
   return Response.json({ orders: orders.map(serializeOrder) });
 });
 
-// Agent (yoki operator) do'kon nomidan buyurtma oladi
+// Agent (yoki operator) do'kon nomidan buyurtma kiritadi: do'kon egasi ilovada tasdiqlaguncha jo'natilmaydi
 export const POST = handle(async (req: Request) => {
   const staff = await requireStaff(req, ["ADMIN", "OPERATOR", "AGENT"]);
   const input = await readJson(req, agentOrderInput, "Buyurtma ma'lumotlari noto'g'ri");

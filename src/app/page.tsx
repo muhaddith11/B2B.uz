@@ -18,7 +18,7 @@ const TEXT = {
   uz: {
     other: "Русский",
     title: "Distribyutorlardan buyurtma, to'lov va qarz daftari bitta ilovada",
-    lead: "Do'kon, distribyutor va tovar egasi uchun bitta ilova. Kirish telefon raqami va SMS kod bilan.",
+    lead: "Do'kon va distribyutor uchun bitta ilova. Kirish telefon raqami va SMS kod bilan.",
     soon: "Ilova tez orada App Store va Google Play'da",
     roles: [
       {
@@ -34,12 +34,8 @@ const TEXT = {
         points: [
           "Buyurtmani qabul qilish, yetkazuvchiga berish, qisman topshirish",
           "Nasiya limiti va muddati har do'kon uchun alohida",
-          "Agent do'kon nomidan buyurtma oladi, naqd pul yoziladi",
+          "Agent do'kon nomidan buyurtma kiritadi, do'kon egasi ilovada tasdiqlaydi",
         ],
-      },
-      {
-        title: "Tovar egasi",
-        points: ["Tovarni distribyutorlarga narx bilan taklif qilish", "Hudud va chegirma bo'yicha kelishuv tuzish", "Qaysi distribyutor orqali qancha sotilganini ko'rish"],
       },
     ],
     panel: "Distribyutor paneli",
@@ -53,7 +49,7 @@ const TEXT = {
   ru: {
     other: "O'zbekcha",
     title: "Заказы у дистрибьюторов, оплата и учёт долгов в одном приложении",
-    lead: "Одно приложение для магазина, дистрибьютора и производителя. Вход по номеру телефона и коду из SMS.",
+    lead: "Одно приложение для магазина и дистрибьютора. Вход по номеру телефона и коду из SMS.",
     soon: "Приложение скоро появится в App Store и Google Play",
     roles: [
       {
@@ -69,12 +65,8 @@ const TEXT = {
         points: [
           "Приём заказа, передача курьеру, частичная доставка",
           "Лимит и срок отсрочки отдельно для каждого магазина",
-          "Агент оформляет заказ от имени магазина и записывает наличные",
+          "Агент оформляет заказ от имени магазина, владелец подтверждает его в приложении",
         ],
-      },
-      {
-        title: "Производитель",
-        points: ["Предложение товара дистрибьюторам с ценой", "Соглашения по району и скидке", "Продажи по каждому дистрибьютору"],
       },
     ],
     panel: "Панель дистрибьютора",
@@ -112,7 +104,7 @@ export default async function Home({ searchParams }: Props) {
         <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent-ink">{x.soon}</p>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2">
         {x.roles.map((r) => (
           <div key={r.title} className="grid content-start gap-3 rounded-xl border border-line bg-card p-5 shadow-card">
             <h2 className="text-lg font-semibold">{r.title}</h2>

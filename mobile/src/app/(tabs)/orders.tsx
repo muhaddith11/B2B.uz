@@ -19,6 +19,7 @@ export default function OrdersScreen() {
   const { data, error, refreshing, reload, retry } = useLoad<{ orders: ShopOrder[] }>('/api/shop/orders');
   const [open, setOpen] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [answering, setAnswering] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   // Distribyutor hali qabul qilmagan buyurtmani bekor qilish: qaytarib bo'lmaydi, shuning uchun avval so'raladi
@@ -39,6 +40,30 @@ export default function OrdersScreen() {
       haptic.error();
     } finally {
       setCancelling(null);
+    }
+  }
+
+  // Distribyutor xodimi kiritgan buyurtma: do'kon egasi tasdiqlasa jo'natiladi, rad etsa bekor bo'ladi
+  async function answer(o: ShopOrder, accept: boolean) {
+    if (!accept) {
+      const ok = await confirm({
+        title: t('Buyurtma №{n} rad etilsinmi?', { n: o.number }),
+        message: t("Rad etilgan buyurtma bekor qilinadi va jo'natilmaydi."),
+        action: t('Rad etish'),
+      });
+      if (!ok) return;
+    }
+    setAnswering(`${o.id}:${accept}`);
+    setErr(null);
+    try {
+      await api(`/api/shop/orders/${o.id}/answer`, { method: 'POST', body: JSON.stringify({ accept }) });
+      if (accept) haptic.success();
+      reload();
+    } catch (e) {
+      setErr((e as Error).message);
+      haptic.error();
+    } finally {
+      setAnswering(null);
     }
   }
 
@@ -65,7 +90,9 @@ export default function OrdersScreen() {
       }
       renderItem={({ item: o }) => {
         const changed = o.items.some((i) => i.deliveredQty !== null && i.deliveredQty !== i.qty);
-        const isOpen = open === o.id;
+        const awaiting = o.status === 'AWAITING_SHOP';
+        // Tasdiq kutayotgan buyurtma har doim ochiq: egasi nimaga rozilik berayotganini ko'rib turadi
+        const isOpen = open === o.id || awaiting;
         return (
           <Card style={{ gap: 12 }}>
             <Pressable accessibilityRole="button" accessibilityState={{ expanded: isOpen }} onPress={() => setOpen(isOpen ? null : o.id)} style={{ gap: 6 }}>
@@ -91,11 +118,15 @@ export default function OrdersScreen() {
                 </View>
               </View>
             </Pressable>
+            {awaiting && (
+              <Banner tone="warn">{t("Buyurtmani distribyutor kiritdi. Tasdiqlasangiz jo'natiladi, topshirilganda shu summa qarzingizga yoziladi.")}</Banner>
+            )}
             {changed && <Banner tone="warn">{t("Distribyutor miqdorni o'zgartirgan")}</Banner>}
             {o.rejectReason && <Banner tone="danger">{t('Sabab: {reason}', { reason: o.rejectReason })}</Banner>}
             {isOpen && (
               <View style={{ gap: 12 }}>
-                <StatusSteps status={o.status} times={o} />
+                {/* Tasdiq kutayotganida holat sarlavhadagi belgida bor, bosqichlar hali boshlanmagan */}
+                {!awaiting && <StatusSteps status={o.status} times={o} />}
                 <Divider />
                 <View style={{ gap: 8 }}>
                   {o.items.map((it) => {
@@ -112,6 +143,28 @@ export default function OrdersScreen() {
                     );
                   })}
                 </View>
+                {awaiting && (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button
+                      title={t('Rad etish')}
+                      kind="danger"
+                      compact
+                      loading={answering === `${o.id}:false`}
+                      disabled={answering !== null}
+                      onPress={() => answer(o, false)}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      title={t('Tasdiqlash')}
+                      icon="checkmark"
+                      compact
+                      loading={answering === `${o.id}:true`}
+                      disabled={answering !== null}
+                      onPress={() => answer(o, true)}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                )}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {o.status === 'SENT' && (
                     <Button title={t('Bekor qilish')} kind="danger" compact loading={cancelling === o.id} onPress={() => cancel(o)} style={{ flex: 1 }} />

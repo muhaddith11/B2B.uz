@@ -20,13 +20,13 @@ describe("buyurtma yaratish", () => {
     expect(order.items[0].price).toBe(900);
   });
 
-  it("agent olgan buyurtma darhol qabul qilingan bo'ladi", async () => {
+  it("agent kiritgan buyurtma do'kon egasi tasdiqlaguncha kutadi", async () => {
     const w = await makeWorld();
     const order = await createOrderForLink(w.link, { staffId: w.agent.id }, { paymentType: "CASH", items: [{ productId: w.product.id, qty: 1 }] });
-    expect(order.status).toBe("ACCEPTED");
+    expect(order.status).toBe("AWAITING_SHOP");
     expect(order.source).toBe("AGENT");
     expect(order.createdByStaffId).toBe(w.agent.id);
-    expect(order.acceptedAt).toBeInstanceOf(Date);
+    expect(order.acceptedAt).toBeNull();
   });
 
   it("noto'g'ri buyurtmalarni rad etadi", async () => {

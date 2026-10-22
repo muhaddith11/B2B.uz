@@ -154,7 +154,7 @@ export default function StaffShopScreen() {
                     ? t("To'lov ({channel})", { channel: channelLabel(e.channel) })
                     : t('Tuzatish')}
                 {e.status === 'PENDING'
-                  ? ` · ${t('tasdiq kutilmoqda')}`
+                  ? ` · ${e.amount > 0 ? t("do'kon tasdig'ida") : t('tasdiq kutilmoqda')}`
                   : e.status === 'REJECTED'
                     ? ` · ${t('rad etilgan')}`
                     : e.reversed
@@ -213,7 +213,10 @@ function ReverseForm({ entry, onClose, onDone }: { entry: StaffLedger; onClose: 
   async function submit() {
     const ok = await confirm({
       title: t('{sum} bekor qilinsinmi?', { sum: formatSom(entry.amount) }),
-      message: t("Qarz daftariga teskari yozuv qo'shiladi. Buni qaytarib bo'lmaydi."),
+      message:
+        entry.amount < 0
+          ? t("To'lov bekor qilinsa qarz oshadi: do'kon egasi ilovada tasdiqlagach kuchga kiradi.")
+          : t("Qarz daftariga teskari yozuv qo'shiladi. Buni qaytarib bo'lmaydi."),
       action: t('Bekor qilish'),
     });
     if (!ok) return;
@@ -281,6 +284,11 @@ function AdjustForm({ linkId, onDone }: { linkId: string; onDone: () => void }) 
         onChangeText={setNote}
         placeholder={direction === 'down' ? t('Masalan: 3 yashik qaytarildi') : t('Masalan: daftardagi eski qarz')}
       />
+      {direction === 'up' && (
+        <T size="small" tone="hint">
+          {t("Qo'shilgan qarz do'kon egasi ilovada tasdiqlagach kuchga kiradi.")}
+        </T>
+      )}
       <Button title={t('Yozish')} onPress={submit} loading={busy} disabled={sum <= 0 || note.trim().length < 3} />
       {err && <Banner tone="danger">{err}</Banner>}
     </Card>

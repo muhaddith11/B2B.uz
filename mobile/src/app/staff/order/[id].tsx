@@ -36,7 +36,8 @@ export default function StaffOrderScreen() {
   const manager = can('ADMIN', 'OPERATOR');
   const mayDeliver = order.status === 'IN_DELIVERY' && (manager || (can('COURIER') && (!order.courier || order.courier.id === me?.staff.id)));
   const deliveredTotal = order.items.reduce((s, i) => s + (delivered[i.id] ?? i.qty) * i.price, 0);
-  const hasFooter = (order.status === 'SENT' && manager) || (order.status === 'ACCEPTED' && manager) || mayDeliver;
+  const awaiting = order.status === 'AWAITING_SHOP';
+  const hasFooter = ((awaiting || order.status === 'SENT' || order.status === 'ACCEPTED') && manager) || mayDeliver;
   const cash = order.paymentType === 'CASH';
 
   async function move(to: string, extra: Record<string, unknown> = {}) {
@@ -60,6 +61,13 @@ export default function StaffOrderScreen() {
   async function cancelAccepted() {
     if (!order) return;
     const ok = await confirm({ title: t('Buyurtma №{n} bekor qilinsinmi?', { n: order.number }), message: t("Do'konga xabar boradi."), action: t('Bekor qilish') });
+    if (ok) move('CANCELLED');
+  }
+
+  // Do'kon hali tasdiqlamagan buyurtmani qaytarib olish (xato kiritilgan bo'lsa)
+  async function withdraw() {
+    if (!order) return;
+    const ok = await confirm({ title: t('Buyurtma №{n} qaytarib olinsinmi?', { n: order.number }), message: t("Do'kon uni endi tasdiqlay olmaydi."), action: t('Qaytarib olish') });
     if (ok) move('CANCELLED');
   }
 
@@ -95,6 +103,7 @@ export default function StaffOrderScreen() {
             {order.courier && <Row label={t('Yetkazuvchi')} value={order.courier.name} />}
           </View>
           {order.rejectReason && <Banner tone="danger">{t('Rad etish sababi: {reason}', { reason: order.rejectReason })}</Banner>}
+          {awaiting && <Banner tone="warn">{t("Do'kon egasi ilovada tasdiqlaguncha buyurtma jo'natilmaydi.")}</Banner>}
         </Card>
 
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -185,6 +194,7 @@ export default function StaffOrderScreen() {
 
       {hasFooter && (
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, gap: 8, backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border }}>
+          {awaiting && manager && <Button title={t('Qaytarib olish')} kind="danger" loading={busy === 'CANCELLED'} onPress={withdraw} />}
           {order.status === 'SENT' && manager && !rejecting && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button title={t('Rad etish')} kind="danger" onPress={() => setRejecting(true)} style={{ flex: 1 }} />

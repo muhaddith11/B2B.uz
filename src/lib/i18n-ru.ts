@@ -224,4 +224,24 @@ export const RU = {
     "На этом номере несколько магазинов. Укажите название точно так, как в приложении владельца",
   "Do'kon o'zi ulanishni so'ragan: uni admin narx va nasiya shartlari bilan tasdiqlaydi":
     "Магазин сам запросил подключение: его подтверждает администратор с ценами и условиями рассрочки",
+
+  // Do'kon roziligi: xodim kiritgan buyurtma va qo'shilgan qarz do'kon egasi tasdig'i bilan
+  "Kompaniya hisobi to'xtatilgan. Captar bilan bog'laning": "Аккаунт компании приостановлен. Свяжитесь с Captar",
+  "Bu bo'lim hozircha yopiq": "Этот раздел пока закрыт",
+  "Buyurtma tasdiqingizni kutmoqda": "Заказ ждёт вашего подтверждения",
+  "Buyurtma №{n}: tasdiqlang": "Заказ №{n}: подтвердите",
+  "{name} {sum}lik buyurtma kiritdi. Tasdiqlasangiz jo'natiladi": "{name}: заказ на {sum}. Он будет отправлен после вашего подтверждения",
+  "Buyurtmani faqat do'kon egasi tasdiqlaydi": "Подтвердить заказ может только владелец магазина",
+  "Buyurtma allaqachon ko'rib chiqilgan": "Заказ уже рассмотрен",
+  "{name} buyurtmani tasdiqladi": "{name} подтвердил заказ",
+  "{name} buyurtmani rad etdi": "{name} отклонил заказ",
+  "Bekor qilish do'kon tasdig'ini kutmoqda": "Отмена ждёт подтверждения магазина",
+  "Qarz qo'shish so'rovi": "Запрос на добавление долга",
+  "To'lov bekor qilinmoqchi, {sum}: {reason}. Tasdiqlang yoki rad eting": "Оплату хотят отменить, {sum}: {reason}. Подтвердите или отклоните",
+  "{sum}: {reason}. Tasdiqlang yoki rad eting": "{sum}: {reason}. Подтвердите или отклоните",
+  "Qarzni faqat do'kon egasi tasdiqlaydi": "Подтвердить долг может только владелец магазина",
+  "Bu so'rov allaqachon ko'rib chiqilgan": "Этот запрос уже рассмотрен",
+  "Qarz tasdiqlandi": "Долг подтверждён",
+  "Qarz rad etildi": "Долг отклонён",
+  "Javob noto'g'ri": "Неверный ответ",
 } as const;

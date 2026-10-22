@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
+import { assertBrandsEnabled } from "@/lib/features";
 import { handle, requireStaff } from "@/lib/session";
 
 // Tovar egalari: tasdiqlangan brendlar va ular bilan kelishuv holati
 export const GET = handle(async (req: Request) => {
+  assertBrandsEnabled();
   const staff = await requireStaff(req, ["ADMIN"]);
   // Platforma tasdiqlamagan distribyutor tovar egalari ro'yxatini ko'rmaydi
   if (staff.distributor.status !== "ACTIVE") return Response.json({ pending: true, categories: [], brands: [] });

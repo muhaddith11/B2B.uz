@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 const TABS: { status: OrderStatus; label: string }[] = [
   { status: "SENT", label: "Yangi" },
+  // Xodim kiritgan buyurtma: do'kon egasi ilovada tasdiqlaguncha jo'natilmaydi
+  { status: "AWAITING_SHOP", label: "Do'kon tasdig'ida" },
   { status: "ACCEPTED", label: "Qabul qilingan" },
   { status: "IN_DELIVERY", label: "Yo'lda" },
   { status: "DELIVERED", label: "Topshirilgan" },

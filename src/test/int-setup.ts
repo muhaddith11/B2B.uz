@@ -17,6 +17,8 @@ process.env.UPLOAD_STORAGE = "db";
 process.env.OTP_HOURLY_LIMIT = "1000000";
 // SMS xizmati sozlanmagan sinov rejimi: kod javobda qaytadi (devCode), SMS yuborilmaydi
 process.env.DEV_AUTH = "1";
+// Tovar egasi qismi production'da yopiq, lekin kodi saqlanadi va sinaladi (yopiqligini alohida test tekshiradi)
+process.env.BRANDS_ENABLED = "1";
 // Testda tashqi xizmatlarga so'rov ketmasin
 delete process.env.BLOB_READ_WRITE_TOKEN;
 delete process.env.EXPO_ACCESS_TOKEN;

@@ -24,6 +24,7 @@ export default function StaffOrders() {
 
   const tabs: { value: Tab; label: string }[] = [
     agent ? { value: 'ALL', label: t('Hammasi') } : { value: 'SENT', label: t('Yangi') },
+    { value: 'AWAITING_SHOP', label: t("Do'kon tasdig'ida") },
     { value: 'ACCEPTED', label: t('Qabul qilingan') },
     { value: 'IN_DELIVERY', label: t("Yo'lda") },
     { value: 'DELIVERED', label: t('Topshirilgan') },

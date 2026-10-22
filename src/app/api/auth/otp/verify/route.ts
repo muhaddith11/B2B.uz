@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { brandsEnabled } from "@/lib/features";
 import { L, langOf, render } from "@/lib/i18n";
 import { verifyOtp } from "@/lib/otp";
 import { normalizePhone } from "@/lib/phone";
@@ -28,7 +29,8 @@ export const POST = handle(async (req: Request) => {
   const [shopUsers, staff, brandUsers] = await Promise.all([
     db.shopUser.findMany({ where: { phone }, include: { shop: true }, orderBy: { createdAt: "asc" } }),
     db.staff.findMany({ where: { phone, active: true }, include: { distributor: true }, orderBy: { createdAt: "asc" } }),
-    db.brandUser.findMany({ where: { phone }, include: { brand: true }, orderBy: { createdAt: "asc" } }),
+    // Tovar egasi qismi yopiq bo'lsa, bunday hisob kirish ro'yxatiga chiqmaydi
+    brandsEnabled() ? db.brandUser.findMany({ where: { phone }, include: { brand: true }, orderBy: { createdAt: "asc" } }) : [],
   ]);
 
   const accounts = [

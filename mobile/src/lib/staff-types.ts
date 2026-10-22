@@ -14,6 +14,8 @@ export type StaffMe = {
 export type Dashboard = {
   distributorStatus: 'PENDING' | 'ACTIVE';
   newOrders: { count: number; sum: number };
+  // Xodim kiritgan, do'kon egasi tasdig'ini kutayotgan buyurtmalar (eski server yubormasa 0)
+  awaitingShop?: number;
   acceptedOrders: number;
   inDelivery: number;
   deliveredToday: { count: number; sum: number };

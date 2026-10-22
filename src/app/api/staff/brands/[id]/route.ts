@@ -1,9 +1,11 @@
 import { purchasePrice } from "@/lib/brands";
+import { assertBrandsEnabled } from "@/lib/features";
 import { db } from "@/lib/db";
 import { assertApproved, handle, HttpError, requireStaff } from "@/lib/session";
 
 // Tovar egasi kartasi: tovarlari, kelishuv, katalogga qo'shilganlar va xarid buyurtmalari
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
+  assertBrandsEnabled();
   const staff = await requireStaff(req, ["ADMIN"]);
   assertApproved(staff.distributor);
   const { id } = await ctx.params;

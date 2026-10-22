@@ -19,7 +19,7 @@ type StaffCatalog = {
   products: CatalogProduct[];
 };
 
-// Agent do'kon nomidan buyurtma oladi: buyurtma darhol "qabul qilingan" bo'ladi
+// Agent do'kon nomidan buyurtma kiritadi: do'kon egasi ilovada tasdiqlagach qabul qilingan bo'ladi va jo'natiladi
 export default function StaffNewOrder() {
   const c = usePalette();
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
@@ -147,6 +147,9 @@ export default function StaffNewOrder() {
               ))}
           </View>
           {err && <Banner tone="danger">{err}</Banner>}
+          <T size="small" tone="hint">
+            {t("Do'kon egasi ilovada tasdiqlagach buyurtma jo'natiladi.")}
+          </T>
           <Button title={t('Buyurtmani yuborish')} icon="paper-plane-outline" onPress={submit} loading={busy} disabled={minLeft > 0} />
         </View>
       )}

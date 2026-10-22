@@ -19,10 +19,11 @@ import {
   verifyAdminCode,
 } from "./actions";
 import { ConfirmButton } from "./confirm-button";
+import { brandsEnabled } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
-// Platforma admini: yangi distribyutor va tovar egalarini tekshirib tasdiqlaydi
+// Platforma admini: obunalar, ilova versiyasi; distribyutorlar ro'yxatdan o'tishi bilan faol, admin kerak bo'lsa to'xtatadi
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const admin = await getAdmin();
   const params = await searchParams;
@@ -35,7 +36,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       include: { staff: { where: { role: "ADMIN" }, take: 1 }, _count: { select: { links: { where: { status: "ACTIVE" } }, products: true } } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     }),
-    db.brand.findMany({ include: { users: { take: 1 }, _count: { select: { products: true, agreements: { where: { status: "ACTIVE" } } } } }, orderBy: [{ status: "asc" }, { createdAt: "desc" }] }),
+    // Tovar egasi qismi yopiq bo'lsa ro'yxat ko'rsatilmaydi
+    brandsEnabled()
+      ? db.brand.findMany({ include: { users: { take: 1 }, _count: { select: { products: true, agreements: { where: { status: "ACTIVE" } } } } }, orderBy: [{ status: "asc" }, { createdAt: "desc" }] })
+      : [],
     db.shop.count(),
     db.order.aggregate({ where: { status: "DELIVERED", updatedAt: { gte: since } }, _count: true, _sum: { deliveredTotal: true } }),
     loadSubscriptions(q),
@@ -62,10 +66,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
-        <div className="grid gap-3 sm:grid-cols-5">
+        <div className={`grid gap-3 ${brandsEnabled() ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
           {[
             ["Distribyutorlar", `${distributors.filter((d) => d.status === "ACTIVE").length} faol`],
-            ["Tovar egalari", `${brands.filter((b) => b.status === "ACTIVE").length} faol`],
+            ...(brandsEnabled() ? [["Tovar egalari", `${brands.filter((b) => b.status === "ACTIVE").length} faol`]] : []),
             ["Do'konlar", `${shops} ta`],
             ["30 kunlik savdo", `${formatSom(orders._sum.deliveredTotal ?? 0)} · ${orders._count} buyurtma`],
             ["Baza hajmi", `${mb(storage.databaseBytes)} / ${mb(storage.limitBytes)}`],
@@ -117,6 +121,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           ))}
         </Section>
 
+        {brandsEnabled() && (
         <Section title="Tovar egalari">
           {brands.map((b) => (
             <Row
@@ -133,6 +138,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             />
           ))}
         </Section>
+        )}
       </main>
     </div>
   );
@@ -270,7 +276,7 @@ function Row({
     <div className={`flex flex-wrap items-center gap-4 rounded-xl border bg-card p-4 ${pending ? "border-warn/40" : "border-line"}`}>
       <div className="min-w-0 flex-1">
         <div className="font-medium">
-          {title} {pending && <span className="ml-2 rounded bg-warn-soft px-2 py-0.5 text-xs text-warn">tekshiruvda</span>}
+          {title} {pending && <span className="ml-2 rounded bg-warn-soft px-2 py-0.5 text-xs text-warn">to'xtatilgan</span>}
         </div>
         {lines.map((l) => (
           <div key={l} className="text-sm text-hint">
@@ -282,7 +288,7 @@ function Row({
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="status" value={pending ? "ACTIVE" : "PENDING"} />
         {pending ? (
-          <button className="btn btn-sm btn-primary">Tasdiqlash</button>
+          <button className="btn btn-sm btn-primary">Faollashtirish</button>
         ) : (
           <ConfirmButton message={`${title}: to'xtatilsinmi? Do'konlar va hamkorlar uni ko'rmay qoladi.`} className="btn btn-sm btn-danger">
             To'xtatish

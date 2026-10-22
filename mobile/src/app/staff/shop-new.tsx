@@ -17,6 +17,8 @@ export default function StaffShopNew() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [invited, setInvited] = useState(false);
+  // Raqamda do'kon yo'q edi: do'kon yaratildi, egasi ilovaga kirib tasdiqlaydi
+  const [created, setCreated] = useState(false);
   const [existing, setExisting] = useState(false);
   const set = (key: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [key]: v }));
 
@@ -28,6 +30,7 @@ export default function StaffShopNew() {
       haptic.success();
       if (res.invited) {
         setInvited(true);
+        setCreated(!res.existingShop);
         setBusy(false);
         return;
       }
@@ -52,13 +55,17 @@ export default function StaffShopNew() {
     return (
       <Screen gap={14}>
         <Banner tone="ok">
-          {invited
-            ? t("Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.")
-            : t("Bu raqam egasining do'koni qayta ulandi.")}
+          {created
+            ? t("Do'kon qo'shildi. Egasi shu raqam bilan Captar ilovasiga kirib, ulanishni tasdiqlasin: shundan keyin do'kon ro'yxatingizda chiqadi.")
+            : invited
+              ? t("Bu raqamda do'kon allaqachon bor. Egasiga ulanish taklifi yuborildi: u ilovada tasdiqlagach do'kon ro'yxatingizda chiqadi.")
+              : t("Bu raqam egasining do'koni qayta ulandi.")}
         </Banner>
-        <T size="small" tone="hint">
-          {t("Do'kon nomi va manzili egasi ilovada kiritgandek qoladi, siz yozgani saqlanmaydi.")}
-        </T>
+        {!created && (
+          <T size="small" tone="hint">
+            {t("Do'kon nomi va manzili egasi ilovada kiritgandek qoladi, siz yozgani saqlanmaydi.")}
+          </T>
+        )}
         <Button title={t('Tushunarli')} onPress={() => router.back()} />
       </Screen>
     );
@@ -67,7 +74,7 @@ export default function StaffShopNew() {
   return (
     <Screen gap={14}>
       <T size="small" tone="hint">
-        {t("Egasining raqamida do'kon bo'lsa, unga ulanish taklifi boradi va egasi ilovada tasdiqlaydi. Nasiya shartlarini keyin admin belgilaydi.")}
+        {t("Do'kon egasi ulanishni Captar ilovasida tasdiqlaydi. Raqamida do'kon bo'lmasa, do'kon yaratiladi va egasi shu raqam bilan ilovaga kiradi. Nasiya shartlarini keyin admin belgilaydi.")}
       </T>
       <Field label={t("Do'kon nomi")} value={form.shopName} onChangeText={set('shopName')} />
       <Field label={t('Manzil')} value={form.address} onChangeText={set('address')} placeholder={t("Shahar, ko'cha, uy")} />

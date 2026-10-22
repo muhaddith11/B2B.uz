@@ -113,12 +113,13 @@ describe("do'konni ulash: faqat egasining roziligi bilan", () => {
     expect((await db.shopLink.findUniqueOrThrow({ where: { id: second } })).status).toBe("ACTIVE");
   });
 
-  it("yangi raqam: do'kon yaratiladi va darhol ulanadi (agent do'konning o'zida)", async () => {
+  it("yangi raqam: do'kon yaratiladi, lekin egasi ilovaga kirib tasdiqlaguncha ulanmaydi", async () => {
     const w = await makeWorld();
     const res = await staffShops.POST(req("/api/staff/shops", { token: w.agent.token, body: shopBody(phone()) }));
-    const { linkId, invited } = (await res.json()) as { linkId: string; invited: boolean };
-    expect(invited).toBe(false);
-    expect((await db.shopLink.findUniqueOrThrow({ where: { id: linkId } })).status).toBe("ACTIVE");
+    const { linkId, invited, existingShop } = (await res.json()) as { linkId: string; invited: boolean; existingShop: boolean };
+    expect(invited).toBe(true);
+    expect(existingShop).toBe(false);
+    expect((await db.shopLink.findUniqueOrThrow({ where: { id: linkId } })).status).toBe("INVITED");
   });
 });
 

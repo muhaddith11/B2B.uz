@@ -26,6 +26,8 @@ export type HomeData = {
   requests: { distributorId: string; name: string; logoUrl: string | null; createdAt: string }[];
   invites: Invite[];
   active: ActiveOrder[];
+  // Do'kon egasi roziligini kutayotganlar: distribyutor xodimi kiritgan buyurtma va qo'shmoqchi bo'lgan qarz
+  confirmations?: { orders: number; debts: number };
 };
 
 // Distribyutorning ulanish taklifi: do'kon egasi tasdiqlaguncha distribyutor do'konni ko'rmaydi
@@ -76,7 +78,8 @@ export type DiscoverDistributor = {
 
 export type DiscoverData = { district: string; categories: string[]; distributors: DiscoverDistributor[] };
 
-export type OrderStatus = 'SENT' | 'ACCEPTED' | 'REJECTED' | 'IN_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+// AWAITING_SHOP: distribyutor xodimi kiritgan, do'kon egasi tasdiqlaguncha jo'natilmaydi
+export type OrderStatus = 'AWAITING_SHOP' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'IN_DELIVERY' | 'DELIVERED' | 'CANCELLED';
 export type PaymentType = 'CASH' | 'TRANSFER' | 'CREDIT';
 
 export type ShopOrder = {
@@ -121,6 +124,7 @@ export type PaymentOptions = {
 };
 
 const STATUS_KEY = {
+  AWAITING_SHOP: 'Tasdiq kutilmoqda',
   SENT: 'Yuborildi',
   ACCEPTED: 'Qabul qilindi',
   REJECTED: 'Rad etildi',

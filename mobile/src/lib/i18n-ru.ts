@@ -621,6 +621,37 @@ export const RU = {
   'Olib tashlash': 'Удалить',
   '{name} olib tashlansinmi?': 'Удалить {name}?',
   'Sotuvchi ilovaga kira olmaydi. Uning buyurtmalari tarixda qoladi.': 'Продавец не сможет войти в приложение. Его заказы останутся в истории.',
+
+  // Do'kon roziligi: xodim kiritgan buyurtma va qo'shilgan qarz do'kon egasi tasdig'i bilan
+  'Tasdiq kutilmoqda': 'Ждёт подтверждения',
+  'tasdiqingizni kutmoqda': 'ждёт вашего подтверждения',
+  "Qarz so'rovi rad etilsinmi?": 'Отклонить запрос на долг?',
+  "Bu summa qarzingizga qo'shilmaydi.": 'Эта сумма не будет добавлена к вашему долгу.',
+  "Distribyutor qarz qo'shmoqchi: {sum}": 'Дистрибьютор хочет добавить долг: {sum}',
+  'Tasdiqingizni kutayotgan buyurtma: {n}': 'Заказы ждут вашего подтверждения: {n}',
+  "Tasdiqingizni kutayotgan qarz so'rovi: {n}": 'Запросы на долг ждут подтверждения: {n}',
+  'Buyurtma №{n} rad etilsinmi?': 'Отклонить заказ №{n}?',
+  "Rad etilgan buyurtma bekor qilinadi va jo'natilmaydi.": 'Отклонённый заказ будет отменён и не будет отправлен.',
+  "Buyurtmani distribyutor kiritdi. Tasdiqlasangiz jo'natiladi, topshirilganda shu summa qarzingizga yoziladi.":
+    'Заказ оформил дистрибьютор. После подтверждения он будет отправлен, а при доставке эта сумма запишется в ваш долг.',
+  "Kompaniya hisobi to'xtatilgan: yangi buyurtma va do'kon qo'shib bo'lmaydi. Captar bilan bog'laning.":
+    'Аккаунт компании приостановлен: новые заказы и магазины добавлять нельзя. Свяжитесь с Captar.',
+  "Do'kon tasdig'ini kutmoqda": 'Ждут подтверждения магазина',
+  "to'xtatilgan": 'приостановлен',
+  "Do'kon tasdig'ida": 'У магазина на подтверждении',
+  "Do'kon egasi ilovada tasdiqlagach buyurtma jo'natiladi.": 'Заказ будет отправлен после подтверждения владельцем магазина в приложении.',
+  'Buyurtma №{n} qaytarib olinsinmi?': 'Отозвать заказ №{n}?',
+  "Do'kon uni endi tasdiqlay olmaydi.": 'Магазин больше не сможет его подтвердить.',
+  'Qaytarib olish': 'Отозвать',
+  "Do'kon egasi ilovada tasdiqlaguncha buyurtma jo'natilmaydi.": 'Заказ не отправляется, пока владелец магазина не подтвердит его в приложении.',
+  "Do'kon qo'shildi. Egasi shu raqam bilan Captar ilovasiga kirib, ulanishni tasdiqlasin: shundan keyin do'kon ro'yxatingizda chiqadi.":
+    'Магазин добавлен. Владелец должен войти в Captar с этим номером и подтвердить подключение: после этого магазин появится в вашем списке.',
+  "Do'kon egasi ulanishni Captar ilovasida tasdiqlaydi. Raqamida do'kon bo'lmasa, do'kon yaratiladi va egasi shu raqam bilan ilovaga kiradi. Nasiya shartlarini keyin admin belgilaydi.":
+    'Владелец магазина подтверждает подключение в приложении Captar. Если на номере нет магазина, он будет создан, и владелец войдёт в приложение с этим номером. Условия рассрочки потом задаёт администратор.',
+  "do'kon tasdig'ida": 'на подтверждении у магазина',
+  "To'lov bekor qilinsa qarz oshadi: do'kon egasi ilovada tasdiqlagach kuchga kiradi.":
+    'Отмена оплаты увеличит долг: она вступит в силу после подтверждения владельцем магазина в приложении.',
+  "Qo'shilgan qarz do'kon egasi ilovada tasdiqlagach kuchga kiradi.": 'Добавленный долг вступит в силу после подтверждения владельцем магазина в приложении.',
 } as const satisfies Record<string, string | readonly [string, string, string]>;
 
 export type Key = keyof typeof RU;

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { brandsEnabled } from "@/lib/features";
 import { overdue } from "@/lib/ledger";
 import { handle, requireStaff } from "@/lib/session";
 import { ledgerFacts } from "@/lib/shop-summary";
@@ -12,8 +13,10 @@ export const GET = handle(async (req: Request) => {
   const startOfDay = startOfTashkentDay();
   const scope = orderScope(staff);
 
-  const [newOrders, accepted, inDelivery, deliveredToday, links, paidToday, pendingPayments, requests, proposals, brandOrders] = await Promise.all([
+  const brands = brandsEnabled();
+  const [newOrders, awaitingShop, accepted, inDelivery, deliveredToday, links, paidToday, pendingPayments, requests, proposals, brandOrders] = await Promise.all([
     db.order.aggregate({ where: { ...scope, status: "SENT" }, _count: true, _sum: { total: true } }),
+    db.order.count({ where: { ...scope, status: "AWAITING_SHOP" } }),
     db.order.count({ where: { ...scope, status: "ACCEPTED" } }),
     db.order.count({ where: { ...scope, status: "IN_DELIVERY" } }),
     db.order.aggregate({ where: { ...scope, status: "DELIVERED", updatedAt: { gte: startOfDay } }, _count: true, _sum: { deliveredTotal: true } }),
@@ -25,10 +28,11 @@ export const GET = handle(async (req: Request) => {
       where: { shopLink: { distributorId }, type: "PAYMENT", status: "CONFIRMED", date: { gte: startOfDay }, ...(staff.role === "AGENT" || staff.role === "COURIER" ? { createdBy: `staff:${staff.id}` } : {}) },
       _sum: { amount: true },
     }),
-    db.ledgerEntry.count({ where: { shopLink: { distributorId }, status: "PENDING" } }),
+    // Faqat chekli to'lovlar: do'kon tasdig'ini kutayotgan qarz xodimning ishi emas
+    db.ledgerEntry.count({ where: { shopLink: { distributorId }, type: "PAYMENT", status: "PENDING" } }),
     db.shopLink.count({ where: { distributorId, status: "REQUESTED" } }),
-    db.agreement.count({ where: { distributorId, status: "PROPOSED", initiatedBy: "BRAND" } }),
-    db.brandOrder.count({ where: { distributorId, status: "SHIPPED" } }),
+    brands ? db.agreement.count({ where: { distributorId, status: "PROPOSED", initiatedBy: "BRAND" } }) : 0,
+    brands ? db.brandOrder.count({ where: { distributorId, status: "SHIPPED" } }) : 0,
   ]);
 
   const today = new Date();
@@ -39,6 +43,7 @@ export const GET = handle(async (req: Request) => {
   return Response.json({
     distributorStatus: staff.distributor.status,
     newOrders: { count: newOrders._count, sum: newOrders._sum.total ?? 0 },
+    awaitingShop,
     acceptedOrders: accepted,
     inDelivery,
     deliveredToday: { count: deliveredToday._count, sum: deliveredToday._sum.deliveredTotal ?? 0 },

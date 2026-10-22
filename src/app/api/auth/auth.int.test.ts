@@ -37,7 +37,8 @@ describe("ro'yxatdan o'tish", () => {
     expect(results.map((r) => r.status)).toEqual([200, 200]);
     expect(await db.distributor.count({ where: { name: body.companyName } })).toBe(1);
     expect(await db.staff.findFirstOrThrow({ where: { phone: p } })).toMatchObject({ role: "ADMIN" });
-    expect((await db.distributor.findFirstOrThrow({ where: { name: body.companyName } })).status).toBe("PENDING");
+    // Platforma tekshiruvi yo'q: ro'yxatdan o'tishi bilan faol
+    expect((await db.distributor.findFirstOrThrow({ where: { name: body.companyName } })).status).toBe("ACTIVE");
   });
 
   it("tovar egasi: ikki marta bosilsa bitta brend", async () => {

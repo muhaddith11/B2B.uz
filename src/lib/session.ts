@@ -4,6 +4,7 @@ import { db } from "./db";
 import { langOf, render, type Lang, type Text } from "./i18n";
 import { normalizePhone } from "./phone";
 import { verifyToken, type SessionPayload } from "./token";
+import { assertBrandsEnabled } from "./features";
 
 export const PANEL_COOKIE = "panel_session";
 export const ADMIN_COOKIE = "admin_session";
@@ -51,14 +52,15 @@ export async function requireStaff(req: Request, roles?: StaffRole[]) {
   return staff;
 }
 
-// Savdo amallari (do'kon qo'shish, buyurtma olish va qabul qilish) faqat platforma tasdiqlagan distribyutorda.
-// Tasdiqlanmagan distribyutor katalog, jamoa va sozlamalarni tayyorlab turadi
+// Savdo amallari (do'kon qo'shish, buyurtma olish va qabul qilish) faqat faol distribyutorda. Distribyutor ro'yxatdan
+// o'tishi bilan faol; to'xtatilgan (platforma admini to'xtatgan yoki kompaniyada admin qolmagan) katalog va jamoani ko'radi, savdo qilmaydi
 export function assertApproved(distributor: { status: string }) {
-  if (distributor.status !== "ACTIVE") throw new HttpError(403, "Hisobingiz hali tasdiqlanmagan");
+  if (distributor.status !== "ACTIVE") throw new HttpError(403, "Kompaniya hisobi to'xtatilgan. Captar bilan bog'laning");
 }
 
 // Mobil ilova: tovar egasi
 export async function requireBrandUser(req: Request) {
+  assertBrandsEnabled();
   const payload = bearer(req);
   if (!payload || payload.kind !== "brand") throw new HttpError(401, "Kirish kerak");
   const user = await db.brandUser.findUnique({ where: { id: payload.brandUserId }, include: { brand: true } });

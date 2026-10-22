@@ -603,6 +603,7 @@ export function Badge({ label, tone = 'hint' }: { label: string; tone?: Tone }) 
 }
 
 export const ORDER_TONE: Record<OrderStatus, Tone> = {
+  AWAITING_SHOP: 'warn',
   SENT: 'accent',
   ACCEPTED: 'info',
   IN_DELIVERY: 'warn',
@@ -631,7 +632,8 @@ export function StatusSteps({ status, times }: { status: OrderStatus; times?: St
     setSeen(status);
     setChanged(true);
   }
-  if (status === 'REJECTED' || status === 'CANCELLED') return <StatusBadge status={status} />;
+  // Do'kon tasdig'ini kutayotgan buyurtma hali yo'lga chiqmagan: bosqichlar o'rniga holat belgisi
+  if (status === 'AWAITING_SHOP' || status === 'REJECTED' || status === 'CANCELLED') return <StatusBadge status={status} />;
   const at = STEPS.indexOf(status);
   const done = status === 'DELIVERED';
   return (

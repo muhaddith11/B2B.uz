@@ -16,6 +16,7 @@ import * as accountDeleteCode from "./account/delete/code/route";
 import * as refresh from "./auth/refresh/route";
 import * as brandDistributors from "./brand/distributors/route";
 import * as shopDebts from "./shop/debts/route";
+import * as shopDebtAnswer from "./shop/debts/[id]/answer/route";
 import * as shopHome from "./shop/home/route";
 import * as shopOrders from "./shop/orders/route";
 import * as shopPayments from "./shop/payments/route";
@@ -86,12 +87,18 @@ describe("2. qarz daftarini tuzatish", () => {
     expect((await staffReverse.POST(req(`/api/staff/ledger/${id}/reverse`, { token: w.agent.token, body }), ctx({ id }))).status).toBe(403);
     const res = await staffReverse.POST(req(`/api/staff/ledger/${id}/reverse`, { token: w.accountant.token, body }), ctx({ id }));
     expect(res.status).toBe(200);
-    expect(await balanceOf(w.link.id)).toBe(100_000);
+    // To'lovni bekor qilish qarzni oshiradi: do'kon egasi tasdiqlaguncha qoldiq o'zgarmaydi
+    expect(await balanceOf(w.link.id)).toBe(-900_000);
 
     // Bir vaqtda ikki marta: teskari yozuv bitta
     const again = await settle([1, 2, 3].map(() => staffReverse.POST(req(`/api/staff/ledger/${id}/reverse`, { token: w.admin.token, body }), ctx({ id }))));
     expect(again.ok.every((r) => r.status === 409)).toBe(true);
     expect(await db.ledgerEntry.count({ where: { reversesId: id } })).toBe(1);
+
+    const reversal = await db.ledgerEntry.findFirstOrThrow({ where: { reversesId: id } });
+    expect(reversal.status).toBe("PENDING");
+    const answer = await shopDebtAnswer.POST(req(`/api/shop/debts/${reversal.id}/answer`, { token: w.owner.token, body: { accept: true } }), ctx({ id: reversal.id }));
+    expect(answer.status).toBe(200);
     expect(await balanceOf(w.link.id)).toBe(100_000);
 
     // Do'kon kartasida: bekor qilingan yozuv belgilangan
@@ -133,6 +140,8 @@ describe("2. qarz daftarini tuzatish", () => {
     const before = summarize(factsFrom(await db.ledgerEntry.findMany({ where: { shopLinkId: w.link.id } })), [], 0);
     expect(before.overdueAmount).toBe(0);
     await staffReverse.POST(req(`/api/staff/ledger/${pay.id}/reverse`, { token: w.admin.token, body: { reason: "Pul olinmagan" } }), ctx({ id: pay.id }));
+    const reversal = await db.ledgerEntry.findFirstOrThrow({ where: { reversesId: pay.id } });
+    await shopDebtAnswer.POST(req(`/api/shop/debts/${reversal.id}/answer`, { token: w.owner.token, body: { accept: true } }), ctx({ id: reversal.id }));
     const after = summarize(factsFrom(await db.ledgerEntry.findMany({ where: { shopLinkId: w.link.id } })), [], 0);
     expect(after).toMatchObject({ debt: 200_000, overdueAmount: 200_000, overdueDays: 20 });
   });
